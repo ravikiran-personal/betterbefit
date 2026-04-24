@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import PWARegister from "@/components/pwa-register";
-
+import PWARegister from "../components/pwa-register";
 export const metadata: Metadata = {
   title: "Recomp Tracker",
   description: "Private recomposition tracker for training, meals, steps, cardio, and weekly adjustments.",
