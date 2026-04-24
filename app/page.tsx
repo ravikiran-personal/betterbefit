@@ -16,25 +16,20 @@ function NumericInput({
   return (
     <input
       className="input"
-      type="text"
-      inputMode="decimal"
+      type="tel"
+      inputMode="numeric"
       pattern="[0-9]*"
       value={safeValue}
       placeholder={placeholder}
       onChange={(e) => {
-        const v = e.target.value;
+        const onlyNumbers = e.target.value.replace(/[^0-9]/g, "");
 
-        if (v === "") {
+        if (onlyNumbers === "") {
           onChange("");
           return;
         }
 
-        if (!/^\d*\.?\d*$/.test(v)) {
-          alert("Please enter a number");
-          return;
-        }
-
-        onChange(Number(v));
+        onChange(Number(onlyNumbers));
       }}
     />
   );
