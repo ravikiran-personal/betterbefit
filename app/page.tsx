@@ -1,4 +1,30 @@
 "use client";
+function NumericInput({
+  value,
+  onChange
+}: {
+  value: number | "";
+  onChange: (value: number | "") => void;
+}) {
+  return (
+    <input
+      type="number"
+      inputMode="decimal"
+      className="input"
+      value={value}
+      onChange={(e) => {
+        const v = e.target.value;
+        if (v === "") return onChange("");
+        const num = Number(v);
+        if (isNaN(num)) {
+          alert("Please enter a number");
+          return;
+        }
+        onChange(num);
+      }}
+    />
+  );
+}
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -723,7 +749,7 @@ export default function Page() {
                         <input className="input" value={row.date} onChange={(e) => updateDaily(index, "date", e.target.value)} />
                       </td>
                       <td>
-                        <input className="input" value={row.weight} onChange={(e) => updateDaily(index, "weight", e.target.value)} />
+                        <NumericInput   value={row.weight}   onChange={(v) => updateDaily(index, "weight", String(v))} /> onChange={(e) => updateDaily(index, "weight", e.target.value)} />
                       </td>
                       <td>
                         <input className="input" value={row.waist} onChange={(e) => updateDaily(index, "waist", e.target.value)} />
