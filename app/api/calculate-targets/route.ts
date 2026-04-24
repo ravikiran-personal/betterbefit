@@ -98,7 +98,12 @@ Return this exact JSON shape:
       });
     }
 
-    const parsed = JSON.parse(text);
+    const cleanedText = text
+  .replace(/```json/g, "")
+  .replace(/```/g, "")
+  .trim();
+
+const parsed = JSON.parse(cleanedText);
 
     return NextResponse.json({
       source: "claude",
