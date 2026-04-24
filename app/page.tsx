@@ -372,6 +372,7 @@ export default function Page() {
       }
 
       const result = await response.json();
+      console.log("AI target result:", result);
 
       setState((prev) => ({
         ...prev,
