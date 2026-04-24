@@ -753,6 +753,21 @@ export default function Page() {
             <Field label="Target steps">
               <NumericInput value={state.settings.stepTarget} onChange={(v) => updateSettings("stepTarget", v === "" ? 0 : v)} />
             </Field>
+            <button
+  className="btn warn"
+  onClick={() => {
+    if (!confirm("Delete all logs? This cannot be undone.")) return;
+
+    setState((prev) => ({
+      ...prev,
+      dailyLogs: seedWeekLogs(),
+      workoutLogs: seedWorkoutLogs(),
+      foods: []
+    }));
+  }}
+>
+  Delete all logs
+</button>
           </div>
 
           <div className="card">
