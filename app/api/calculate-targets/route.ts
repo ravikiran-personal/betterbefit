@@ -10,57 +10,49 @@ type RequestBody = {
 };
 
 export async function POST(request: Request) {
+  const body = (await request.json()) as RequestBody;
+  const fallback = calculateFallbackTargets(body);
+
   try {
-    const body = (await request.json()) as RequestBody;
-
-    const fallback = calculateFallbackTargets(body);
-
     const apiKey = process.env.ANTHROPIC_API_KEY;
 
     if (!apiKey) {
       return NextResponse.json({
         source: "fallback",
+        error: "ANTHROPIC_API_KEY is missing in Vercel environment variables.",
         ...fallback
       });
     }
 
     const prompt = `
-You are a fitness nutrition coach.
+Return ONLY valid JSON. No markdown.
 
-Return ONLY valid JSON.
+Calculate realistic daily fitness targets for this user:
 
-User:
-- Weight: ${body.weightKg} kg
-- Height: ${body.heightCm} cm
-- Age: ${body.age}
-- Sex: ${body.sex}
-- Lifestyle: ${body.lifestyle}
-- Goal: ${body.goal}
-
-Create realistic daily targets for:
-- calories
-- protein grams
-- carbs grams
-- fats grams
-- steps
+Weight: ${body.weightKg} kg
+Height: ${body.heightCm} cm
+Age: ${body.age}
+Sex: ${body.sex}
+Lifestyle: ${body.lifestyle}
+Goal: ${body.goal}
 
 Rules:
-- For recomp: slight calorie deficit or near maintenance, high protein.
+- For recomp: near maintenance or slight deficit, high protein.
 - For maintain: maintenance calories.
-- For lose_weight: moderate deficit, not aggressive.
+- For lose_weight: moderate deficit.
 - For be_more_active: maintenance calories, higher steps.
 - Protein should usually be 1.6-2.2g/kg.
 - Fats should not be too low.
 - Steps should be practical.
 
-JSON shape:
+Return this exact JSON shape:
 {
-  "calories": number,
-  "protein": number,
-  "carbs": number,
-  "fats": number,
-  "steps": number,
-  "reason": string
+  "calories": 2200,
+  "protein": 170,
+  "carbs": 220,
+  "fats": 65,
+  "steps": 10000,
+  "reason": "short explanation"
 }
 `;
 
@@ -72,7 +64,7 @@ JSON shape:
         "anthropic-version": "2023-06-01"
       },
       body: JSON.stringify({
-        model: "claude-3-5-haiku-latest",
+        model: "claude-3-5-haiku-20241022",
         max_tokens: 600,
         messages: [
           {
@@ -83,19 +75,25 @@ JSON shape:
       })
     });
 
+    const rawText = await response.text();
+
     if (!response.ok) {
       return NextResponse.json({
         source: "fallback",
+        error: `Claude API failed with status ${response.status}`,
+        claudeResponse: rawText,
         ...fallback
       });
     }
 
-    const data = await response.json();
+    const data = JSON.parse(rawText);
     const text = data.content?.[0]?.text;
 
     if (!text) {
       return NextResponse.json({
         source: "fallback",
+        error: "Claude response did not contain text.",
+        claudeResponse: data,
         ...fallback
       });
     }
@@ -109,15 +107,14 @@ JSON shape:
       carbs: safeNumber(parsed.carbs, fallback.carbs),
       fats: safeNumber(parsed.fats, fallback.fats),
       steps: safeNumber(parsed.steps, fallback.steps),
-      reason: String(parsed.reason || fallback.reason)
+      reason: String(parsed.reason || "Targets calculated with Claude.")
     });
-  } catch {
-    return NextResponse.json(
-      {
-        error: "Could not calculate targets."
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    return NextResponse.json({
+      source: "fallback",
+      error: error instanceof Error ? error.message : "Unknown API route error.",
+      ...fallback
+    });
   }
 }
 
