@@ -748,9 +748,12 @@ export default function Page() {
                       <td>
                         <input className="input" value={row.date} onChange={(e) => updateDaily(index, "date", e.target.value)} />
                       </td>
-                      <td>
-                        <NumericInput   value={row.weight}   onChange={(v) => updateDaily(index, "weight", String(v))} /> onChange={(e) => updateDaily(index, "weight", e.target.value)} />
-                      </td>
+                     <td>
+  <NumericInput
+    value={row.weight}
+    onChange={(v) => updateDaily(index, "weight", String(v))}
+  />
+</td>
                       <td>
                         <input className="input" value={row.waist} onChange={(e) => updateDaily(index, "waist", e.target.value)} />
                       </td>
