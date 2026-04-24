@@ -1,4 +1,13 @@
 import { NextResponse } from "next/server";
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+
+const cache = new Map<
+  string,
+  {
+    timestamp: number;
+    data: any;
+  }
+>();
 
 type RequestBody = {
   weightKg: number;
