@@ -1,26 +1,38 @@
 "use client";
 function NumericInput({
   value,
-  onChange
+  onChange,
+  placeholder
 }: {
   value: number | "";
   onChange: (value: number | "") => void;
+  placeholder?: string;
 }) {
+  const safeValue =
+    typeof value === "number" && !Number.isNaN(value) ? String(value) : "";
+
   return (
     <input
-      type="number"
-      inputMode="decimal"
       className="input"
-      value={value}
+      type="text"
+      inputMode="decimal"
+      pattern="[0-9]*"
+      value={safeValue}
+      placeholder={placeholder}
       onChange={(e) => {
         const v = e.target.value;
-        if (v === "") return onChange("");
-        const num = Number(v);
-        if (isNaN(num)) {
+
+        if (v === "") {
+          onChange("");
+          return;
+        }
+
+        if (!/^\d*\.?\d*$/.test(v)) {
           alert("Please enter a number");
           return;
         }
-        onChange(num);
+
+        onChange(Number(v));
       }}
     />
   );
@@ -749,9 +761,10 @@ export default function Page() {
                         <input className="input" value={row.date} onChange={(e) => updateDaily(index, "date", e.target.value)} />
                       </td>
                      <td>
+<td>
   <NumericInput
     value={row.weight}
-    onChange={(v) => updateDaily(index, "weight", String(v))}
+    onChange={(v) => updateDaily(index, "weight", v === "" ? "" : String(v))}
   />
 </td>
                       <td>
