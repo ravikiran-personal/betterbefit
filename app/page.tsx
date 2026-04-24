@@ -85,25 +85,37 @@ function NumericInput({
   return (
     <input
       className="input"
-      type="tel"
-      inputMode="numeric"
-      pattern="[0-9]*"
+      type="text"
+      inputMode="decimal"
       value={safeValue}
       placeholder={placeholder}
       onChange={(e) => {
-        const onlyNumbers = e.target.value.replace(/[^0-9]/g, "");
+        let val = e.target.value;
 
-        if (onlyNumbers === "") {
+        // Allow only digits + one decimal point
+        val = val.replace(/[^0-9.]/g, "");
+
+        // Prevent multiple decimals
+        const parts = val.split(".");
+        if (parts.length > 2) {
+          val = parts[0] + "." + parts[1];
+        }
+
+        // Limit to 1 decimal place
+        if (parts[1]?.length > 1) {
+          val = parts[0] + "." + parts[1].slice(0, 1);
+        }
+
+        if (val === "" || val === ".") {
           onChange("");
           return;
         }
 
-        onChange(Number(onlyNumbers));
+        onChange(Number(val));
       }}
     />
   );
 }
-
 const STORAGE_KEY = "recomp-tracker-v2";
 
 const defaultSettings: Settings = {
