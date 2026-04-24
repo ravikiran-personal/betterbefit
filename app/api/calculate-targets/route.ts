@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
+
 const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
 const cache = new Map<
   string,
   {
     timestamp: number;
-    data: any;
+    data: TargetResult;
   }
 >();
 
@@ -18,8 +19,28 @@ type RequestBody = {
   goal: "recomp" | "maintain" | "lose_weight" | "be_more_active";
 };
 
+type TargetResult = {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+  steps: number;
+  reason: string;
+};
+
 export async function POST(request: Request) {
   const body = (await request.json()) as RequestBody;
+  const cacheKey = JSON.stringify(body);
+
+  const cached = cache.get(cacheKey);
+
+  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+    return NextResponse.json({
+      source: "cache",
+      ...cached.data
+    });
+  }
+
   const fallback = calculateFallbackTargets(body);
 
   try {
@@ -108,20 +129,29 @@ Return this exact JSON shape:
     }
 
     const cleanedText = text
-  .replace(/```json/g, "")
-  .replace(/```/g, "")
-  .trim();
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .trim();
 
-const parsed = JSON.parse(cleanedText);
+    const parsed = JSON.parse(cleanedText);
 
-    return NextResponse.json({
-      source: "claude",
+    const result: TargetResult = {
       calories: safeNumber(parsed.calories, fallback.calories),
       protein: safeNumber(parsed.protein, fallback.protein),
       carbs: safeNumber(parsed.carbs, fallback.carbs),
       fats: safeNumber(parsed.fats, fallback.fats),
       steps: safeNumber(parsed.steps, fallback.steps),
       reason: String(parsed.reason || "Targets calculated with Claude.")
+    };
+
+    cache.set(cacheKey, {
+      timestamp: Date.now(),
+      data: result
+    });
+
+    return NextResponse.json({
+      source: "claude",
+      ...result
     });
   } catch (error) {
     return NextResponse.json({
@@ -132,7 +162,7 @@ const parsed = JSON.parse(cleanedText);
   }
 }
 
-function calculateFallbackTargets(body: RequestBody) {
+function calculateFallbackTargets(body: RequestBody): TargetResult {
   const bmr =
     body.sex === "male"
       ? 10 * body.weightKg + 6.25 * body.heightCm - 5 * body.age + 5
