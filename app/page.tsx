@@ -595,21 +595,21 @@ export default function Page() {
                     <td>{item.sets}</td>
                     <td>{item.targetReps}</td>
                     <td>
-                      <input
+                      <NumericInput
                         className="input"
                         value={item.weight}
                         onChange={(e) => updateWorkout(item.id, "weight", e.target.value)}
                       />
                     </td>
                     <td>
-                      <input
+                      <NumericInput
                         className="input"
                         value={item.repsDone}
                         onChange={(e) => updateWorkout(item.id, "repsDone", e.target.value)}
                       />
                     </td>
                     <td>
-                      <input
+                      <NumericInput
                         className="input"
                         value={item.rpe}
                         onChange={(e) => updateWorkout(item.id, "rpe", e.target.value)}
@@ -668,19 +668,19 @@ export default function Page() {
                         <input className="input" value={item.food} onChange={(e) => updateFood(item.id, "food", e.target.value)} />
                       </td>
                       <td>
-                        <input className="input" value={item.grams} onChange={(e) => updateFood(item.id, "grams", e.target.value)} />
+                        <NumericInput className="input" value={item.grams} onChange={(e) => updateFood(item.id, "grams", e.target.value)} />
                       </td>
                       <td>
-                        <input className="input" value={item.calories} onChange={(e) => updateFood(item.id, "calories", e.target.value)} />
+                        <NumericInput className="input" value={item.calories} onChange={(e) => updateFood(item.id, "calories", e.target.value)} />
                       </td>
                       <td>
-                        <input className="input" value={item.protein} onChange={(e) => updateFood(item.id, "protein", e.target.value)} />
+                        <NumericInput className="input" value={item.protein} onChange={(e) => updateFood(item.id, "protein", e.target.value)} />
                       </td>
                       <td>
-                        <input className="input" value={item.carbs} onChange={(e) => updateFood(item.id, "carbs", e.target.value)} />
+                        <NumericInput className="input" value={item.carbs} onChange={(e) => updateFood(item.id, "carbs", e.target.value)} />
                       </td>
                       <td>
-                        <input className="input" value={item.fats} onChange={(e) => updateFood(item.id, "fats", e.target.value)} />
+                        <NumericInput className="input" value={item.fats} onChange={(e) => updateFood(item.id, "fats", e.target.value)} />
                       </td>
                       <td>
                         <button className="btn warn" onClick={() => deleteFood(item.id)}>
@@ -762,19 +762,19 @@ export default function Page() {
                         />
                       </td>
                       <td>
-                        <input className="input" value={row.waist} onChange={(e) => updateDaily(index, "waist", e.target.value)} />
+                        <NumericInput className="input" value={row.waist} onChange={(e) => updateDaily(index, "waist", e.target.value)} />
                       </td>
                       <td>
-                        <input className="input" value={row.steps} onChange={(e) => updateDaily(index, "steps", e.target.value)} />
+                        <NumericInput className="input" value={row.steps} onChange={(e) => updateDaily(index, "steps", e.target.value)} />
                       </td>
                       <td>
-                        <input className="input" value={row.calories} onChange={(e) => updateDaily(index, "calories", e.target.value)} />
+                        <NumericInput className="input" value={row.calories} onChange={(e) => updateDaily(index, "calories", e.target.value)} />
                       </td>
                       <td>
-                        <input className="input" value={row.protein} onChange={(e) => updateDaily(index, "protein", e.target.value)} />
+                        <NumericInput className="input" value={row.protein} onChange={(e) => updateDaily(index, "protein", e.target.value)} />
                       </td>
                       <td>
-                        <input className="input" value={row.cardioMinutes} onChange={(e) => updateDaily(index, "cardioMinutes", e.target.value)} />
+                        <NumericInput className="input" value={row.cardioMinutes} onChange={(e) => updateDaily(index, "cardioMinutes", e.target.value)} />
                       </td>
                     </tr>
                   ))}
@@ -801,22 +801,22 @@ export default function Page() {
           <div className="card">
             <h2 style={{ marginTop: 0 }}>Body and targets</h2>
             <Field label="Current weight (kg)">
-              <input className="input" value={state.settings.weightKg} onChange={(e) => updateSettings("weightKg", Number(e.target.value))} />
+              <NumericInput className="input" value={state.settings.weightKg} onChange={(e) => updateSettings("weightKg", Number(e.target.value))} />
             </Field>
             <Field label="Height (cm)">
-              <input className="input" value={state.settings.heightCm} onChange={(e) => updateSettings("heightCm", Number(e.target.value))} />
+              <NumericInput className="input" value={state.settings.heightCm} onChange={(e) => updateSettings("heightCm", Number(e.target.value))} />
             </Field>
             <Field label="Target calories">
-              <input className="input" value={state.settings.targetCalories} onChange={(e) => updateSettings("targetCalories", Number(e.target.value))} />
+              <NumericInput className="input" value={state.settings.targetCalories} onChange={(e) => updateSettings("targetCalories", Number(e.target.value))} />
             </Field>
             <Field label="Protein target (g)">
-              <input className="input" value={state.settings.proteinTarget} onChange={(e) => updateSettings("proteinTarget", Number(e.target.value))} />
+              <NumericInput className="input" value={state.settings.proteinTarget} onChange={(e) => updateSettings("proteinTarget", Number(e.target.value))} />
             </Field>
             <Field label="Current step baseline">
-              <input className="input" value={state.settings.currentStepBaseline} onChange={(e) => updateSettings("currentStepBaseline", Number(e.target.value))} />
+              <NumericInput className="input" value={state.settings.currentStepBaseline} onChange={(e) => updateSettings("currentStepBaseline", Number(e.target.value))} />
             </Field>
             <Field label="Target steps">
-              <input className="input" value={state.settings.stepTarget} onChange={(e) => updateSettings("stepTarget", Number(e.target.value))} />
+              <NumericInput className="input" value={state.settings.stepTarget} onChange={(e) => updateSettings("stepTarget", Number(e.target.value))} />
             </Field>
           </div>
 
