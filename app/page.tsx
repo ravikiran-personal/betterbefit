@@ -234,7 +234,7 @@ function todayISO(offset = 0) {
 
 function seedWeekLogs(): DailyLog[] {
   return Array.from({ length: 7 }).map((_, i) => ({
-    date: todayISO(-6 + i),
+    date: todayISO(i),
     weight: "",
     steps: "",
     calories: "",
