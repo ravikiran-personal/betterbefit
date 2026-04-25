@@ -1229,10 +1229,11 @@ export default function Page() {
                     <tr key={row.date + index}>
                       <td>
                         <input
-                          className="input"
-                          value={row.date}
-                          onChange={(e) => updateDaily(index, "date", e.target.value)}
-                        />
+  className="input"
+  type="date"
+  value={row.date || todayISO()}
+  onChange={(e) => updateDaily(index, "date", e.target.value)}
+/>
                       </td>
                       <td>
                         <NumericInput
