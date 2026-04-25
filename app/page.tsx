@@ -1033,7 +1033,7 @@ export default function Page() {
                         {foodSearchResult.grams}g | {foodSearchResult.calories} cal | P {foodSearchResult.protein}g | C {foodSearchResult.carbs}g | F {foodSearchResult.fats}g
                       </div>
                       <div className="small">
-                        Source: {foodSearchResult.source} | Confidence: {foodSearchResult.confidence}
+                        {   foodSearchResult.source === "usda"     ? "Verified data"     : foodSearchResult.source === "claude"     ? "Estimated (AI)"     : "Saved result" } | Confidence: {foodSearchResult.confidence}
                       </div>
                       <div className="small">{foodSearchResult.note}</div>
                     </div>
