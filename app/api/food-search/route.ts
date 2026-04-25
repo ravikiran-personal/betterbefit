@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     const cached = cache.get(cacheKey);
 
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      return NextResponse.json({ source: "cache", ...cached.data });
+      return NextResponse.json({   ...cached.data,   source: "cache" });
     }
 
     const usdaResult = await searchUsda(query, grams);
