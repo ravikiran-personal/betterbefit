@@ -407,6 +407,23 @@ export default function Page() {
     foodTotals
   });
 
+  const readinessScore = getReadinessScore({
+    avgProtein,
+    avgSteps,
+    workoutCompletion,
+    settings: state.settings
+  });
+
+  const todaySignals = getTodaySignals({
+    settings: state.settings,
+    avgCalories,
+    avgProtein,
+    avgSteps,
+    avgCardio,
+    workoutCompletion,
+    foodTotals
+  });
+
   const baseSetup = getBaseSetup({
     settings: state.settings,
     avgCalories,
@@ -423,7 +440,15 @@ export default function Page() {
     workoutCompletion
   });
 
-  const readinessScore = getReadinessScore({
+  const weekStatus = getWeekStatus(state.dailyLogs);
+  const streakDays = getCurrentStreak(state.dailyLogs);
+  const weeklyXp = getWeeklyXp({
+    readinessScore,
+    weekStatus,
+    workoutCompletion
+  });
+  const badges = getBadges({
+    streakDays,
     avgProtein,
     avgSteps,
     workoutCompletion,
@@ -762,21 +787,20 @@ export default function Page() {
   }
 
   return (
-    <main className="container">
-      <div className="row space-between">
+    <main className="container game-shell">
+      <div className="game-header">
         <div>
-          <h1 className="title">Recomp Tracker</h1>
-          <p className="subtitle">
-            Private, local-first tracker for training, nutrition, cardio, steps, and weekly decisions.
-          </p>
+          <p className="brand-title">BetterBeFit</p>
+          <p className="subtitle">Recomp, gamified without the noise.</p>
         </div>
 
-        <div className="row">
-          <button className="btn secondary" onClick={exportBackup}>
-            Export backup
+        <div className="game-header-actions">
+          <div className="streak-badge">🔥 {streakDays} day streak</div>
+          <button className="btn secondary small-btn" onClick={exportBackup}>
+            Export
           </button>
-          <button className="btn secondary" onClick={() => fileInputRef.current?.click()}>
-            Import backup
+          <button className="btn secondary small-btn" onClick={() => fileInputRef.current?.click()}>
+            Import
           </button>
           <input
             ref={fileInputRef}
@@ -810,54 +834,135 @@ export default function Page() {
       </div>
 
       {tab === "dashboard" && (
-        <div className="grid grid-4">
-          <div className="card" style={{ gridColumn: "span 2" }}>
-            <div className="small">Readiness</div>
-            <div className="metric-value">{readinessScore}%</div>
-            <div className="small">Protein + steps + training</div>
-          </div>
-          <MetricCard title="Avg Weight" value={formatNumber(avgWeight, "kg")} hint="7-day average" />
-          <MetricCard title="Avg Steps" value={formatNumber(avgSteps)} hint={`Target ${state.settings.stepTarget}`} />
-          <MetricCard title="Avg Calories" value={formatNumber(avgCalories)} hint={`Target ${state.settings.targetCalories}`} />
-          <MetricCard title="Avg Protein" value={formatNumber(avgProtein, "g")} hint={`Target ${state.settings.proteinTarget}g`} />
-          <MetricCard title="Avg Cardio" value={formatNumber(avgCardio, "min")} hint="Daily average" />
-          <MetricCard title="Avg Waist" value={formatNumber(avgWaist, "cm")} hint="Optional but useful" />
-          <MetricCard title="Carb Target" value={`${state.settings.carbTarget} g`} hint="AI-calculated target" />
-          <MetricCard title="Fat Target" value={`${state.settings.fatTarget} g`} hint="AI-calculated target" />
-          <MetricCard title="Workout Completion" value={`${workoutCompletion}%`} hint="Filled log rows" />
-          <MetricCard title="Meal Plan Calories" value={`${Math.round(foodTotals.calories)}`} hint="Planned daily intake" />
-
-          <div className="card" style={{ gridColumn: "1 / -1" }}>
+        <div className="game-dashboard">
+          <section className="level-card">
             <div className="row space-between">
-              <h2 style={{ margin: 0 }}>Current recommendation</h2>
-              <span className="badge">Auto-adjusted</span>
+              <div>
+                <div className="small">Weekly XP</div>
+                <h2 className="level-title">Level {weeklyXp.level} — {weeklyXp.title}</h2>
+              </div>
+              <div className="xp-number">{weeklyXp.xp} XP</div>
+            </div>
+
+            <div className="xp-track">
+              <div className="xp-fill" style={{ width: `${weeklyXp.progress}%` }} />
+            </div>
+
+            <div className="row space-between">
+              <span className="small">{weeklyXp.xp} XP earned</span>
+              <span className="small">{weeklyXp.remaining} XP to Level {weeklyXp.level + 1}</span>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="game-section-title">This week</h2>
+            <div className="week-row">
+              {weekStatus.map((day) => (
+                <div key={day.label + day.index} className={`week-day ${day.status}`}>
+                  <span>{day.label}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="game-metrics">
+            <GameMetricCard
+              title="Protein"
+              value={formatNumber(avgProtein, "g")}
+              hint={(avgProtein ?? 0) >= state.settings.proteinTarget ? "Target hit" : `${Math.max(0, Math.round(state.settings.proteinTarget - (avgProtein ?? 0)))}g left`}
+              tone={(avgProtein ?? 0) >= state.settings.proteinTarget ? "green" : "amber"}
+            />
+            <GameMetricCard
+              title="Steps"
+              value={formatNumber(avgSteps)}
+              hint={(avgSteps ?? 0) >= state.settings.stepTarget ? "Target crushed" : `${Math.max(0, Math.round(state.settings.stepTarget - (avgSteps ?? 0))).toLocaleString()} left`}
+              tone={(avgSteps ?? 0) >= state.settings.stepTarget ? "green" : "amber"}
+            />
+            <GameMetricCard
+              title="Calories"
+              value={formatNumber(avgCalories)}
+              hint={avgCalories === null ? "Log intake" : `${Math.round(avgCalories - state.settings.targetCalories)} kcal vs target`}
+              tone={avgCalories !== null && Math.abs(avgCalories - state.settings.targetCalories) <= 150 ? "green" : "amber"}
+            />
+            <GameMetricCard
+              title="Cardio"
+              value={formatNumber(avgCardio, "min")}
+              hint="weekly average"
+              tone={(avgCardio ?? 0) >= 20 ? "green" : "amber"}
+            />
+            <GameMetricCard
+              title="Workouts"
+              value={`${workoutCompletion}%`}
+              hint={workoutCompletion >= 70 ? "locked in" : "log more"}
+              tone={workoutCompletion >= 70 ? "green" : "amber"}
+            />
+          </section>
+
+          <section className="readiness-panel">
+            <div
+              className="readiness-ring"
+              style={{ background: `conic-gradient(#2dd4a3 ${readinessScore * 3.6}deg, #30343b 0deg)` }}
+            >
+              <div className="readiness-inner">{readinessScore}%</div>
+            </div>
+            <div>
+              <h2>Readiness score</h2>
+              <p>{getReadinessMessage(readinessScore)}</p>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="game-section-title">Unlock next</h2>
+            <div className="badge-grid">
+              {badges.map((badge) => (
+                <div key={badge.title} className={`achievement-card ${badge.unlocked ? "unlocked" : ""}`}>
+                  <div className="achievement-icon">{badge.icon}</div>
+                  <strong>{badge.title}</strong>
+                  <span>{badge.detail}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section>
+            <h2 className="game-section-title">Today’s signals</h2>
+            <div className="signal-stack">
+              {todaySignals.map((signal) => (
+                <div key={signal.text} className={`game-signal ${signal.type}`}>
+                  <span className="signal-dot" />
+                  <p>{signal.text}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="grid grid-2">
+            <div className="card">
+              <h2 style={{ marginTop: 0 }}>Cardio plan</h2>
+              <div className="signal-stack">
+                {cardioRoutine.map((item) => (
+                  <div className="mini-signal" key={item}>{item}</div>
+                ))}
+              </div>
+            </div>
+
+            <div className="card">
+              <h2 style={{ marginTop: 0 }}>Base setup</h2>
+              <div className="signal-stack">
+                {baseSetup.map((item) => (
+                  <div className="mini-signal" key={item}>{item}</div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section className="card">
+            <div className="row space-between">
+              <h2 style={{ margin: 0 }}>Coach note</h2>
+              <span className="badge">Auto-guided</span>
             </div>
             <p style={{ marginTop: 12, lineHeight: 1.6 }}>{recommendation}</p>
-          </div>
-
-          <div className="card" style={{ gridColumn: "1 / -1" }}>
-            <h2 style={{ marginTop: 0 }}>Step progression</h2>
-            <div className="grid grid-4">
-              {stepPlan.map((item) => (
-                <div key={item.week} className="card" style={{ background: "#0f172a" }}>
-                  <div className="small">Week {item.week}</div>
-                  <div className="metric-value">{item.target.toLocaleString()}</div>
-                  <div className="small">{item.note}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="card" style={{ gridColumn: "1 / -1" }}>
-            <h2 style={{ marginTop: 0 }}>Cardio routine</h2>
-            <div>
-              {cardioRoutine.map((item) => (
-                <div key={item} className="small" style={{ marginBottom: 8 }}>
-                  • {item}
-                </div>
-              ))}
-            </div>
-          </div>
+          </section>
         </div>
       )}
 
@@ -1189,11 +1294,9 @@ export default function Page() {
 
             <div className="card">
               <h2 style={{ marginTop: 0 }}>Suggested base setup</h2>
-              <div>
+              <div className="signal-stack">
                 {baseSetup.map((item) => (
-                  <div key={item} className="small" style={{ marginBottom: 8 }}>
-                    • {item}
-                  </div>
+                  <div className="mini-signal" key={item}>{item}</div>
                 ))}
               </div>
             </div>
@@ -1430,6 +1533,29 @@ function MetricCard({
   );
 }
 
+function GameMetricCard({
+  title,
+  value,
+  hint,
+  tone
+}: {
+  title: string;
+  value: string;
+  hint: string;
+  tone: "green" | "amber";
+}) {
+  return (
+    <div className={`game-metric ${tone}`}>
+      <div className="game-metric-title">
+        <span className="signal-dot" />
+        {title}
+      </div>
+      <div className="game-metric-value">{value}</div>
+      <div className="game-metric-pill">{hint}</div>
+    </div>
+  );
+}
+
 function cleanNumber(value: unknown): number | "" {
   if (value === "") return "";
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -1472,23 +1598,36 @@ function isGoal(value: unknown): value is Goal {
   return value === "recomp" || value === "maintain" || value === "lose_weight" || value === "be_more_active";
 }
 
+type CoachSignal = {
+  type: "good" | "warn";
+  text: string;
+};
+
+type Achievement = {
+  icon: string;
+  title: string;
+  detail: string;
+  unlocked: boolean;
+};
+
 function getReadinessScore(input: {
   avgProtein: number | null;
   avgSteps: number | null;
   workoutCompletion: number;
   settings: Settings;
 }) {
-  const proteinScore = Math.min(
-    ((input.avgProtein ?? 0) / Math.max(input.settings.proteinTarget, 1)) * 40,
-    40
-  );
-  const stepScore = Math.min(
-    ((input.avgSteps ?? 0) / Math.max(input.settings.stepTarget, 1)) * 35,
-    35
-  );
+  const proteinScore = Math.min(((input.avgProtein ?? 0) / Math.max(input.settings.proteinTarget, 1)) * 40, 40);
+  const stepScore = Math.min(((input.avgSteps ?? 0) / Math.max(input.settings.stepTarget, 1)) * 35, 35);
   const workoutScore = Math.min((input.workoutCompletion / 100) * 25, 25);
 
   return Math.round(proteinScore + stepScore + workoutScore);
+}
+
+function getReadinessMessage(score: number) {
+  if (score >= 85) return "Full recomp mode. Keep the streak alive and avoid unnecessary changes.";
+  if (score >= 70) return "Strong momentum. Fix one weak signal and the week is yours.";
+  if (score >= 50) return "You are in the game. Tighten steps, protein, or logging today.";
+  return "Reset the basics today: protein, steps, and one clean log.";
 }
 
 function getBaseSetup(input: {
@@ -1500,42 +1639,39 @@ function getBaseSetup(input: {
   workoutCompletion: number;
 }) {
   const items: string[] = [];
-
   const proteinGap = input.settings.proteinTarget - (input.avgProtein ?? input.foodTotals.protein);
   const calorieGap = input.settings.targetCalories - (input.avgCalories ?? input.foodTotals.calories);
 
   if (proteinGap > 20) {
-    items.push(`Add ~${Math.round(proteinGap)}g protein daily.`);
+    items.push(`Add ~${Math.round(proteinGap)}g protein daily. Use a simple anchor like chicken, curd, eggs, paneer, fish, or whey.`);
   } else {
-    items.push("Protein intake is adequate.");
+    items.push("Protein is close to target. Keep it spread across 3–4 meals.");
   }
 
   if (calorieGap < -150) {
-    items.push("Calories are above target. Reduce sugar/oil first.");
+    items.push("Calories are above target. Reduce liquid sugar, excess oil, or large rice portions first.");
   } else if (calorieGap > 250) {
-    items.push("Calories are low. Add carbs around training.");
+    items.push("Calories are low for your target. Add carbs around training or a controlled fat source.");
   } else {
-    items.push("Calories are close to target. Hold steady for the week.");
+    items.push("Calories are close to target. Hold steady and let weekly weight/waist trends guide changes.");
   }
 
   if ((input.avgSteps ?? 0) < input.settings.stepTarget - 1500) {
-    items.push("Increase steps using short walks after meals.");
+    items.push("Build steps with two 10-minute walks after meals before adding harder cardio.");
   }
 
   if (input.settings.goal === "recomp") {
-    items.push("For recomp, aim for stable weight, smaller waist, and stronger workouts.");
-  }
-
-  if (input.settings.goal === "lose_weight") {
-    items.push("For fat loss, keep the deficit moderate so training performance stays stable.");
-  }
-
-  if (input.settings.goal === "be_more_active") {
-    items.push("Make walking consistent before adding intense cardio.");
+    items.push("For recomp, aim for stable scale weight, smaller waist, and stronger workouts.");
+  } else if (input.settings.goal === "lose_weight") {
+    items.push("For fat loss, keep the deficit moderate so strength does not drop sharply.");
+  } else if (input.settings.goal === "be_more_active") {
+    items.push("Make walking a daily system before adding intense cardio.");
+  } else {
+    items.push("For maintenance, keep calories steady and adjust only if weekly average weight drifts.");
   }
 
   if (input.workoutCompletion < 50) {
-    items.push("Log workouts more consistently before adjusting diet aggressively.");
+    items.push("Training logs are incomplete. Log consistently before making large nutrition changes.");
   }
 
   return items.slice(0, 5);
@@ -1552,16 +1688,17 @@ function getCardioRoutine(input: {
   const items: string[] = [];
 
   if (steps < input.settings.stepTarget - 2500) {
-    items.push("Start with 2 x 10-min walks daily.");
-    items.push("Add 1 x 25-min easy Zone 2 walk.");
+    items.push("Start with walking: 2 x 10-minute walks daily, preferably after meals.");
+    items.push("Add one 25-minute easy Zone 2 walk on a non-lifting day.");
   } else if (steps < input.settings.stepTarget) {
-    items.push("Add one 15-min walk after lunch or dinner.");
+    items.push("Add one 15-minute walk after lunch or dinner to close the step gap.");
+    items.push("Keep cardio conversational, not exhausting.");
   } else {
-    items.push("Maintain 2 light cardio sessions per week.");
+    items.push("Steps are on track. Maintain 2 easy Zone 2 sessions weekly for conditioning.");
   }
 
   if (input.settings.goal === "lose_weight") {
-    items.push("Add 2–3 Zone 2 sessions weekly before lowering calories further.");
+    items.push("For fat loss, use 2–3 Zone 2 sessions of 25–35 minutes before cutting calories further.");
   }
 
   if (input.settings.goal === "be_more_active") {
@@ -1569,7 +1706,7 @@ function getCardioRoutine(input: {
   }
 
   if (input.workoutCompletion < 50) {
-    items.push("Focus on lifting consistency before adding more cardio.");
+    items.push("Avoid intense cardio until lifting consistency improves.");
   }
 
   if (cardio > 30 && input.settings.goal === "recomp") {
@@ -1577,6 +1714,135 @@ function getCardioRoutine(input: {
   }
 
   return items.slice(0, 5);
+}
+
+function getTodaySignals(input: {
+  settings: Settings;
+  avgCalories: number | null;
+  avgProtein: number | null;
+  avgSteps: number | null;
+  avgCardio: number | null;
+  workoutCompletion: number;
+  foodTotals: { calories: number; protein: number; carbs: number; fats: number };
+}): CoachSignal[] {
+  const signals: CoachSignal[] = [];
+
+  if ((input.avgProtein ?? input.foodTotals.protein) >= input.settings.proteinTarget) {
+    signals.push({ type: "good", text: "Protein is locked in. This is the core of recomp — protect it." });
+  } else {
+    signals.push({ type: "warn", text: "Protein is behind target. Add one high-protein meal or snack today." });
+  }
+
+  if ((input.avgSteps ?? 0) >= input.settings.stepTarget) {
+    signals.push({ type: "good", text: "Step target is on track. NEAT is compounding." });
+  } else {
+    signals.push({ type: "warn", text: "Steps are behind. Add a short walk after your next meal." });
+  }
+
+  const calories = input.avgCalories ?? input.foodTotals.calories;
+  if (Math.abs(calories - input.settings.targetCalories) <= 150) {
+    signals.push({ type: "good", text: "Calories are close to target. Keep today boring and consistent." });
+  } else if (calories < input.settings.targetCalories - 250) {
+    signals.push({ type: "warn", text: "Calories are running low. Under-eating blunts recovery and stalls recomp." });
+  } else {
+    signals.push({ type: "warn", text: "Calories are running high. Trim sugar, oil, or extra portions first." });
+  }
+
+  if (input.workoutCompletion >= 70) {
+    signals.push({ type: "good", text: "Training consistency is strong. Keep progressive overload the priority." });
+  } else {
+    signals.push({ type: "warn", text: "Workout logging is incomplete. Log the next session fully." });
+  }
+
+  return signals.slice(0, 4);
+}
+
+function getWeekStatus(dailyLogs: DailyLog[]) {
+  const labels = ["M", "T", "W", "T", "F", "S", "S"];
+
+  return labels.map((label, index) => {
+    const log = dailyLogs[index];
+    const hasUsefulData =
+      !!log &&
+      (numberOrNull(log.weight) !== null ||
+        numberOrNull(log.steps) !== null ||
+        numberOrNull(log.calories) !== null ||
+        numberOrNull(log.protein) !== null);
+
+    return {
+      label,
+      index,
+      status: hasUsefulData ? "done" : index <= new Date().getDay() ? "missed" : "upcoming"
+    };
+  });
+}
+
+function getCurrentStreak(dailyLogs: DailyLog[]) {
+  return dailyLogs.filter(
+    (log) =>
+      numberOrNull(log.weight) !== null ||
+      numberOrNull(log.steps) !== null ||
+      numberOrNull(log.calories) !== null ||
+      numberOrNull(log.protein) !== null
+  ).length;
+}
+
+function getWeeklyXp(input: {
+  readinessScore: number;
+  weekStatus: Array<{ label: string; index: number; status: string }>;
+  workoutCompletion: number;
+}) {
+  const loggedDays = input.weekStatus.filter((day) => day.status === "done").length;
+  const xp = Math.min(1000, Math.round(input.readinessScore * 6 + loggedDays * 45 + input.workoutCompletion * 2));
+  const level = Math.max(1, Math.floor(xp / 140) + 1);
+  const progress = Math.min(100, Math.round((xp / 1000) * 100));
+  const remaining = Math.max(0, 1000 - xp);
+
+  const title =
+    level >= 7
+      ? "Iron Athlete"
+      : level >= 5
+        ? "Momentum Builder"
+        : level >= 3
+          ? "Recomp Warrior"
+          : "Foundation";
+
+  return { xp, level, progress, remaining, title };
+}
+
+function getBadges(input: {
+  streakDays: number;
+  avgProtein: number | null;
+  avgSteps: number | null;
+  workoutCompletion: number;
+  settings: Settings;
+}): Achievement[] {
+  return [
+    {
+      icon: "★",
+      title: "7-Day Warrior",
+      detail: input.streakDays >= 7 ? "Earned" : `${Math.max(0, 7 - input.streakDays)} days left`,
+      unlocked: input.streakDays >= 7
+    },
+    {
+      icon: "✓",
+      title: "14-Day Streak",
+      detail: input.streakDays >= 14 ? "Earned" : "Log today",
+      unlocked: input.streakDays >= 14
+    },
+    {
+      icon: "◍",
+      title: "Protein King",
+      detail: "Hit protein target",
+      unlocked: (input.avgProtein ?? 0) >= input.settings.proteinTarget
+    },
+    {
+      icon: "◎",
+      title: "Consistency Pro",
+      detail: "70% workout log",
+      unlocked: input.workoutCompletion >= 70
+    }
+  ];
 }
 
 function getStepPlan(start: number, target: number) {
