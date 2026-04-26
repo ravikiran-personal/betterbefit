@@ -361,3 +361,399 @@ a {
     font-size: 16px;
   }
 }
+
+
+/* ===== READABILITY + AUTO-PADDING UPGRADE ===== */
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  line-height: 1.55;
+}
+
+.container {
+  padding: clamp(16px, 3vw, 28px);
+}
+
+.card,
+.level-card,
+.game-metric,
+.achievement-card,
+.game-signal,
+.mini-signal,
+.exercise-card,
+.workout-day-card,
+.xp-rule {
+  line-height: 1.55;
+}
+
+.card,
+.level-card,
+.workout-day-card {
+  padding: clamp(16px, 2.4vw, 24px);
+}
+
+.card + .card,
+.workout-day-card + .workout-day-card {
+  margin-top: 4px;
+}
+
+h1,
+h2,
+h3,
+p {
+  overflow-wrap: anywhere;
+}
+
+h2,
+h3 {
+  letter-spacing: -0.02em;
+}
+
+p,
+li,
+.small {
+  line-height: 1.6;
+}
+
+.small {
+  font-size: 13px;
+}
+
+.label {
+  font-size: 13px;
+  color: #aab4c2;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.input,
+.select,
+.textarea,
+.btn,
+.tab {
+  min-height: 46px;
+}
+
+.input,
+.select,
+.textarea {
+  padding: 12px 14px;
+  line-height: 1.4;
+}
+
+.btn {
+  padding: 12px 16px;
+  line-height: 1.2;
+}
+
+table {
+  font-size: 14px;
+}
+
+th,
+td {
+  padding: 14px 12px;
+}
+
+th {
+  white-space: nowrap;
+}
+
+.badge {
+  line-height: 1.2;
+}
+
+/* ===== OPTION B WORKOUT UX ===== */
+
+.airy-card {
+  background: linear-gradient(135deg, #111827, #0f172a);
+}
+
+.workout-day-card {
+  background: #111827;
+  border: 1px solid #273244;
+  border-radius: 22px;
+}
+
+.workout-card-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.exercise-card {
+  background: #0f172a;
+  border: 1px solid #273244;
+  border-radius: 18px;
+  padding: clamp(14px, 2.2vw, 20px);
+}
+
+.pattern-pill {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 5px 9px;
+  margin-bottom: 8px;
+  background: rgba(96, 165, 250, 0.12);
+  color: #bfdbfe;
+  border: 1px solid rgba(96, 165, 250, 0.22);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.overload-text {
+  margin-top: 6px;
+  color: #cbd5e1;
+}
+
+.mini-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.exercise-card .label {
+  margin-top: 14px;
+}
+
+/* ===== XP RULE CLARITY ===== */
+
+.xp-rules-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.xp-rule {
+  background: #111827;
+  border: 1px solid #273244;
+  border-radius: 16px;
+  padding: 14px;
+  opacity: 0.64;
+}
+
+.xp-rule.earned {
+  opacity: 1;
+  border-color: rgba(52, 211, 153, 0.55);
+  background: rgba(52, 211, 153, 0.08);
+}
+
+.xp-rule strong {
+  display: block;
+  color: #34d399;
+  font-size: 18px;
+  margin-bottom: 6px;
+}
+
+.xp-rule span {
+  color: #cbd5e1;
+  font-size: 13px;
+}
+
+/* ===== GAMIFIED UI POLISH ===== */
+
+.game-shell {
+  padding-bottom: 110px;
+}
+
+.game-header {
+  gap: 16px;
+}
+
+.brand-title {
+  margin: 0;
+  letter-spacing: -0.04em;
+}
+
+.game-header-actions {
+  align-items: center;
+}
+
+.level-card,
+.readiness-panel {
+  border: 1px solid #273244;
+}
+
+.level-title {
+  margin: 2px 0 0;
+  font-size: clamp(22px, 3vw, 30px);
+  line-height: 1.15;
+}
+
+.xp-number {
+  font-size: 22px;
+}
+
+.xp-track {
+  overflow: hidden;
+}
+
+.xp-fill {
+  border-radius: 999px;
+}
+
+.game-section-title {
+  margin: 0 0 12px;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #aab4c2;
+}
+
+.game-dashboard {
+  gap: 20px;
+}
+
+.game-metric-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #aab4c2;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.game-metric-pill {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 10px;
+  border-radius: 999px;
+  padding: 5px 9px;
+  background: rgba(229, 231, 235, 0.08);
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.readiness-panel {
+  background: #111827;
+  border-radius: 20px;
+  padding: clamp(16px, 2.4vw, 22px);
+}
+
+.readiness-panel h2 {
+  margin: 0 0 6px;
+}
+
+.readiness-panel p {
+  margin: 0;
+  color: #cbd5e1;
+}
+
+.achievement-card {
+  display: grid;
+  gap: 4px;
+}
+
+.achievement-card span {
+  color: #aab4c2;
+  font-size: 13px;
+}
+
+.achievement-icon {
+  color: #fbbf24;
+}
+
+.mini-signal {
+  background: #0f172a;
+  border: 1px solid #273244;
+  border-radius: 14px;
+  padding: 12px 14px;
+  color: #cbd5e1;
+}
+
+/* ===== MOBILE REFINEMENT ===== */
+
+@media (max-width: 900px) {
+  .container {
+    padding: 14px;
+    padding-bottom: 104px;
+  }
+
+  .game-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .game-header-actions {
+    width: 100%;
+  }
+
+  .game-header-actions .btn {
+    flex: 1;
+  }
+
+  .streak-badge {
+    width: 100%;
+    text-align: center;
+  }
+
+  .tabbar {
+    margin-left: -14px;
+    margin-right: -14px;
+    padding: 10px 14px;
+    flex-wrap: nowrap;
+  }
+
+  .tab {
+    white-space: nowrap;
+    flex: 0 0 auto;
+  }
+
+  .week-row {
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .week-day {
+    flex: 0 0 auto;
+  }
+
+  .xp-rules-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mini-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .exercise-card {
+    padding: 14px;
+  }
+
+  .row.space-between {
+    align-items: flex-start;
+  }
+
+  table {
+    min-width: 720px;
+  }
+}
+
+@media (min-width: 901px) {
+  .workout-card-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .brand-title {
+    font-size: 25px;
+  }
+
+  .game-metric-value {
+    font-size: 26px;
+  }
+
+  .card,
+  .level-card,
+  .workout-day-card,
+  .exercise-card {
+    border-radius: 16px;
+  }
+}

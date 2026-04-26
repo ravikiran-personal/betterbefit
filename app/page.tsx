@@ -17,7 +17,10 @@ type DailyLog = {
 type ExerciseLog = {
   id: string;
   day: string;
+  dayLabel: string;
+  pattern: string;
   exercise: string;
+  alternates: string[];
   sets: number;
   targetReps: string;
   weight: number | "";
@@ -73,6 +76,12 @@ type Settings = {
   fatTarget: number;
   stepTarget: number;
   currentStepBaseline: number;
+  workoutsPerWeek: number;
+  experienceLevel: "beginner" | "intermediate" | "advanced";
+  sessionLength: number;
+  equipmentAccess: "full_gym" | "home" | "dumbbells" | "machines";
+  limitations: string;
+  trainingEmphasis: "aesthetic" | "strength" | "mobility" | "fat_loss_support";
 };
 
 type WorkoutSession = {
@@ -174,33 +183,42 @@ const defaultSettings: Settings = {
   carbTarget: 200,
   fatTarget: 60,
   stepTarget: 10000,
-  currentStepBaseline: 5000
+  currentStepBaseline: 5000,
+  workoutsPerWeek: 4,
+  experienceLevel: "intermediate",
+  sessionLength: 60,
+  equipmentAccess: "full_gym",
+  limitations: "",
+  trainingEmphasis: "aesthetic"
 };
 
 const workoutTemplate: Omit<
   ExerciseLog,
   "id" | "weight" | "repsDone" | "rpe" | "notes"
 >[] = [
-  { day: "Day 1 - Push", exercise: "Incline DB Press", sets: 3, targetReps: "6-10" },
-  { day: "Day 1 - Push", exercise: "Machine Chest Press", sets: 3, targetReps: "8-12" },
-  { day: "Day 1 - Push", exercise: "Seated DB Shoulder Press", sets: 3, targetReps: "8-10" },
-  { day: "Day 1 - Push", exercise: "Lateral Raise", sets: 3, targetReps: "12-15" },
-  { day: "Day 1 - Push", exercise: "Triceps Pushdown", sets: 3, targetReps: "10-12" },
-  { day: "Day 2 - Lower", exercise: "Leg Press or Squat", sets: 3, targetReps: "6-10" },
-  { day: "Day 2 - Lower", exercise: "Romanian Deadlift", sets: 3, targetReps: "8-10" },
-  { day: "Day 2 - Lower", exercise: "Walking Lunges", sets: 3, targetReps: "10/leg" },
-  { day: "Day 2 - Lower", exercise: "Leg Curl", sets: 3, targetReps: "10-12" },
-  { day: "Day 2 - Lower", exercise: "Calf Raise", sets: 3, targetReps: "12-15" },
-  { day: "Day 3 - Pull", exercise: "Pull-Ups / Assisted Pull-Ups", sets: 3, targetReps: "AMRAP" },
-  { day: "Day 3 - Pull", exercise: "Lat Pulldown", sets: 3, targetReps: "8-12" },
-  { day: "Day 3 - Pull", exercise: "Seated Row", sets: 3, targetReps: "8-12" },
-  { day: "Day 3 - Pull", exercise: "Face Pull", sets: 3, targetReps: "12-15" },
-  { day: "Day 3 - Pull", exercise: "Biceps Curl", sets: 3, targetReps: "10-12" },
-  { day: "Day 4 - Full Body", exercise: "DB Bench or Push-Ups", sets: 3, targetReps: "8-12" },
-  { day: "Day 4 - Full Body", exercise: "Cable Row", sets: 3, targetReps: "8-12" },
-  { day: "Day 4 - Full Body", exercise: "Goblet Squat", sets: 3, targetReps: "10-12" },
-  { day: "Day 4 - Full Body", exercise: "Farmer Carry", sets: 2, targetReps: "30-60 sec" },
-  { day: "Day 4 - Full Body", exercise: "Hanging Knee Raise", sets: 3, targetReps: "10-15" }
+  { day: "push", dayLabel: "Push", pattern: "Incline Press", exercise: "Incline DB Press", alternates: ["Incline Barbell Press", "Smith Machine Incline Press", "Low Incline Machine Press", "Feet-Elevated Push-Up"], sets: 3, targetReps: "6-10" },
+  { day: "push", dayLabel: "Push", pattern: "Horizontal Press", exercise: "Machine Chest Press", alternates: ["Flat DB Press", "Barbell Bench Press", "Cable Chest Press", "Push-Up"], sets: 3, targetReps: "8-12" },
+  { day: "push", dayLabel: "Push", pattern: "Overhead Press", exercise: "Seated DB Shoulder Press", alternates: ["Machine Shoulder Press", "Standing Barbell Press", "Arnold Press", "Landmine Press"], sets: 3, targetReps: "8-10" },
+  { day: "push", dayLabel: "Push", pattern: "Side Delts", exercise: "Lateral Raise", alternates: ["Cable Lateral Raise", "Machine Lateral Raise", "Lean-Away Lateral Raise"], sets: 3, targetReps: "12-15" },
+  { day: "push", dayLabel: "Push", pattern: "Triceps", exercise: "Triceps Pushdown", alternates: ["Overhead Cable Extension", "Close-Grip Push-Up", "Machine Dip", "Skull Crusher"], sets: 3, targetReps: "10-12" },
+
+  { day: "lower", dayLabel: "Lower", pattern: "Squat Pattern", exercise: "Leg Press or Squat", alternates: ["Hack Squat", "Goblet Squat", "Smith Squat", "Split Squat"], sets: 3, targetReps: "6-10" },
+  { day: "lower", dayLabel: "Lower", pattern: "Hip Hinge", exercise: "Romanian Deadlift", alternates: ["DB Romanian Deadlift", "Hip Thrust", "Good Morning", "Cable Pull-Through"], sets: 3, targetReps: "8-10" },
+  { day: "lower", dayLabel: "Lower", pattern: "Single-Leg", exercise: "Walking Lunges", alternates: ["Bulgarian Split Squat", "Step-Up", "Reverse Lunge", "Single-Leg Leg Press"], sets: 3, targetReps: "10/leg" },
+  { day: "lower", dayLabel: "Lower", pattern: "Hamstring Curl", exercise: "Leg Curl", alternates: ["Seated Leg Curl", "Lying Leg Curl", "Swiss Ball Curl", "Nordic Curl"], sets: 3, targetReps: "10-12" },
+  { day: "lower", dayLabel: "Lower", pattern: "Calves", exercise: "Calf Raise", alternates: ["Seated Calf Raise", "Leg Press Calf Raise", "Single-Leg Calf Raise"], sets: 3, targetReps: "12-15" },
+
+  { day: "pull", dayLabel: "Pull", pattern: "Vertical Pull", exercise: "Pull-Ups / Assisted Pull-Ups", alternates: ["Lat Pulldown", "Neutral-Grip Pulldown", "Assisted Pull-Up", "Cable Pullover"], sets: 3, targetReps: "AMRAP" },
+  { day: "pull", dayLabel: "Pull", pattern: "Lat Focus", exercise: "Lat Pulldown", alternates: ["Pull-Up", "Assisted Pull-Up", "Single-Arm Pulldown", "Machine High Row"], sets: 3, targetReps: "8-12" },
+  { day: "pull", dayLabel: "Pull", pattern: "Horizontal Row", exercise: "Seated Row", alternates: ["Chest-Supported Row", "One-Arm DB Row", "Cable Row", "Machine Row"], sets: 3, targetReps: "8-12" },
+  { day: "pull", dayLabel: "Pull", pattern: "Rear Delts", exercise: "Face Pull", alternates: ["Reverse Pec Deck", "Cable Rear Delt Fly", "DB Rear Delt Raise"], sets: 3, targetReps: "12-15" },
+  { day: "pull", dayLabel: "Pull", pattern: "Biceps", exercise: "Biceps Curl", alternates: ["Incline DB Curl", "Cable Curl", "Hammer Curl", "Preacher Curl"], sets: 3, targetReps: "10-12" },
+
+  { day: "full", dayLabel: "Full Body", pattern: "Push", exercise: "DB Bench or Push-Ups", alternates: ["Machine Chest Press", "Push-Up", "Barbell Bench Press", "Cable Chest Press"], sets: 3, targetReps: "8-12" },
+  { day: "full", dayLabel: "Full Body", pattern: "Row", exercise: "Cable Row", alternates: ["Chest-Supported Row", "Seated Row", "Machine Row", "One-Arm DB Row"], sets: 3, targetReps: "8-12" },
+  { day: "full", dayLabel: "Full Body", pattern: "Squat", exercise: "Goblet Squat", alternates: ["Leg Press", "Hack Squat", "DB Split Squat", "Smith Squat"], sets: 3, targetReps: "10-12" },
+  { day: "full", dayLabel: "Full Body", pattern: "Carry", exercise: "Farmer Carry", alternates: ["Suitcase Carry", "Trap Bar Carry", "Sled Push", "Dead Bug Hold"], sets: 2, targetReps: "30-60 sec" },
+  { day: "full", dayLabel: "Full Body", pattern: "Core", exercise: "Hanging Knee Raise", alternates: ["Cable Crunch", "Dead Bug", "Reverse Crunch", "Plank"], sets: 3, targetReps: "10-15" }
 ];
 
 const mealTemplate: FoodItem[] = [
@@ -306,7 +324,33 @@ export default function Page() {
           carbTarget: numberOrDefault((parsed.settings as Settings)?.carbTarget, defaultSettings.carbTarget),
           fatTarget: numberOrDefault((parsed.settings as Settings)?.fatTarget, defaultSettings.fatTarget),
           stepTarget: numberOrDefault(parsed.settings?.stepTarget, defaultSettings.stepTarget),
-          currentStepBaseline: numberOrDefault(parsed.settings?.currentStepBaseline, defaultSettings.currentStepBaseline)
+          currentStepBaseline: numberOrDefault(parsed.settings?.currentStepBaseline, defaultSettings.currentStepBaseline),
+          workoutsPerWeek: numberOrDefault((parsed.settings as Settings)?.workoutsPerWeek, defaultSettings.workoutsPerWeek),
+          experienceLevel:
+            (parsed.settings as Settings)?.experienceLevel === "beginner" ||
+            (parsed.settings as Settings)?.experienceLevel === "intermediate" ||
+            (parsed.settings as Settings)?.experienceLevel === "advanced"
+              ? (parsed.settings as Settings).experienceLevel
+              : defaultSettings.experienceLevel,
+          sessionLength: numberOrDefault((parsed.settings as Settings)?.sessionLength, defaultSettings.sessionLength),
+          equipmentAccess:
+            (parsed.settings as Settings)?.equipmentAccess === "full_gym" ||
+            (parsed.settings as Settings)?.equipmentAccess === "home" ||
+            (parsed.settings as Settings)?.equipmentAccess === "dumbbells" ||
+            (parsed.settings as Settings)?.equipmentAccess === "machines"
+              ? (parsed.settings as Settings).equipmentAccess
+              : defaultSettings.equipmentAccess,
+          limitations:
+            typeof (parsed.settings as Settings)?.limitations === "string"
+              ? (parsed.settings as Settings).limitations
+              : defaultSettings.limitations,
+          trainingEmphasis:
+            (parsed.settings as Settings)?.trainingEmphasis === "aesthetic" ||
+            (parsed.settings as Settings)?.trainingEmphasis === "strength" ||
+            (parsed.settings as Settings)?.trainingEmphasis === "mobility" ||
+            (parsed.settings as Settings)?.trainingEmphasis === "fat_loss_support"
+              ? (parsed.settings as Settings).trainingEmphasis
+              : defaultSettings.trainingEmphasis
         },
         dailyLogs: (parsed.dailyLogs?.length ? parsed.dailyLogs : seedWeekLogs()).map((d) => ({
           date: d.date || todayISO(),
@@ -317,24 +361,12 @@ export default function Page() {
           cardioMinutes: cleanNumber(d.cardioMinutes),
           waist: cleanNumber(d.waist)
         })),
-        workoutLogs: (parsed.workoutLogs?.length ? parsed.workoutLogs : seedWorkoutLogs()).map((w) => ({
-          ...w,
-          weight: cleanNumber(w.weight),
-          repsDone: cleanNumber(w.repsDone),
-          rpe: cleanNumber(w.rpe),
-          notes: w.notes || ""
-        })),
+        workoutLogs: (parsed.workoutLogs?.length ? parsed.workoutLogs : seedWorkoutLogs()).map((w) => normalizeWorkoutLog(w)),
         workoutHistory: Array.isArray((parsed as AppState).workoutHistory)
           ? (parsed as AppState).workoutHistory.map((session) => ({
               ...session,
               totalVolume: numberOrDefault(session.totalVolume, 0),
-              exercises: session.exercises.map((w) => ({
-                ...w,
-                weight: cleanNumber(w.weight),
-                repsDone: cleanNumber(w.repsDone),
-                rpe: cleanNumber(w.rpe),
-                notes: w.notes || ""
-              }))
+              exercises: session.exercises.map((w) => normalizeWorkoutLog(w))
             }))
           : [],
         foods: (parsed.foods?.length ? parsed.foods : mealTemplate).map((f) => ({
@@ -455,6 +487,14 @@ export default function Page() {
     settings: state.settings
   });
 
+  const xpRules = getXpRules({
+    avgProtein,
+    avgSteps,
+    avgCalories,
+    workoutCompletion,
+    settings: state.settings
+  });
+
   async function calculateTargetsWithAI() {
     setIsCalculatingTargets(true);
     setTargetReason("");
@@ -537,6 +577,45 @@ export default function Page() {
             }
           : item
       )
+    }));
+  }
+
+  function updateExerciseChoice(id: string, exercise: string) {
+    setState((prev) => ({
+      ...prev,
+      workoutLogs: prev.workoutLogs.map((item) =>
+        item.id === id ? { ...item, exercise } : item
+      )
+    }));
+  }
+
+  function addExerciseToDay(day: string) {
+    const dayLabel = getDayLabel(day);
+    const shouldAdd = confirm(
+      `The ${dayLabel} plan is intentionally kept focused so recovery stays strong. Add another exercise only if you genuinely need it today. Add one extra exercise?`
+    );
+
+    if (!shouldAdd) return;
+
+    setState((prev) => ({
+      ...prev,
+      workoutLogs: [
+        ...prev.workoutLogs,
+        {
+          id: cryptoSafeId(),
+          day,
+          dayLabel,
+          pattern: "Custom",
+          exercise: "New exercise",
+          alternates: ["New exercise"],
+          sets: 2,
+          targetReps: "8-12",
+          weight: "",
+          repsDone: "",
+          rpe: "",
+          notes: ""
+        }
+      ]
     }));
   }
 
@@ -925,6 +1004,21 @@ export default function Page() {
           </section>
 
           <section>
+            <h2 className="game-section-title">How XP works</h2>
+            <div className="xp-rules-grid">
+              {xpRules.map((rule) => (
+                <div key={rule.label} className={`xp-rule ${rule.earned ? "earned" : ""}`}>
+                  <strong>{rule.points}</strong>
+                  <span>{rule.label}</span>
+                </div>
+              ))}
+            </div>
+            <p className="small" style={{ marginTop: 10 }}>
+              Nothing removes XP. Missed items simply do not earn points.
+            </p>
+          </section>
+
+          <section>
             <h2 className="game-section-title">Today’s signals</h2>
             <div className="signal-stack">
               {todaySignals.map((signal) => (
@@ -967,102 +1061,116 @@ export default function Page() {
       )}
 
       {tab === "workouts" && (
-        <div className="card">
-          <div className="row space-between">
-            <h2 style={{ margin: 0 }}>4-day training plan with logging</h2>
-            <div className="row">
-              <button className="btn" onClick={logWorkout}>
-                Log workout
-              </button>
-              <button className="btn secondary" onClick={() => setState((prev) => ({ ...prev, workoutLogs: seedWorkoutLogs() }))}>
-                Reset workout log
-              </button>
+        <div className="grid">
+          <div className="card airy-card">
+            <div className="row space-between">
+              <div>
+                <h2 style={{ margin: 0 }}>Training plan</h2>
+                <p className="small" style={{ marginTop: 6 }}>
+                  Focused volume for recovery, aesthetics, strength, and mobility.
+                </p>
+              </div>
+              <div className="row">
+                <button className="btn" onClick={logWorkout}>
+                  Log workout
+                </button>
+                <button className="btn secondary" onClick={() => setState((prev) => ({ ...prev, workoutLogs: seedWorkoutLogs() }))}>
+                  Reset
+                </button>
+              </div>
             </div>
           </div>
 
-          <div className="table-wrap" style={{ marginTop: 16 }}>
-            <table>
-              <thead>
-                <tr>
-                  <th>Day</th>
-                  <th>Exercise</th>
-                  <th>Sets</th>
-                  <th>Target reps</th>
-                  <th>Weight</th>
-                  <th>Reps done</th>
-                  <th>RPE</th>
-                  <th>Notes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {state.workoutLogs.map((item) => {
+          {getWorkoutDayGroups(state.workoutLogs).map((group) => (
+            <div className="card workout-day-card" key={group.day}>
+              <div className="row space-between">
+                <div>
+                  <h2 style={{ margin: 0 }}>{group.dayLabel}</h2>
+                  <p className="small" style={{ marginTop: 6 }}>{getDayDescription(group.day)}</p>
+                </div>
+                <button className="btn secondary" onClick={() => addExerciseToDay(group.day)}>
+                  Add exercise
+                </button>
+              </div>
+
+              <div className="workout-card-list">
+                {group.exercises.map((item) => {
                   const previous = getPreviousExercise(item.exercise);
                   const previousVolume = previous ? calculateExerciseVolume(previous) : 0;
                   const currentVolume = calculateExerciseVolume(item);
                   const hasCurrentVolume = currentVolume > 0;
                   const hasProgress = previousVolume > 0 && currentVolume > previousVolume;
+                  const choices = Array.from(new Set([item.exercise, ...item.alternates]));
 
                   return (
-                    <tr key={item.id}>
-                      <td>{item.day}</td>
-                      <td>
-                        <strong>{item.exercise}</strong>
-                        <div className="small">
-                          {previous
-                            ? `Previous: ${numberOrDefault(previous.weight, 0)} kg x ${numberOrDefault(previous.repsDone, 0)} reps = ${previousVolume}`
-                            : "New exercise"}
+                    <div className="exercise-card" key={item.id}>
+                      <div className="row space-between">
+                        <div>
+                          <div className="pattern-pill">{item.pattern}</div>
+                          <strong>{item.exercise}</strong>
                         </div>
-                        <div className="small">
-                          {hasCurrentVolume
-                            ? hasProgress
-                              ? "Progressive overload achieved"
-                              : previousVolume > 0
-                                ? `Beat ${previousVolume} total volume`
-                                : `Current volume: ${currentVolume}`
-                            : ""}
-                        </div>
-                      </td>
-                      <td>{item.sets}</td>
-                      <td>{item.targetReps}</td>
-                      <td>
-                        <NumericInput
-                          value={item.weight}
-                          onChange={(v) => updateWorkout(item.id, "weight", v)}
-                          placeholder={previous ? String(numberOrDefault(previous.weight, 0)) : "New exercise"}
-                        />
-                      </td>
-                      <td>
-                        <NumericInput
-                          value={item.repsDone}
-                          onChange={(v) => updateWorkout(item.id, "repsDone", v)}
-                          placeholder={previous ? String(numberOrDefault(previous.repsDone, 0)) : ""}
-                        />
-                      </td>
-                      <td>
-                        <NumericInput
-                          value={item.rpe}
-                          onChange={(v) => updateWorkout(item.id, "rpe", v)}
-                        />
-                      </td>
-                      <td>
+                        <span className="badge">{item.sets} sets • {item.targetReps}</span>
+                      </div>
+
+                      <Field label="Choose exercise">
+                        <select
+                          className="input"
+                          value={item.exercise}
+                          onChange={(e) => updateExerciseChoice(item.id, e.target.value)}
+                        >
+                          {choices.map((choice) => (
+                            <option key={choice} value={choice}>{choice}</option>
+                          ))}
+                        </select>
+                      </Field>
+
+                      <div className="small">
+                        {previous
+                          ? `Previous: ${numberOrDefault(previous.weight, 0)} kg x ${numberOrDefault(previous.repsDone, 0)} reps = ${previousVolume}`
+                          : "New exercise"}
+                      </div>
+                      <div className="small overload-text">
+                        {hasCurrentVolume
+                          ? hasProgress
+                            ? "Progressive overload achieved"
+                            : previousVolume > 0
+                              ? `Beat ${previousVolume} total volume`
+                              : `Current volume: ${currentVolume}`
+                          : "Log weight and reps to compare progress."}
+                      </div>
+
+                      <div className="mini-grid">
+                        <Field label="Weight">
+                          <NumericInput value={item.weight} onChange={(v) => updateWorkout(item.id, "weight", v)} placeholder={previous ? String(numberOrDefault(previous.weight, 0)) : "New"} />
+                        </Field>
+                        <Field label="Reps">
+                          <NumericInput value={item.repsDone} onChange={(v) => updateWorkout(item.id, "repsDone", v)} placeholder={previous ? String(numberOrDefault(previous.repsDone, 0)) : ""} />
+                        </Field>
+                        <Field label="RPE">
+                          <NumericInput value={item.rpe} onChange={(v) => updateWorkout(item.id, "rpe", v)} />
+                        </Field>
+                      </div>
+
+                      <Field label="Notes">
                         <input
                           className="input"
                           value={item.notes}
                           onChange={(e) => updateWorkout(item.id, "notes", e.target.value)}
+                          placeholder="Form cues, pain, tempo, etc."
                         />
-                      </td>
-                    </tr>
+                      </Field>
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
+              </div>
+            </div>
+          ))}
+
+          <div className="card" style={{ background: "#0f172a" }}>
+            <strong>Progression rule:</strong> stay 1-2 reps shy of failure on most sets. When you hit the top of the target rep range with solid form, increase load next week.
           </div>
 
-          <div className="card" style={{ marginTop: 16, background: "#0f172a" }}>
-            <strong>Progression rule:</strong> stay 1-2 reps shy of failure on most sets. When you hit the top of the target rep range on all working sets with solid form, increase load next week.
-          </div>
-
-          <div className="card" style={{ marginTop: 16 }}>
+          <div className="card">
             <h2 style={{ marginTop: 0 }}>Workout history</h2>
             {state.workoutHistory.length === 0 ? (
               <p className="small">No workouts logged yet. Fill today’s workout and press Log workout.</p>
@@ -1441,6 +1549,51 @@ export default function Page() {
                 <option value="be_more_active">Be more active</option>
               </select>
             </Field>
+            <div className="card" style={{ marginTop: 14, background: "#0f172a" }}>
+              <h3 style={{ marginTop: 0 }}>Workout generation inputs</h3>
+              <p className="small" style={{ lineHeight: 1.6 }}>
+                These inputs will power the AI workout generator next. Generated plans should be cached by these values.
+              </p>
+              <Field label="Workouts per week">
+                <select className="input" value={state.settings.workoutsPerWeek} onChange={(e) => updateSettings("workoutsPerWeek", Number(e.target.value))}>
+                  <option value={3}>3 days</option>
+                  <option value={4}>4 days</option>
+                </select>
+              </Field>
+              <Field label="Experience level">
+                <select className="input" value={state.settings.experienceLevel} onChange={(e) => updateSettings("experienceLevel", e.target.value as Settings["experienceLevel"])}>
+                  <option value="beginner">Beginner</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                </select>
+              </Field>
+              <Field label="Session length">
+                <select className="input" value={state.settings.sessionLength} onChange={(e) => updateSettings("sessionLength", Number(e.target.value))}>
+                  <option value={45}>45 minutes</option>
+                  <option value={60}>60 minutes</option>
+                  <option value={75}>75 minutes</option>
+                </select>
+              </Field>
+              <Field label="Equipment access">
+                <select className="input" value={state.settings.equipmentAccess} onChange={(e) => updateSettings("equipmentAccess", e.target.value as Settings["equipmentAccess"])}>
+                  <option value="full_gym">Full gym</option>
+                  <option value="machines">Machines mostly</option>
+                  <option value="dumbbells">Dumbbells only</option>
+                  <option value="home">Home setup</option>
+                </select>
+              </Field>
+              <Field label="Training emphasis">
+                <select className="input" value={state.settings.trainingEmphasis} onChange={(e) => updateSettings("trainingEmphasis", e.target.value as Settings["trainingEmphasis"])}>
+                  <option value="aesthetic">Aesthetic</option>
+                  <option value="strength">Strength</option>
+                  <option value="mobility">Mobility</option>
+                  <option value="fat_loss_support">Fat-loss support</option>
+                </select>
+              </Field>
+              <Field label="Injuries / limitations">
+                <input className="input" value={state.settings.limitations} onChange={(e) => updateSettings("limitations", e.target.value)} placeholder="e.g. knee pain, shoulder discomfort, none" />
+              </Field>
+            </div>
 
             <button className="btn" onClick={calculateTargetsWithAI} disabled={isCalculatingTargets}>
               {isCalculatingTargets ? "Calculating..." : "Calculate targets with AI"}
@@ -1842,6 +1995,103 @@ function getBadges(input: {
       detail: "70% workout log",
       unlocked: input.workoutCompletion >= 70
     }
+  ];
+}
+
+
+function normalizeWorkoutLog(raw: Partial<ExerciseLog>): ExerciseLog {
+  const templateMatch =
+    workoutTemplate.find((item) => item.exercise === raw.exercise) ||
+    workoutTemplate.find((item) => item.day === raw.day) ||
+    workoutTemplate[0];
+
+  return {
+    id: raw.id || cryptoSafeId(),
+    day: raw.day || templateMatch.day,
+    dayLabel: raw.dayLabel || getDayLabel(raw.day || templateMatch.day),
+    pattern: raw.pattern || templateMatch.pattern || "Custom",
+    exercise: raw.exercise || templateMatch.exercise,
+    alternates: Array.isArray(raw.alternates) && raw.alternates.length ? raw.alternates : templateMatch.alternates || [templateMatch.exercise],
+    sets: numberOrDefault(raw.sets, templateMatch.sets),
+    targetReps: raw.targetReps || templateMatch.targetReps,
+    weight: cleanNumber(raw.weight),
+    repsDone: cleanNumber(raw.repsDone),
+    rpe: cleanNumber(raw.rpe),
+    notes: raw.notes || ""
+  };
+}
+
+function getDayLabel(day: string) {
+  const labels: Record<string, string> = {
+    push: "Push",
+    lower: "Lower",
+    pull: "Pull",
+    full: "Full Body",
+    "Day 1 - Push": "Push",
+    "Day 2 - Lower": "Lower",
+    "Day 3 - Pull": "Pull",
+    "Day 4 - Full Body": "Full Body"
+  };
+
+  return labels[day] || day;
+}
+
+function getDayDescription(day: string) {
+  const descriptions: Record<string, string> = {
+    push: "Chest, shoulders, triceps, and pressing strength.",
+    lower: "Quads, hamstrings, glutes, calves, and lower-body function.",
+    pull: "Back width, back thickness, rear delts, and biceps.",
+    full: "Balanced full-body work, carries, and core."
+  };
+
+  return descriptions[day] || "Custom training day.";
+}
+
+function getWorkoutDayGroups(workoutLogs: ExerciseLog[]) {
+  const order = ["push", "lower", "pull", "full"];
+  const groups = order
+    .map((day) => ({
+      day,
+      dayLabel: getDayLabel(day),
+      exercises: workoutLogs.filter((exercise) => exercise.day === day || exercise.dayLabel === getDayLabel(day))
+    }))
+    .filter((group) => group.exercises.length > 0);
+
+  const customGroups = workoutLogs
+    .filter((exercise) => !order.includes(exercise.day))
+    .reduce<Array<{ day: string; dayLabel: string; exercises: ExerciseLog[] }>>((acc, exercise) => {
+      const existing = acc.find((group) => group.day === exercise.day);
+      if (existing) {
+        existing.exercises.push(exercise);
+      } else {
+        acc.push({
+          day: exercise.day,
+          dayLabel: getDayLabel(exercise.day),
+          exercises: [exercise]
+        });
+      }
+      return acc;
+    }, []);
+
+  return [...groups, ...customGroups];
+}
+
+function getXpRules(input: {
+  avgProtein: number | null;
+  avgSteps: number | null;
+  avgCalories: number | null;
+  workoutCompletion: number;
+  settings: Settings;
+}) {
+  const calories = input.avgCalories;
+  const calorieHit = calories !== null && Math.abs(calories - input.settings.targetCalories) <= 150;
+
+  return [
+    { label: "Daily check-in logged", points: "+45 XP", earned: true },
+    { label: "Protein target hit", points: "+25 XP", earned: (input.avgProtein ?? 0) >= input.settings.proteinTarget },
+    { label: "Step target hit", points: "+25 XP", earned: (input.avgSteps ?? 0) >= input.settings.stepTarget },
+    { label: "Calories within range", points: "+20 XP", earned: calorieHit },
+    { label: "Workout log 70%+ complete", points: "+30 XP", earned: input.workoutCompletion >= 70 }
   ];
 }
 
