@@ -839,7 +839,7 @@ export default function Page() {
             <h2 style={{ marginTop: 0 }}>Step progression</h2>
             <div className="grid grid-4">
               {stepPlan.map((item) => (
-                <div key={item.week} className="card" style={{ background: "#161e2d" }}>
+                <div key={item.week} className="card" style={{ background: "#0f172a" }}>
                   <div className="small">Week {item.week}</div>
                   <div className="metric-value">{item.target.toLocaleString()}</div>
                   <div className="small">{item.note}</div>
@@ -953,7 +953,7 @@ export default function Page() {
             </table>
           </div>
 
-          <div className="card" style={{ marginTop: 16, background: "#161e2d" }}>
+          <div className="card" style={{ marginTop: 16, background: "#0f172a" }}>
             <strong>Progression rule:</strong> stay 1-2 reps shy of failure on most sets. When you hit the top of the target rep range on all working sets with solid form, increase load next week.
           </div>
 
@@ -1013,7 +1013,7 @@ export default function Page() {
               </button>
             </div>
 
-            <div className="card" style={{ marginTop: 16, background: "#161e2d" }}>
+            <div className="card" style={{ marginTop: 16, background: "#0f172a" }}>
               <h3 style={{ marginTop: 0 }}>Full-day meal preset</h3>
               <p className="small">
                 Save the current full nutrition table as a reusable preset. Later, apply it with one click.
@@ -1031,7 +1031,7 @@ export default function Page() {
               </div>
             </div>
 
-            <div className="card" style={{ marginTop: 16, background: "#161e2d" }}>
+            <div className="card" style={{ marginTop: 16, background: "#0f172a" }}>
               <h3 style={{ marginTop: 0 }}>Smart food search</h3>
               <p className="small">
                 Search standard foods using USDA first. Mixed or Indian-style meals are estimated with Claude.
@@ -1163,7 +1163,7 @@ export default function Page() {
                     );
 
                     return (
-                      <div key={preset.id} className="card" style={{ background: "#161e2d" }}>
+                      <div key={preset.id} className="card" style={{ background: "#0f172a" }}>
                         <div className="row space-between">
                           <div>
                             <strong>{preset.name}</strong>
@@ -1344,13 +1344,13 @@ export default function Page() {
             </button>
 
             {targetReason ? (
-              <div className="card" style={{ marginTop: 14, background: "#161e2d" }}>
+              <div className="card" style={{ marginTop: 14, background: "#0f172a" }}>
                 <strong>AI reason:</strong>
                 <p className="small" style={{ lineHeight: 1.6 }}>{targetReason}</p>
               </div>
             ) : null}
 
-            <div className="card" style={{ marginTop: 14, background: "#161e2d" }}>
+            <div className="card" style={{ marginTop: 14, background: "#0f172a" }}>
               <h3 style={{ marginTop: 0 }}>Current targets</h3>
               <p>Calories: <strong>{state.settings.targetCalories}</strong></p>
               <p>Protein: <strong>{state.settings.proteinTarget} g</strong></p>
