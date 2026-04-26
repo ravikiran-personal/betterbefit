@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800&display=swap');
+
 * {
   box-sizing: border-box;
 }
@@ -6,7 +8,7 @@ html,
 body {
   padding: 0;
   margin: 0;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Lexend', system-ui, -apple-system, sans-serif;
   background: #0b1220;
   color: #e5e7eb;
 }
@@ -33,6 +35,7 @@ a {
   padding: 20px;
 }
 
+/* ===== BASE CARDS ===== */
 .card {
   background: #111827;
   border: 1px solid #1f2937;
@@ -45,25 +48,9 @@ a {
   gap: 16px;
 }
 
-.grid-2 {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.grid-3 {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.grid-4 {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-@media (max-width: 900px) {
-  .grid-2,
-  .grid-3,
-  .grid-4 {
-    grid-template-columns: 1fr;
-  }
-}
+.grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 
 .row {
   display: flex;
@@ -79,21 +66,18 @@ a {
 .title {
   font-size: 32px;
   font-weight: 700;
-  margin: 0 0 8px;
 }
 
 .subtitle {
   color: #9ca3af;
-  margin: 0;
 }
 
-.label {
-  display: block;
-  font-size: 13px;
+.small {
+  font-size: 12px;
   color: #9ca3af;
-  margin-bottom: 6px;
 }
 
+/* ===== INPUTS ===== */
 .input,
 .select,
 .textarea {
@@ -103,21 +87,27 @@ a {
   border: 1px solid #334155;
   border-radius: 12px;
   padding: 10px 12px;
+  min-height: 44px;
 }
 
-.textarea {
-  min-height: 90px;
-  resize: vertical;
+.input:focus,
+.select:focus,
+.textarea:focus {
+  border-color: #34d399;
+  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.15);
+  outline: none;
 }
 
+/* ===== BUTTONS ===== */
 .btn {
   border: 0;
   border-radius: 12px;
   padding: 10px 14px;
   cursor: pointer;
-  background: #2563eb;
-  color: white;
+  background: #34d399;
+  color: #022c22;
   font-weight: 600;
+  min-height: 44px;
 }
 
 .btn.secondary {
@@ -128,13 +118,15 @@ a {
 
 .btn.warn {
   background: #b91c1c;
+  color: white;
 }
 
+/* ===== TABS ===== */
 .tabbar {
   display: flex;
   gap: 8px;
-  flex-wrap: wrap;
   margin: 16px 0 24px;
+  flex-wrap: wrap;
 }
 
 .tab {
@@ -144,159 +136,191 @@ a {
   border: 1px solid #334155;
   color: #cbd5e1;
   cursor: pointer;
-}
-
-.tab.active {
-  background: #2563eb;
-  color: white;
-  border-color: #2563eb;
-}
-
-.metric-value {
-  font-size: 28px;
-  font-weight: 700;
-  margin-top: 8px;
-}
-
-.small {
-  font-size: 12px;
-  color: #9ca3af;
-}
-
-.table-wrap {
-  overflow-x: auto;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th,
-td {
-  border-bottom: 1px solid #1f2937;
-  text-align: left;
-  padding: 10px;
-  vertical-align: top;
-}
-
-th {
-  color: #9ca3af;
-  font-weight: 600;
-}
-
-.badge {
-  display: inline-block;
-  border-radius: 999px;
-  padding: 6px 10px;
-  background: #1e3a8a;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-/* ===== MOBILE + UX UPGRADE ===== */
-
-.app-shell {
-  padding-bottom: 96px;
-}
-
-/* Header / Hero */
-.hero-card {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  background: linear-gradient(135deg, #111827, #0f172a);
-  border: 1px solid #1f2937;
-  border-radius: 24px;
-  padding: 20px;
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.25);
-}
-
-.hero-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.eyebrow {
-  margin: 0 0 6px;
-  font-size: 12px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #93c5fd;
-  font-weight: 700;
-}
-
-/* Layout */
-.dashboard-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.span-all {
-  grid-column: 1 / -1;
-}
-
-.hero-metric {
-  grid-column: span 2;
-  background: linear-gradient(135deg, #1d4ed8, #0f172a);
-}
-
-/* Mobile cards */
-.mobile-stack {
-  display: none;
-  gap: 12px;
-  margin-top: 16px;
-}
-
-.entry-card {
-  background: #0f172a;
-  border: 1px solid #263244;
-  border-radius: 18px;
-  padding: 14px;
-}
-
-.desktop-only {
-  display: block;
-}
-
-.mini-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 12px;
-}
-
-/* Advice blocks */
-.advice-list {
-  display: grid;
-  gap: 10px;
-}
-
-.advice-item {
-  background: #0f172a;
-  border: 1px solid #263244;
-  border-radius: 14px;
-  padding: 12px;
-  color: #cbd5e1;
-  line-height: 1.5;
-}
-
-/* Inputs (touch-friendly) */
-.input,
-.btn,
-.tab {
   min-height: 44px;
 }
 
-/* Focus states */
-.input:focus,
-.select:focus,
-.textarea:focus {
-  border-color: #60a5fa;
-  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.15);
-  outline: none;
+.tab.active {
+  background: #34d399;
+  color: #022c22;
+  border-color: #34d399;
+}
+
+/* ===== GAME HEADER ===== */
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.brand-title {
+  font-size: 28px;
+  font-weight: 800;
+  color: #34d399;
+}
+
+.game-header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.streak-badge {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+/* ===== XP ===== */
+.level-card {
+  background: linear-gradient(135deg, #111827, #0f172a);
+  border-radius: 20px;
+  padding: 16px;
+}
+
+.xp-track {
+  height: 10px;
+  background: #1f2937;
+  border-radius: 999px;
+  margin: 10px 0;
+}
+
+.xp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #34d399, #60a5fa);
+}
+
+/* ===== WEEK ===== */
+.week-row {
+  display: flex;
+  gap: 8px;
+}
+
+.week-day {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+}
+
+.week-day.done {
+  background: #34d399;
+  color: #022c22;
+}
+
+.week-day.missed {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+}
+
+.week-day.upcoming {
+  background: #111827;
+  color: #6b7280;
+}
+
+/* ===== METRICS ===== */
+.game-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.game-metric {
+  padding: 14px;
+  border-radius: 16px;
+  background: #111827;
+  border: 1px solid #1f2937;
+}
+
+.game-metric.green {
+  border-color: rgba(52, 211, 153, 0.5);
+}
+
+.game-metric.amber {
+  border-color: rgba(245, 158, 11, 0.5);
+}
+
+.game-metric-value {
+  font-size: 28px;
+  font-weight: 700;
+}
+
+/* ===== READINESS ===== */
+.readiness-panel {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.readiness-ring {
+  width: 70px;
+  height: 70px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+}
+
+.readiness-inner {
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  background: #0b1220;
+  display: grid;
+  place-items: center;
+}
+
+/* ===== BADGES ===== */
+.badge-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.achievement-card {
+  padding: 12px;
+  border-radius: 16px;
+  background: #111827;
+  border: 1px solid #1f2937;
+  opacity: 0.6;
+}
+
+.achievement-card.unlocked {
+  opacity: 1;
+  border-color: #34d399;
+}
+
+/* ===== SIGNALS ===== */
+.signal-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.game-signal {
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  border-left: 4px solid #34d399;
+  background: #0f172a;
+  border-radius: 10px;
+}
+
+.game-signal.warn {
+  border-left-color: #f59e0b;
+}
+
+.signal-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #34d399;
+  margin-top: 6px;
+}
+
+.game-signal.warn .signal-dot {
+  background: #f59e0b;
 }
 
 /* ===== MOBILE ===== */
@@ -306,82 +330,34 @@ th {
     padding-bottom: 92px;
   }
 
-  .hero-card {
-    flex-direction: column;
-    border-radius: 20px;
-    padding: 16px;
-  }
-
-  .hero-actions {
-    width: 100%;
-  }
-
-  .hero-actions .btn {
-    flex: 1;
-  }
-
-  .title {
-    font-size: 28px;
-  }
-
   .grid-2,
   .grid-3,
-  .grid-4,
-  .dashboard-grid {
+  .grid-4 {
     grid-template-columns: 1fr;
   }
 
-  .hero-metric {
-    grid-column: auto;
+  .game-metrics,
+  .badge-grid {
+    grid-template-columns: 1fr;
   }
 
-  .card {
-    border-radius: 18px;
-    padding: 14px;
+  .readiness-panel {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
-  /* 🔥 Switch to mobile layout */
-  .mobile-stack {
-    display: grid;
-  }
-
-  .desktop-only {
-    display: none;
-  }
-
-  .mini-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  /* Sticky tabs */
   .tabbar {
     position: sticky;
     top: 0;
     z-index: 20;
     overflow-x: auto;
-    margin-left: -14px;
-    margin-right: -14px;
-    padding: 10px 14px;
     background: rgba(8, 17, 31, 0.94);
     backdrop-filter: blur(10px);
-    border-bottom: 1px solid #172033;
   }
 
-  /* Prevent zoom on iOS */
   .input,
   .btn,
   .tab {
     font-size: 16px;
-  }
-}
-
-/* Small phones */
-@media (max-width: 480px) {
-  .mini-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .metric-value {
-    font-size: 26px;
   }
 }
