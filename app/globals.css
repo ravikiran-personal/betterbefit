@@ -757,3 +757,195 @@ th {
     border-radius: 16px;
   }
 }
+
+
+/* ===== CLICKABLE WEEK STRIP + SITE-WIDE SPACING SAFETY ===== */
+
+:root {
+  --space-xs: 6px;
+  --space-sm: 10px;
+  --space-md: 14px;
+  --space-lg: 18px;
+  --space-xl: 24px;
+}
+
+main,
+section,
+.card,
+.level-card,
+.workout-day-card,
+.exercise-card,
+.game-dashboard,
+.grid,
+.signal-stack,
+.workout-card-list {
+  min-width: 0;
+}
+
+.game-dashboard > *,
+.grid > *,
+.card > *,
+.exercise-card > *,
+.workout-day-card > * {
+  min-width: 0;
+}
+
+.card,
+.level-card,
+.workout-day-card,
+.exercise-card,
+.readiness-panel,
+.game-metric,
+.achievement-card,
+.game-signal,
+.mini-signal {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.card > * + *,
+.exercise-card > * + *,
+.workout-day-card > * + *,
+.level-card > * + * {
+  margin-top: var(--space-md);
+}
+
+.card > .row:first-child,
+.exercise-card > .row:first-child,
+.workout-day-card > .row:first-child,
+.level-card > .row:first-child {
+  margin-top: 0;
+}
+
+.row {
+  row-gap: var(--space-sm);
+}
+
+.row > * {
+  min-width: 0;
+}
+
+input,
+select,
+textarea,
+button {
+  max-width: 100%;
+}
+
+.input,
+.select,
+.textarea {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.week-row {
+  align-items: stretch;
+}
+
+.week-day {
+  appearance: none;
+  border: 1px solid #1f2937;
+  cursor: pointer;
+  min-width: 48px;
+  min-height: 56px;
+  padding: 7px 6px;
+  grid-template-rows: auto auto;
+  gap: 2px;
+  transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+
+.week-day:hover,
+.week-day:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(52, 211, 153, 0.65);
+  outline: none;
+}
+
+.week-date {
+  display: block;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.week-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  opacity: 0.9;
+}
+
+.week-day.today {
+  background: rgba(96, 165, 250, 0.18);
+  color: #bfdbfe;
+  border-color: rgba(96, 165, 250, 0.55);
+}
+
+.table-wrap {
+  max-width: 100%;
+}
+
+td .input,
+td .btn {
+  min-width: 88px;
+}
+
+.game-header,
+.tabbar,
+.week-row,
+.game-metrics,
+.badge-grid,
+.xp-rules-grid,
+.mini-grid {
+  gap: clamp(8px, 1.6vw, 14px);
+}
+
+@media (max-width: 900px) {
+  .card,
+  .level-card,
+  .workout-day-card,
+  .exercise-card,
+  .readiness-panel {
+    padding: 16px;
+  }
+
+  .game-dashboard {
+    gap: 16px;
+  }
+
+  .week-day {
+    min-width: 46px;
+    min-height: 54px;
+  }
+
+  .row {
+    align-items: stretch;
+  }
+
+  .row .btn,
+  .row .input,
+  .row select {
+    flex: 1 1 160px;
+  }
+}
+
+@media (max-width: 420px) {
+  .container {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .week-day {
+    min-width: 44px;
+  }
+
+  .week-date {
+    font-size: 13px;
+  }
+
+  .week-label {
+    font-size: 11px;
+  }
+}

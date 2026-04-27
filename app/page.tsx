@@ -937,9 +937,16 @@ export default function Page() {
             <h2 className="game-section-title">This week</h2>
             <div className="week-row">
               {weekStatus.map((day) => (
-                <div key={day.label + day.index} className={`week-day ${day.status}`}>
-                  <span>{day.label}</span>
-                </div>
+                <button
+                  key={day.date}
+                  type="button"
+                  className={`week-day ${day.status}`}
+                  onClick={() => setTab("checkin")}
+                  title={`Open check-in for ${day.date}`}
+                >
+                  <span className="week-date">{day.dateNumber}</span>
+                  <span className="week-label">{day.label}</span>
+                </button>
               ))}
             </div>
           </section>
@@ -1911,10 +1918,17 @@ function getTodaySignals(input: {
 }
 
 function getWeekStatus(dailyLogs: DailyLog[]) {
-  const labels = ["M", "T", "W", "T", "F", "S", "S"];
+  const dayLabels = ["S", "M", "T", "W", "T", "F", "S"];
+  const today = new Date(todayISO() + "T00:00:00");
+  const start = new Date(today);
+  start.setDate(today.getDate() - today.getDay());
 
-  return labels.map((label, index) => {
-    const log = dailyLogs[index];
+  return Array.from({ length: 7 }).map((_, index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    const dateISO = date.toISOString().slice(0, 10);
+    const log = dailyLogs.find((item) => item.date === dateISO) || dailyLogs[index];
+
     const hasUsefulData =
       !!log &&
       (numberOrNull(log.weight) !== null ||
@@ -1922,10 +1936,14 @@ function getWeekStatus(dailyLogs: DailyLog[]) {
         numberOrNull(log.calories) !== null ||
         numberOrNull(log.protein) !== null);
 
+    const isToday = dateISO === todayISO();
+
     return {
-      label,
+      label: dayLabels[date.getDay()],
+      date: dateISO,
+      dateNumber: String(date.getDate()).padStart(2, "0"),
       index,
-      status: hasUsefulData ? "done" : index <= new Date().getDay() ? "missed" : "upcoming"
+      status: hasUsefulData ? "done" : isToday ? "today" : date < today ? "missed" : "upcoming"
     };
   });
 }
