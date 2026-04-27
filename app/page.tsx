@@ -1064,7 +1064,7 @@ export default function Page() {
         <button className={`tab ${tab === "nutrition" ? "active" : ""}`} onClick={() => setTab("nutrition")}>
           Nutrition
         </button>
-        <button className={`tab ${tab === "checkin" ? "active" : ""}`} onClick={() => setTab("checkin")}>
+        <button className={`tab ${tab === "checkin" ? "active" : ""}`} onClick={() => setSelectedDashboardDate((current) => current === day.date ? null : day.date)}>
           Weekly Check-In
         </button>
         <button className={`tab ${tab === "settings" ? "active" : ""}`} onClick={() => setTab("settings")}>
