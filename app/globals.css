@@ -949,3 +949,257 @@ td .btn {
     font-size: 11px;
   }
 }
+
+
+/* ===== STRICT 20PX / 30PX SPACING SYSTEM ===== */
+
+:root {
+  --element-gap: 20px;
+  --section-gap: 30px;
+}
+
+.container {
+  padding: var(--element-gap);
+}
+
+.game-dashboard,
+.nutrition-page,
+.grid {
+  gap: var(--section-gap);
+}
+
+.card,
+.level-card,
+.workout-day-card,
+.exercise-card,
+.readiness-panel,
+.game-metric,
+.achievement-card,
+.game-signal,
+.mini-signal,
+.logged-meal-card,
+.nutrition-input-card {
+  padding: var(--element-gap);
+}
+
+.card > * + *,
+.level-card > * + *,
+.workout-day-card > * + *,
+.exercise-card > * + *,
+.nutrition-input-card > * + *,
+.logged-meal-card > * + * {
+  margin-top: var(--element-gap);
+}
+
+.row,
+.game-header,
+.game-header-actions,
+.tabbar,
+.week-row,
+.game-metrics,
+.badge-grid,
+.xp-rules-grid,
+.mini-grid,
+.signal-stack,
+.workout-card-list,
+.logged-meal-list {
+  gap: var(--element-gap);
+}
+
+section + section {
+  margin-top: var(--section-gap);
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-bottom: 0;
+}
+
+p {
+  line-height: 1.65;
+}
+
+.input,
+.select,
+.textarea,
+.btn,
+.tab {
+  min-height: 48px;
+  padding: 12px 14px;
+}
+
+.week-row {
+  align-items: stretch;
+}
+
+.week-day {
+  appearance: none;
+  border: 1px solid #1f2937;
+  cursor: pointer;
+  min-width: 52px;
+  min-height: 60px;
+  padding: 8px 6px;
+  grid-template-rows: auto auto;
+  gap: 4px;
+}
+
+.week-day.selected {
+  outline: 2px solid #34d399;
+  outline-offset: 2px;
+}
+
+.week-date {
+  display: block;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.week-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.week-day.today {
+  background: rgba(96, 165, 250, 0.18);
+  color: #bfdbfe;
+  border-color: rgba(96, 165, 250, 0.55);
+}
+
+.dashboard-scope-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--element-gap);
+  background: #111827;
+  border: 1px solid #273244;
+  border-radius: 18px;
+  padding: var(--element-gap);
+}
+
+/* ===== NUTRITION LOGGING REDESIGN ===== */
+
+.meal-log-grid {
+  display: grid;
+  grid-template-columns: 160px minmax(220px, 1.5fr) 190px repeat(4, minmax(110px, 1fr)) 150px;
+  gap: var(--element-gap);
+  align-items: end;
+}
+
+.meal-edit-grid {
+  display: grid;
+  grid-template-columns: 140px minmax(200px, 1.5fr) repeat(5, minmax(100px, 1fr)) 120px;
+  gap: var(--element-gap);
+  align-items: end;
+}
+
+.unit-row {
+  display: grid;
+  grid-template-columns: 1fr 78px;
+  gap: 10px;
+}
+
+.unit-select {
+  min-width: 78px;
+}
+
+.meal-action-cell {
+  display: flex;
+  gap: 10px;
+  align-items: end;
+  flex-wrap: wrap;
+}
+
+.logged-meal-list {
+  display: grid;
+}
+
+.logged-meal-card {
+  background: #0f172a;
+  border: 1px solid #273244;
+  border-radius: 16px;
+}
+
+.logged-meals-card {
+  overflow: hidden;
+}
+
+/* ===== OVERLAP PREVENTION ===== */
+
+* {
+  min-width: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  max-width: 100%;
+}
+
+.table-wrap,
+.card,
+section {
+  max-width: 100%;
+}
+
+@media (max-width: 1200px) {
+  .meal-log-grid,
+  .meal-edit-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .container {
+    padding: 16px;
+  }
+
+  .game-dashboard,
+  .nutrition-page,
+  .grid {
+    gap: 24px;
+  }
+
+  .card,
+  .level-card,
+  .workout-day-card,
+  .exercise-card,
+  .readiness-panel,
+  .game-metric,
+  .achievement-card,
+  .game-signal,
+  .mini-signal,
+  .logged-meal-card,
+  .nutrition-input-card {
+    padding: 16px;
+  }
+
+  .meal-log-grid,
+  .meal-edit-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .dashboard-scope-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .week-row {
+    overflow-x: auto;
+    padding: 4px 2px 8px;
+  }
+
+  .week-day {
+    flex: 0 0 auto;
+  }
+
+  .meal-action-cell .btn {
+    flex: 1;
+  }
+}

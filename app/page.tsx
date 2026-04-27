@@ -293,8 +293,20 @@ const initialState: AppState = {
 
 export default function Page() {
   const [tab, setTab] = useState<Tab>("dashboard");
+  const [selectedDashboardDate, setSelectedDashboardDate] = useState<string | null>(null);
   const [state, setState] = useState<AppState>(initialState);
   const [mealPresetName, setMealPresetName] = useState("");
+  const [mealDraft, setMealDraft] = useState<FoodItem>({
+    id: "draft",
+    meal: "Breakfast",
+    food: "",
+    grams: 100,
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fats: 0
+  });
+  const [mealDraftUnit, setMealDraftUnit] = useState<"g" | "ml" | "oz">("g");
   const [foodSearchQuery, setFoodSearchQuery] = useState("");
   const [foodSearchGrams, setFoodSearchGrams] = useState<number | "">(100);
   const [foodSearchResult, setFoodSearchResult] = useState<FoodSearchResult | null>(null);
@@ -406,6 +418,18 @@ export default function Page() {
   const avgProtein = average(state.dailyLogs.map((d) => numberOrNull(d.protein)));
   const avgCardio = average(state.dailyLogs.map((d) => numberOrNull(d.cardioMinutes)));
   const avgWaist = average(state.dailyLogs.map((d) => numberOrNull(d.waist)));
+
+  const selectedDashboardLog = selectedDashboardDate
+    ? state.dailyLogs.find((log) => log.date === selectedDashboardDate) || null
+    : null;
+
+  const displayWeight = selectedDashboardLog ? numberOrNull(selectedDashboardLog.weight) : avgWeight;
+  const displaySteps = selectedDashboardLog ? numberOrNull(selectedDashboardLog.steps) : avgSteps;
+  const displayCalories = selectedDashboardLog ? numberOrNull(selectedDashboardLog.calories) : avgCalories;
+  const displayProtein = selectedDashboardLog ? numberOrNull(selectedDashboardLog.protein) : avgProtein;
+  const displayCardio = selectedDashboardLog ? numberOrNull(selectedDashboardLog.cardioMinutes) : avgCardio;
+  const displayWaist = selectedDashboardLog ? numberOrNull(selectedDashboardLog.waist) : avgWaist;
+  const dashboardScopeLabel = selectedDashboardLog ? formatDisplayDate(selectedDashboardLog.date) : "Weekly average";
 
   const foodTotals = useMemo(() => {
     return state.foods.reduce(
@@ -725,6 +749,46 @@ export default function Page() {
     setFoodSearchResult(null);
   }
 
+  function updateMealDraft<K extends keyof FoodItem>(key: K, value: FoodItem[K]) {
+    setMealDraft((prev) => ({
+      ...prev,
+      [key]: value
+    }));
+  }
+
+  function addMealDraft() {
+    const foodName = mealDraft.food.trim();
+
+    if (!foodName) {
+      alert("Enter the food or meal name first.");
+      return;
+    }
+
+    setState((prev) => ({
+      ...prev,
+      foods: [
+        ...prev.foods,
+        {
+          ...mealDraft,
+          id: cryptoSafeId(),
+          food: foodName
+        }
+      ]
+    }));
+
+    setMealDraft({
+      id: "draft",
+      meal: mealDraft.meal,
+      food: "",
+      grams: 100,
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fats: 0
+    });
+    setMealDraftUnit("g");
+  }
+
   function saveCurrentMealsAsPreset() {
     const name = mealPresetName.trim();
 
@@ -914,6 +978,18 @@ export default function Page() {
 
       {tab === "dashboard" && (
         <div className="game-dashboard">
+          <section className="dashboard-scope-card">
+            <div>
+              <div className="small">Dashboard view</div>
+              <strong>{dashboardScopeLabel}</strong>
+            </div>
+            {selectedDashboardDate ? (
+              <button className="btn secondary" onClick={() => setSelectedDashboardDate(null)}>
+                Show full week
+              </button>
+            ) : null}
+          </section>
+
           <section className="level-card">
             <div className="row space-between">
               <div>
@@ -940,9 +1016,9 @@ export default function Page() {
                 <button
                   key={day.date}
                   type="button"
-                  className={`week-day ${day.status}`}
-                  onClick={() => setTab("checkin")}
-                  title={`Open check-in for ${day.date}`}
+                  className={`week-day ${day.status} ${selectedDashboardDate === day.date ? "selected" : ""}`}
+                  onClick={() => setSelectedDashboardDate((current) => current === day.date ? null : day.date)}
+                  title={`View dashboard metrics for ${day.date}`}
                 >
                   <span className="week-date">{day.dateNumber}</span>
                   <span className="week-label">{day.label}</span>
@@ -954,27 +1030,27 @@ export default function Page() {
           <section className="game-metrics">
             <GameMetricCard
               title="Protein"
-              value={formatNumber(avgProtein, "g")}
-              hint={(avgProtein ?? 0) >= state.settings.proteinTarget ? "Target hit" : `${Math.max(0, Math.round(state.settings.proteinTarget - (avgProtein ?? 0)))}g left`}
-              tone={(avgProtein ?? 0) >= state.settings.proteinTarget ? "green" : "amber"}
+              value={formatNumber(displayProtein, "g")}
+              hint={(displayProtein ?? 0) >= state.settings.proteinTarget ? "Target hit" : `${Math.max(0, Math.round(state.settings.proteinTarget - (displayProtein ?? 0)))}g left`}
+              tone={(displayProtein ?? 0) >= state.settings.proteinTarget ? "green" : "amber"}
             />
             <GameMetricCard
               title="Steps"
-              value={formatNumber(avgSteps)}
-              hint={(avgSteps ?? 0) >= state.settings.stepTarget ? "Target crushed" : `${Math.max(0, Math.round(state.settings.stepTarget - (avgSteps ?? 0))).toLocaleString()} left`}
-              tone={(avgSteps ?? 0) >= state.settings.stepTarget ? "green" : "amber"}
+              value={formatNumber(displaySteps)}
+              hint={(displaySteps ?? 0) >= state.settings.stepTarget ? "Target crushed" : `${Math.max(0, Math.round(state.settings.stepTarget - (displaySteps ?? 0))).toLocaleString()} left`}
+              tone={(displaySteps ?? 0) >= state.settings.stepTarget ? "green" : "amber"}
             />
             <GameMetricCard
               title="Calories"
-              value={formatNumber(avgCalories)}
-              hint={avgCalories === null ? "Log intake" : `${Math.round(avgCalories - state.settings.targetCalories)} kcal vs target`}
-              tone={avgCalories !== null && Math.abs(avgCalories - state.settings.targetCalories) <= 150 ? "green" : "amber"}
+              value={formatNumber(displayCalories)}
+              hint={displayCalories === null ? "Log intake" : `${Math.round(displayCalories - state.settings.targetCalories)} kcal vs target`}
+              tone={displayCalories !== null && Math.abs(displayCalories - state.settings.targetCalories) <= 150 ? "green" : "amber"}
             />
             <GameMetricCard
               title="Cardio"
-              value={formatNumber(avgCardio, "min")}
+              value={formatNumber(displayCardio, "min")}
               hint="weekly average"
-              tone={(avgCardio ?? 0) >= 20 ? "green" : "amber"}
+              tone={(displayCardio ?? 0) >= 20 ? "green" : "amber"}
             />
             <GameMetricCard
               title="Workouts"
@@ -1224,127 +1300,162 @@ export default function Page() {
       )}
 
       {tab === "nutrition" && (
-        <div className="grid grid-2">
-          <div className="card">
+        <div className="nutrition-page">
+          <section className="card nutrition-input-card">
             <div className="row space-between">
-              <h2 style={{ margin: 0 }}>Daily meal plan</h2>
-              <button className="btn" onClick={addFood}>
-                Add food
+              <div>
+                <h2 style={{ margin: 0 }}>Log meal</h2>
+                <p className="small" style={{ marginTop: 6 }}>
+                  Add a food item here. Once added, it moves into the logged meals section below.
+                </p>
+              </div>
+            </div>
+
+            <div className="meal-log-grid">
+              <Field label="Meal">
+                <select
+                  className="input"
+                  value={mealDraft.meal}
+                  onChange={(e) => updateMealDraft("meal", e.target.value)}
+                >
+                  <option value="Breakfast">Breakfast</option>
+                  <option value="Lunch">Lunch</option>
+                  <option value="Snack">Snack</option>
+                  <option value="Dinner">Dinner</option>
+                  <option value="Coffee">Coffee</option>
+                  <option value="Pre-workout">Pre-workout</option>
+                  <option value="Post-workout">Post-workout</option>
+                  <option value="Custom">Custom</option>
+                </select>
+              </Field>
+
+              <Field label="Food / meal">
+                <input
+                  className="input"
+                  value={mealDraft.food}
+                  placeholder="e.g. chicken biryani"
+                  onChange={(e) => updateMealDraft("food", e.target.value)}
+                />
+              </Field>
+
+              <Field label="Amount">
+                <div className="unit-row">
+                  <NumericInput
+                    value={mealDraft.grams}
+                    onChange={(v) => updateMealDraft("grams", v === "" ? 0 : v)}
+                  />
+                  <select
+                    className="input unit-select"
+                    value={mealDraftUnit}
+                    onChange={(e) => setMealDraftUnit(e.target.value as "g" | "ml" | "oz")}
+                  >
+                    <option value="g">g</option>
+                    <option value="ml">ml</option>
+                    <option value="oz">oz</option>
+                  </select>
+                </div>
+              </Field>
+
+              <Field label="Calories">
+                <NumericInput value={mealDraft.calories} onChange={(v) => updateMealDraft("calories", v === "" ? 0 : v)} />
+              </Field>
+              <Field label="Protein">
+                <NumericInput value={mealDraft.protein} onChange={(v) => updateMealDraft("protein", v === "" ? 0 : v)} />
+              </Field>
+              <Field label="Carbs">
+                <NumericInput value={mealDraft.carbs} onChange={(v) => updateMealDraft("carbs", v === "" ? 0 : v)} />
+              </Field>
+              <Field label="Fat">
+                <NumericInput value={mealDraft.fats} onChange={(v) => updateMealDraft("fats", v === "" ? 0 : v)} />
+              </Field>
+
+              <div className="meal-action-cell">
+                <button className="btn" onClick={addMealDraft}>
+                  Add
+                </button>
+                <button
+                  className="btn secondary"
+                  onClick={() =>
+                    setMealDraft({
+                      id: "draft",
+                      meal: mealDraft.meal,
+                      food: "",
+                      grams: 100,
+                      calories: 0,
+                      protein: 0,
+                      carbs: 0,
+                      fats: 0
+                    })
+                  }
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section className="card" style={{ background: "#0f172a" }}>
+            <h3 style={{ marginTop: 0 }}>Smart food search</h3>
+            <p className="small">
+              Search standard foods using USDA first. Mixed or Indian-style meals are estimated with Claude.
+            </p>
+            <div className="row">
+              <input
+                className="input"
+                value={foodSearchQuery}
+                placeholder="e.g. chicken biryani, chicken breast, curd rice"
+                onChange={(e) => setFoodSearchQuery(e.target.value)}
+              />
+              <NumericInput
+                value={foodSearchGrams}
+                onChange={(v) => setFoodSearchGrams(v)}
+                placeholder="grams"
+              />
+              <button className="btn" onClick={searchFoodMacros} disabled={isSearchingFood}>
+                {isSearchingFood ? "Searching..." : "Search macros"}
               </button>
             </div>
 
-            <div className="card" style={{ marginTop: 16, background: "#0f172a" }}>
-              <h3 style={{ marginTop: 0 }}>Full-day meal preset</h3>
-              <p className="small">
-                Save the current full nutrition table as a reusable preset. Later, apply it with one click.
-              </p>
-              <div className="row">
-                <input
-                  className="input"
-                  value={mealPresetName}
-                  placeholder="Preset name, e.g. Normal training day"
-                  onChange={(e) => setMealPresetName(e.target.value)}
-                />
-                <button className="btn" onClick={saveCurrentMealsAsPreset}>
-                  Save current day as preset
-                </button>
-              </div>
-            </div>
-
-            <div className="card" style={{ marginTop: 16, background: "#0f172a" }}>
-              <h3 style={{ marginTop: 0 }}>Smart food search</h3>
-              <p className="small">
-                Search standard foods using USDA first. Mixed or Indian-style meals are estimated with Claude.
-              </p>
-              <div className="row">
-                <input
-                  className="input"
-                  value={foodSearchQuery}
-                  placeholder="e.g. chicken biryani, chicken breast, curd rice"
-                  onChange={(e) => setFoodSearchQuery(e.target.value)}
-                />
-                <NumericInput
-                  value={foodSearchGrams}
-                  onChange={(v) => setFoodSearchGrams(v)}
-                  placeholder="grams"
-                />
-                <button className="btn" onClick={searchFoodMacros} disabled={isSearchingFood}>
-                  {isSearchingFood ? "Searching..." : "Search macros"}
-                </button>
-              </div>
-
-              {foodSearchResult ? (
-                <div className="card" style={{ marginTop: 14 }}>
-                  <div className="row space-between">
-                    <div>
-                      <strong>{foodSearchResult.food}</strong>
-                      <div className="small">
-                        {foodSearchResult.grams}g | {foodSearchResult.calories} cal | P {foodSearchResult.protein}g | C {foodSearchResult.carbs}g | F {foodSearchResult.fats}g
-                      </div>
-                      <div className="small">
-                        {   foodSearchResult.source === "usda"     ? "Verified data"     : foodSearchResult.source === "claude"     ? "Estimated (AI)"     : "Saved result" } | Confidence: {foodSearchResult.confidence}
-                      </div>
-                      <div className="small">{foodSearchResult.note}</div>
+            {foodSearchResult ? (
+              <div className="card" style={{ marginTop: 14 }}>
+                <div className="row space-between">
+                  <div>
+                    <strong>{foodSearchResult.food}</strong>
+                    <div className="small">
+                      {foodSearchResult.grams}g | {foodSearchResult.calories} cal | P {foodSearchResult.protein}g | C {foodSearchResult.carbs}g | F {foodSearchResult.fats}g
                     </div>
-                    <button className="btn" onClick={addFoodSearchResult}>
-                      Add to meal plan
-                    </button>
+                    <div className="small">
+                      {foodSearchResult.source === "usda" ? "Verified data" : foodSearchResult.source === "claude" ? "Estimated (AI)" : "Saved result"} | Confidence: {foodSearchResult.confidence}
+                    </div>
+                    <div className="small">{foodSearchResult.note}</div>
                   </div>
+                  <button
+                    className="btn"
+                    onClick={() => {
+                      setMealDraft({
+                        id: "draft",
+                        meal: "Search",
+                        food: foodSearchResult.food,
+                        grams: foodSearchResult.grams,
+                        calories: foodSearchResult.calories,
+                        protein: foodSearchResult.protein,
+                        carbs: foodSearchResult.carbs,
+                        fats: foodSearchResult.fats
+                      });
+                      setMealDraftUnit("g");
+                      setFoodSearchQuery("");
+                      setFoodSearchGrams(100);
+                      setFoodSearchResult(null);
+                    }}
+                  >
+                    Use in log form
+                  </button>
                 </div>
-              ) : null}
-            </div>
+              </div>
+            ) : null}
+          </section>
 
-            <div className="table-wrap" style={{ marginTop: 16 }}>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Meal</th>
-                    <th>Food</th>
-                    <th>g/ml</th>
-                    <th>Cal</th>
-                    <th>P</th>
-                    <th>C</th>
-                    <th>F</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {state.foods.map((item) => (
-                    <tr key={item.id}>
-                      <td>
-                        <input className="input" value={item.meal} onChange={(e) => updateFood(item.id, "meal", e.target.value)} />
-                      </td>
-                      <td>
-                        <input className="input" value={item.food} onChange={(e) => updateFood(item.id, "food", e.target.value)} />
-                      </td>
-                      <td>
-                        <NumericInput value={item.grams} onChange={(v) => updateFood(item.id, "grams", v)} />
-                      </td>
-                      <td>
-                        <NumericInput value={item.calories} onChange={(v) => updateFood(item.id, "calories", v)} />
-                      </td>
-                      <td>
-                        <NumericInput value={item.protein} onChange={(v) => updateFood(item.id, "protein", v)} />
-                      </td>
-                      <td>
-                        <NumericInput value={item.carbs} onChange={(v) => updateFood(item.id, "carbs", v)} />
-                      </td>
-                      <td>
-                        <NumericInput value={item.fats} onChange={(v) => updateFood(item.id, "fats", v)} />
-                      </td>
-                      <td>
-                        <button className="btn warn" onClick={() => deleteFood(item.id)}>
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div className="grid">
+          <section className="grid grid-2">
             <div className="card">
               <h2 style={{ marginTop: 0 }}>Planned totals</h2>
               <p>Calories: <strong>{Math.round(foodTotals.calories)}</strong></p>
@@ -1359,52 +1470,79 @@ export default function Page() {
               <p>Protein target: <strong>{state.settings.proteinTarget} g</strong></p>
               <p>Carb target: <strong>{state.settings.carbTarget} g</strong></p>
               <p>Fat target: <strong>{state.settings.fatTarget} g</strong></p>
-              <p className="small">
-                For your case, start near maintenance with high protein, then let waist, average weight, and gym performance determine adjustments.
-              </p>
+            </div>
+          </section>
+
+          <section className="card logged-meals-card">
+            <div className="row space-between">
+              <div>
+                <h2 style={{ margin: 0 }}>Logged meals</h2>
+                <p className="small" style={{ marginTop: 6 }}>
+                  Edit or delete individual logged items here.
+                </p>
+              </div>
+              <button className="btn secondary" onClick={addFood}>
+                Add blank row
+              </button>
             </div>
 
-            <div className="card">
-              <h2 style={{ marginTop: 0 }}>Saved full-day presets</h2>
-              {state.mealPresets.length === 0 ? (
-                <p className="small">No presets yet. Build your nutrition table, name it, then save it.</p>
-              ) : (
-                <div className="grid">
-                  {state.mealPresets.map((preset) => {
-                    const totals = preset.foods.reduce(
-                      (acc, food) => {
-                        acc.calories += food.calories;
-                        acc.protein += food.protein;
-                        acc.carbs += food.carbs;
-                        acc.fats += food.fats;
-                        return acc;
-                      },
-                      { calories: 0, protein: 0, carbs: 0, fats: 0 }
-                    );
-
-                    return (
-                      <div key={preset.id} className="card" style={{ background: "#0f172a" }}>
-                        <div className="row space-between">
-                          <div>
-                            <strong>{preset.name}</strong>
-                            <div className="small">
-                              {Math.round(totals.calories)} cal | P {totals.protein.toFixed(1)}g | C {totals.carbs.toFixed(1)}g | F {totals.fats.toFixed(1)}g
-                            </div>
-                          </div>
-                          <div className="row">
-                            <button className="btn" onClick={() => applyMealPreset(preset)}>
-                              Apply
-                            </button>
-                            <button className="btn warn" onClick={() => deleteMealPreset(preset.id)}>
-                              Delete
-                            </button>
-                          </div>
-                        </div>
+            {state.foods.length === 0 ? (
+              <p className="small">No meals logged yet.</p>
+            ) : (
+              <div className="logged-meal-list">
+                {state.foods.map((item) => (
+                  <div className="logged-meal-card" key={item.id}>
+                    <div className="meal-edit-grid">
+                      <Field label="Meal">
+                        <input className="input" value={item.meal} onChange={(e) => updateFood(item.id, "meal", e.target.value)} />
+                      </Field>
+                      <Field label="Food">
+                        <input className="input" value={item.food} onChange={(e) => updateFood(item.id, "food", e.target.value)} />
+                      </Field>
+                      <Field label="g/ml/oz">
+                        <NumericInput value={item.grams} onChange={(v) => updateFood(item.id, "grams", v)} />
+                      </Field>
+                      <Field label="Cal">
+                        <NumericInput value={item.calories} onChange={(v) => updateFood(item.id, "calories", v)} />
+                      </Field>
+                      <Field label="Protein">
+                        <NumericInput value={item.protein} onChange={(v) => updateFood(item.id, "protein", v)} />
+                      </Field>
+                      <Field label="Carbs">
+                        <NumericInput value={item.carbs} onChange={(v) => updateFood(item.id, "carbs", v)} />
+                      </Field>
+                      <Field label="Fat">
+                        <NumericInput value={item.fats} onChange={(v) => updateFood(item.id, "fats", v)} />
+                      </Field>
+                      <div className="meal-action-cell">
+                        <button className="btn warn" onClick={() => deleteFood(item.id)}>
+                          Delete
+                        </button>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="grid grid-2">
+            <div className="card">
+              <h3 style={{ marginTop: 0 }}>Full-day meal preset</h3>
+              <p className="small">
+                Save the current logged meals as a reusable full-day preset.
+              </p>
+              <div className="row">
+                <input
+                  className="input"
+                  value={mealPresetName}
+                  placeholder="Preset name, e.g. Normal training day"
+                  onChange={(e) => setMealPresetName(e.target.value)}
+                />
+                <button className="btn" onClick={saveCurrentMealsAsPreset}>
+                  Save preset
+                </button>
+              </div>
             </div>
 
             <div className="card">
@@ -1415,7 +1553,50 @@ export default function Page() {
                 ))}
               </div>
             </div>
-          </div>
+          </section>
+
+          <section className="card">
+            <h2 style={{ marginTop: 0 }}>Saved full-day presets</h2>
+            {state.mealPresets.length === 0 ? (
+              <p className="small">No presets yet. Build your nutrition log, name it, then save it.</p>
+            ) : (
+              <div className="grid">
+                {state.mealPresets.map((preset) => {
+                  const totals = preset.foods.reduce(
+                    (acc, food) => {
+                      acc.calories += food.calories;
+                      acc.protein += food.protein;
+                      acc.carbs += food.carbs;
+                      acc.fats += food.fats;
+                      return acc;
+                    },
+                    { calories: 0, protein: 0, carbs: 0, fats: 0 }
+                  );
+
+                  return (
+                    <div key={preset.id} className="card" style={{ background: "#0f172a" }}>
+                      <div className="row space-between">
+                        <div>
+                          <strong>{preset.name}</strong>
+                          <div className="small">
+                            {Math.round(totals.calories)} cal | P {totals.protein.toFixed(1)}g | C {totals.carbs.toFixed(1)}g | F {totals.fats.toFixed(1)}g
+                          </div>
+                        </div>
+                        <div className="row">
+                          <button className="btn" onClick={() => applyMealPreset(preset)}>
+                            Apply
+                          </button>
+                          <button className="btn warn" onClick={() => deleteMealPreset(preset.id)}>
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
         </div>
       )}
 
@@ -1499,7 +1680,7 @@ export default function Page() {
           <div className="grid grid-3">
             <MetricCard title="Avg Weight" value={formatNumber(avgWeight, "kg")} hint="Use average, not daily spikes" />
             <MetricCard title="Avg Waist" value={formatNumber(avgWaist, "cm")} hint="Best fat-loss signal" />
-            <MetricCard title="Avg Steps" value={formatNumber(avgSteps)} hint="NEAT target" />
+            <MetricCard title="Avg Steps" value={formatNumber(displaySteps)} hint="NEAT target" />
           </div>
 
           <div className="card">
@@ -2111,6 +2292,15 @@ function getXpRules(input: {
     { label: "Calories within range", points: "+20 XP", earned: calorieHit },
     { label: "Workout log 70%+ complete", points: "+30 XP", earned: input.workoutCompletion >= 70 }
   ];
+}
+
+function formatDisplayDate(dateISO: string) {
+  const date = new Date(dateISO + "T00:00:00");
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  });
 }
 
 function getStepPlan(start: number, target: number) {
