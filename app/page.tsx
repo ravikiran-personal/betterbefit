@@ -294,6 +294,7 @@ const initialState: AppState = {
 export default function Page() {
   const [tab, setTab] = useState<Tab>("dashboard");
   const [selectedDashboardDate, setSelectedDashboardDate] = useState<string | null>(null);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [state, setState] = useState<AppState>(initialState);
   const [mealPresetName, setMealPresetName] = useState("");
   const [mealDraft, setMealDraft] = useState<FoodItem>({
@@ -614,23 +615,15 @@ export default function Page() {
   }
 
   function deleteExerciseFromWorkout(id: string) {
-    const shouldDelete = confirm("Deleting an exercise may reduce workout efficiency.");
-
-    if (!shouldDelete) return;
-
     setState((prev) => ({
       ...prev,
       workoutLogs: prev.workoutLogs.filter((item) => item.id !== id)
     }));
+    setConfirmingId(null);
   }
 
   function addExerciseToDay(day: string) {
     const dayLabel = getDayLabel(day);
-    const shouldAdd = confirm(
-      "Adding an exercise is not advisable. The current plan's volume ensures maximum recovery, addition of exercises may cause reduced recovery."
-    );
-
-    if (!shouldAdd) return;
 
     setState((prev) => ({
       ...prev,
@@ -842,8 +835,6 @@ export default function Page() {
   }
 
   function deleteMealPreset(id: string) {
-    if (!confirm("Delete this meal preset?")) return;
-
     setState((prev) => ({
       ...prev,
       mealPresets: prev.mealPresets.filter((preset) => preset.id !== id)
@@ -901,8 +892,6 @@ export default function Page() {
   }
 
   function deleteWorkoutSession(id: string) {
-    if (!confirm("Delete this workout session?")) return;
-
     setState((prev) => ({
       ...prev,
       workoutHistory: prev.workoutHistory.filter((session) => session.id !== id)
@@ -1182,9 +1171,23 @@ export default function Page() {
                   <h2 style={{ margin: 0 }}>{group.dayLabel}</h2>
                   <p className="small" style={{ marginTop: 6 }}>{getDayDescription(group.day)}</p>
                 </div>
-                <button className="btn secondary" onClick={() => addExerciseToDay(group.day)}>
-                  Add exercise
-                </button>
+                {confirmingId === `add-${group.day}` ? (
+                  <div className="row">
+                    <span className="small" style={{ maxWidth: 360 }}>
+                      Adding an exercise is not advisable. The current plan's volume ensures maximum recovery, addition of exercises may cause reduced recovery.
+                    </span>
+                    <button className="btn warn" onClick={() => addExerciseToDay(group.day)}>
+                      Yes, add
+                    </button>
+                    <button className="btn secondary" onClick={() => setConfirmingId(null)}>
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button className="btn secondary" onClick={() => setConfirmingId(`add-${group.day}`)}>
+                    Add exercise
+                  </button>
+                )}
               </div>
 
               <div className="workout-card-list">
@@ -1205,9 +1208,23 @@ export default function Page() {
                         </div>
                         <div className="row">
                           <span className="badge">{item.sets} sets • {item.targetReps}</span>
-                          <button className="btn warn compact-exercise-btn" onClick={() => deleteExerciseFromWorkout(item.id)}>
-                            Delete
-                          </button>
+                          {confirmingId === item.id ? (
+                            <>
+                              <span className="small">
+                                Deleting an exercise may reduce workout efficiency.
+                              </span>
+                              <button className="btn warn compact-exercise-btn" onClick={() => deleteExerciseFromWorkout(item.id)}>
+                                Yes, delete
+                              </button>
+                              <button className="btn secondary compact-exercise-btn" onClick={() => setConfirmingId(null)}>
+                                Cancel
+                              </button>
+                            </>
+                          ) : (
+                            <button className="btn warn compact-exercise-btn" onClick={() => setConfirmingId(item.id)}>
+                              Delete
+                            </button>
+                          )}
                         </div>
                       </div>
 
@@ -1832,8 +1849,6 @@ export default function Page() {
             <button
               className="btn warn"
               onClick={() => {
-                if (!confirm("Delete all logs? This cannot be undone.")) return;
-
                 setState((prev) => ({
                   ...prev,
                   dailyLogs: seedWeekLogs(),
