@@ -1610,7 +1610,43 @@ export default function Page() {
               </button>
             </div>
 
-            <div className="table-wrap" style={{ marginTop: 16 }}>
+            <div className="checkin-card-list">
+              {state.dailyLogs.map((row, index) => (
+                <div className="checkin-day-card" key={row.date + index}>
+                  <Field label="Date">
+                    <input
+                      className="input"
+                      type="date"
+                      value={row.date || todayISO()}
+                      onChange={(e) => updateDaily(index, "date", e.target.value)}
+                    />
+                  </Field>
+
+                  <div className="checkin-input-grid">
+                    <Field label="Weight">
+                      <NumericInput value={row.weight} onChange={(v) => updateDaily(index, "weight", v)} />
+                    </Field>
+                    <Field label="Waist">
+                      <NumericInput value={row.waist} onChange={(v) => updateDaily(index, "waist", v)} />
+                    </Field>
+                    <Field label="Steps">
+                      <NumericInput value={row.steps} onChange={(v) => updateDaily(index, "steps", v)} />
+                    </Field>
+                    <Field label="Calories">
+                      <NumericInput value={row.calories} onChange={(v) => updateDaily(index, "calories", v)} />
+                    </Field>
+                    <Field label="Protein">
+                      <NumericInput value={row.protein} onChange={(v) => updateDaily(index, "protein", v)} />
+                    </Field>
+                    <Field label="Cardio min">
+                      <NumericInput value={row.cardioMinutes} onChange={(v) => updateDaily(index, "cardioMinutes", v)} />
+                    </Field>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="table-wrap checkin-table-desktop" style={{ marginTop: 16 }}>
               <table>
                 <thead>
                   <tr>
@@ -1628,48 +1664,18 @@ export default function Page() {
                     <tr key={row.date + index}>
                       <td>
                         <input
-  className="input"
-  type="date"
-  value={row.date || todayISO()}
-  onChange={(e) => updateDaily(index, "date", e.target.value)}
-/>
-                      </td>
-                      <td>
-                        <NumericInput
-                          value={row.weight}
-                          onChange={(v) => updateDaily(index, "weight", v)}
+                          className="input"
+                          type="date"
+                          value={row.date || todayISO()}
+                          onChange={(e) => updateDaily(index, "date", e.target.value)}
                         />
                       </td>
-                      <td>
-                        <NumericInput
-                          value={row.waist}
-                          onChange={(v) => updateDaily(index, "waist", v)}
-                        />
-                      </td>
-                      <td>
-                        <NumericInput
-                          value={row.steps}
-                          onChange={(v) => updateDaily(index, "steps", v)}
-                        />
-                      </td>
-                      <td>
-                        <NumericInput
-                          value={row.calories}
-                          onChange={(v) => updateDaily(index, "calories", v)}
-                        />
-                      </td>
-                      <td>
-                        <NumericInput
-                          value={row.protein}
-                          onChange={(v) => updateDaily(index, "protein", v)}
-                        />
-                      </td>
-                      <td>
-                        <NumericInput
-                          value={row.cardioMinutes}
-                          onChange={(v) => updateDaily(index, "cardioMinutes", v)}
-                        />
-                      </td>
+                      <td><NumericInput value={row.weight} onChange={(v) => updateDaily(index, "weight", v)} /></td>
+                      <td><NumericInput value={row.waist} onChange={(v) => updateDaily(index, "waist", v)} /></td>
+                      <td><NumericInput value={row.steps} onChange={(v) => updateDaily(index, "steps", v)} /></td>
+                      <td><NumericInput value={row.calories} onChange={(v) => updateDaily(index, "calories", v)} /></td>
+                      <td><NumericInput value={row.protein} onChange={(v) => updateDaily(index, "protein", v)} /></td>
+                      <td><NumericInput value={row.cardioMinutes} onChange={(v) => updateDaily(index, "cardioMinutes", v)} /></td>
                     </tr>
                   ))}
                 </tbody>
