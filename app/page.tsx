@@ -613,10 +613,21 @@ export default function Page() {
     }));
   }
 
+  function deleteExerciseFromWorkout(id: string) {
+    const shouldDelete = confirm("Deleting an exercise may reduce workout efficiency.");
+
+    if (!shouldDelete) return;
+
+    setState((prev) => ({
+      ...prev,
+      workoutLogs: prev.workoutLogs.filter((item) => item.id !== id)
+    }));
+  }
+
   function addExerciseToDay(day: string) {
     const dayLabel = getDayLabel(day);
     const shouldAdd = confirm(
-      `The ${dayLabel} plan is intentionally kept focused so recovery stays strong. Add another exercise only if you genuinely need it today. Add one extra exercise?`
+      "Adding an exercise is not advisable. The current plan's volume ensures maximum recovery, addition of exercises may cause reduced recovery."
     );
 
     if (!shouldAdd) return;
@@ -1192,7 +1203,12 @@ export default function Page() {
                           <div className="pattern-pill">{item.pattern}</div>
                           <strong>{item.exercise}</strong>
                         </div>
-                        <span className="badge">{item.sets} sets • {item.targetReps}</span>
+                        <div className="row">
+                          <span className="badge">{item.sets} sets • {item.targetReps}</span>
+                          <button className="btn warn compact-exercise-btn" onClick={() => deleteExerciseFromWorkout(item.id)}>
+                            Delete
+                          </button>
+                        </div>
                       </div>
 
                       <Field label="Choose exercise">
