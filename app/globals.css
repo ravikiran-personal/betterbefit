@@ -1835,3 +1835,42 @@ button:disabled {
     padding-bottom: 112px;
   }
 }
+
+
+/* ===== WEEK SELECTOR FINAL STATE LOGIC ===== */
+
+.week-day {
+  background: #111827;
+  color: #6b7280;
+  border-color: #1f2937;
+  box-shadow: none;
+}
+
+.week-day.neutral {
+  background: #111827;
+  color: #6b7280;
+  border-color: #1f2937;
+  box-shadow: none;
+}
+
+.week-day.today {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.45);
+  box-shadow: none;
+}
+
+.week-day.selected {
+  background: rgba(52, 211, 153, 0.16);
+  color: #34d399;
+  border-color: #34d399;
+  outline: 2px solid #34d399;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.12);
+}
+
+.week-day.today.selected {
+  background: rgba(52, 211, 153, 0.16);
+  color: #34d399;
+  border-color: #34d399;
+}

@@ -1112,7 +1112,7 @@ export default function Page() {
                 <button
                   key={day.date}
                   type="button"
-                  className={`week-day ${day.status} ${selectedDashboardDate === day.date ? "selected" : ""}`}
+                  className={`week-day ${day.isToday ? "today" : "neutral"} ${selectedDashboardDate === day.date ? "selected" : ""}`}
                   onClick={() => setSelectedDashboardDate((current) => current === day.date ? null : day.date)}
                   title={`View dashboard metrics for ${day.date}`}
                 >
@@ -2287,7 +2287,9 @@ function getWeekStatus(dailyLogs: DailyLog[]) {
       date: dateISO,
       dateNumber: String(date.getDate()).padStart(2, "0"),
       index,
-      status: hasUsefulData ? "done" : isToday ? "today" : date < today ? "missed" : "upcoming"
+      hasUsefulData,
+      isToday,
+      status: isToday ? "today" : "neutral"
     };
   });
 }
