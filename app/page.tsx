@@ -202,7 +202,7 @@ const defaultSettings: Settings = {
 
 const workoutTemplate: Omit<
   ExerciseLog,
-  "id" | "weight" | "repsDone" | "rpe" | "notes"
+  "id" | "workoutSets" | "weight" | "repsDone" | "rpe" | "notes"
 >[] = [
   { day: "push", dayLabel: "Push", pattern: "Incline Press", exercise: "Incline DB Press", alternates: ["Incline Barbell Press", "Smith Machine Incline Press", "Low Incline Machine Press", "Feet-Elevated Push-Up"], sets: 3, targetReps: "6-10" },
   { day: "push", dayLabel: "Push", pattern: "Horizontal Press", exercise: "Machine Chest Press", alternates: ["Flat DB Press", "Barbell Bench Press", "Cable Chest Press", "Push-Up"], sets: 3, targetReps: "8-12" },
