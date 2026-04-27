@@ -1524,3 +1524,235 @@ p {
   background-size: 200% auto;
   animation: shimmer 3s linear infinite;
 }
+
+
+/* ===== SWIGGY-INSPIRED FITNESS UI + MULTI-SET LOGGING ===== */
+
+:root {
+  --app-gap: 20px;
+  --section-gap: 30px;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+.container {
+  width: 100%;
+  max-width: 1180px;
+}
+
+.game-shell {
+  padding-bottom: 110px;
+}
+
+.card,
+.level-card,
+.workout-day-card,
+.exercise-card,
+.logged-meal-card,
+.checkin-day-card,
+.nutrition-input-card,
+.readiness-panel,
+.game-metric,
+.achievement-card {
+  border-radius: 22px;
+}
+
+.game-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  padding: 14px 0 10px;
+  backdrop-filter: blur(14px);
+}
+
+.tabbar {
+  position: sticky;
+  top: 78px;
+  z-index: 35;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding: 8px 0 16px;
+  margin-bottom: 24px;
+  scrollbar-width: none;
+}
+
+.tabbar::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  flex: 0 0 auto;
+  border-radius: 999px;
+}
+
+.game-dashboard,
+.nutrition-page,
+.grid {
+  gap: var(--section-gap);
+}
+
+.workout-card-list {
+  gap: var(--app-gap);
+}
+
+.exercise-card {
+  display: grid;
+  gap: var(--app-gap);
+}
+
+.set-logger {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.set-row {
+  display: grid;
+  grid-template-columns: 72px repeat(3, minmax(100px, 1fr)) 120px;
+  gap: 12px;
+  align-items: end;
+  padding: 14px;
+  border-radius: 16px;
+  background: #111827;
+  border: 1px solid #273244;
+}
+
+.set-number {
+  min-height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: #0f172a;
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.compact-exercise-btn {
+  min-height: 42px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@media (min-width: 1201px) {
+  .workout-card-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1200px) {
+  .container {
+    max-width: 100%;
+  }
+
+  .workout-card-list {
+    grid-template-columns: 1fr;
+  }
+
+  .set-row {
+    grid-template-columns: 72px repeat(3, minmax(100px, 1fr));
+  }
+
+  .set-row .btn {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 760px) {
+  :root {
+    --app-gap: 16px;
+    --section-gap: 24px;
+  }
+
+  .container {
+    padding: 14px;
+  }
+
+  .game-header {
+    position: static;
+  }
+
+  .tabbar {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    top: auto;
+    z-index: 60;
+    margin: 0;
+    padding: 8px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.96);
+    border: 1px solid #273244;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.35);
+  }
+
+  .tab {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  .row,
+  .row.space-between {
+    align-items: stretch;
+  }
+
+  .set-row {
+    grid-template-columns: 1fr;
+  }
+
+  .set-number {
+    place-items: start;
+    padding: 13px 14px;
+  }
+
+  .game-metrics,
+  .badge-grid,
+  .xp-rules-grid,
+  .mini-grid,
+  .meal-log-grid,
+  .meal-edit-grid,
+  .checkin-input-grid,
+  .grid-2,
+  .grid-3,
+  .grid-4 {
+    grid-template-columns: 1fr;
+  }
+
+  .input,
+  .select,
+  .textarea,
+  .btn {
+    font-size: 16px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 600px) {
+  .game-header {
+    position: static;
+  }
+
+  .tabbar {
+    position: sticky;
+    top: 0;
+    bottom: auto;
+    border-radius: 0;
+  }
+
+  .set-row {
+    grid-template-columns: 72px repeat(3, minmax(100px, 1fr)) 120px;
+  }
+}

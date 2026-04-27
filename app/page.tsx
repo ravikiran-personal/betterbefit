@@ -14,6 +14,13 @@ type DailyLog = {
   waist: number | "";
 };
 
+type WorkoutSet = {
+  id: string;
+  weight: number | "";
+  reps: number | "";
+  rpe: number | "";
+};
+
 type ExerciseLog = {
   id: string;
   day: string;
@@ -23,6 +30,7 @@ type ExerciseLog = {
   alternates: string[];
   sets: number;
   targetReps: string;
+  workoutSets: WorkoutSet[];
   weight: number | "";
   repsDone: number | "";
   rpe: number | "";
@@ -262,10 +270,20 @@ function seedWeekLogs(): DailyLog[] {
   }));
 }
 
+function createWorkoutSets(count: number): WorkoutSet[] {
+  return Array.from({ length: Math.max(1, count) }).map(() => ({
+    id: cryptoSafeId(),
+    weight: "",
+    reps: "",
+    rpe: ""
+  }));
+}
+
 function seedWorkoutLogs(): ExerciseLog[] {
   return workoutTemplate.map((item) => ({
     id: cryptoSafeId(),
     ...item,
+    workoutSets: createWorkoutSets(item.sets),
     weight: "",
     repsDone: "",
     rpe: "",
@@ -447,7 +465,12 @@ export default function Page() {
 
   const workoutCompletion = useMemo(() => {
     const filled = state.workoutLogs.filter(
-      (x) => x.weight !== "" || x.repsDone !== "" || x.rpe !== "" || x.notes.trim() !== ""
+      (x) =>
+        x.notes.trim() !== "" ||
+        x.workoutSets?.some((set) => set.weight !== "" || set.reps !== "" || set.rpe !== "") ||
+        x.weight !== "" ||
+        x.repsDone !== "" ||
+        x.rpe !== ""
     ).length;
     return Math.round((filled / state.workoutLogs.length) * 100);
   }, [state.workoutLogs]);
@@ -605,6 +628,67 @@ export default function Page() {
     }));
   }
 
+  function updateWorkoutSet(exerciseId: string, setId: string, key: keyof WorkoutSet, value: number | "") {
+    setState((prev) => ({
+      ...prev,
+      workoutLogs: prev.workoutLogs.map((exercise) => {
+        if (exercise.id !== exerciseId) return exercise;
+
+        const updatedSets = exercise.workoutSets.map((set) =>
+          set.id === setId ? { ...set, [key]: value } : set
+        );
+
+        const topSet = updatedSets[0] || { weight: "", reps: "", rpe: "" };
+
+        return {
+          ...exercise,
+          workoutSets: updatedSets,
+          sets: updatedSets.length,
+          weight: cleanNumber(topSet.weight),
+          repsDone: cleanNumber(topSet.reps),
+          rpe: cleanNumber(topSet.rpe)
+        };
+      })
+    }));
+  }
+
+  function addSetToExercise(exerciseId: string) {
+    setState((prev) => ({
+      ...prev,
+      workoutLogs: prev.workoutLogs.map((exercise) =>
+        exercise.id === exerciseId
+          ? {
+              ...exercise,
+              workoutSets: [...exercise.workoutSets, { id: cryptoSafeId(), weight: "", reps: "", rpe: "" }],
+              sets: exercise.workoutSets.length + 1
+            }
+          : exercise
+      )
+    }));
+  }
+
+  function deleteSetFromExercise(exerciseId: string, setId: string) {
+    setState((prev) => ({
+      ...prev,
+      workoutLogs: prev.workoutLogs.map((exercise) => {
+        if (exercise.id !== exerciseId) return exercise;
+
+        const remainingSets = exercise.workoutSets.filter((set) => set.id !== setId);
+        const safeSets = remainingSets.length ? remainingSets : createWorkoutSets(1);
+        const topSet = safeSets[0];
+
+        return {
+          ...exercise,
+          workoutSets: safeSets,
+          sets: safeSets.length,
+          weight: cleanNumber(topSet.weight),
+          repsDone: cleanNumber(topSet.reps),
+          rpe: cleanNumber(topSet.rpe)
+        };
+      })
+    }));
+  }
+
   function updateExerciseChoice(id: string, exercise: string) {
     setState((prev) => ({
       ...prev,
@@ -638,6 +722,7 @@ export default function Page() {
           alternates: ["New exercise"],
           sets: 2,
           targetReps: "8-12",
+          workoutSets: createWorkoutSets(2),
           weight: "",
           repsDone: "",
           rpe: "",
@@ -842,6 +927,12 @@ export default function Page() {
   }
 
   function calculateExerciseVolume(exercise: ExerciseLog) {
+    if (exercise.workoutSets?.length) {
+      return exercise.workoutSets.reduce((sum, set) => {
+        return sum + numberOrDefault(set.weight, 0) * numberOrDefault(set.reps, 0);
+      }, 0);
+    }
+
     const weight = numberOrDefault(exercise.weight, 0);
     const reps = numberOrDefault(exercise.repsDone, 0);
     return weight * reps;
@@ -861,7 +952,12 @@ export default function Page() {
 
   function logWorkout() {
     const hasLoggedData = state.workoutLogs.some(
-      (exercise) => exercise.weight !== "" || exercise.repsDone !== "" || exercise.rpe !== "" || exercise.notes.trim() !== ""
+      (exercise) =>
+        exercise.notes.trim() !== "" ||
+        exercise.workoutSets?.some((set) => set.weight !== "" || set.reps !== "" || set.rpe !== "") ||
+        exercise.weight !== "" ||
+        exercise.repsDone !== "" ||
+        exercise.rpe !== ""
     );
 
     if (!hasLoggedData) {
@@ -1255,16 +1351,46 @@ export default function Page() {
                           : "Log weight and reps to compare progress."}
                       </div>
 
-                      <div className="mini-grid">
-                        <Field label="Weight">
-                          <NumericInput value={item.weight} onChange={(v) => updateWorkout(item.id, "weight", v)} placeholder={previous ? String(numberOrDefault(previous.weight, 0)) : "New"} />
-                        </Field>
-                        <Field label="Reps">
-                          <NumericInput value={item.repsDone} onChange={(v) => updateWorkout(item.id, "repsDone", v)} placeholder={previous ? String(numberOrDefault(previous.repsDone, 0)) : ""} />
-                        </Field>
-                        <Field label="RPE">
-                          <NumericInput value={item.rpe} onChange={(v) => updateWorkout(item.id, "rpe", v)} />
-                        </Field>
+                      <div className="set-logger">
+                        <div className="row space-between">
+                          <strong>Sets</strong>
+                          <button className="btn secondary compact-exercise-btn" onClick={() => addSetToExercise(item.id)}>
+                            Add set
+                          </button>
+                        </div>
+
+                        {item.workoutSets.map((set, setIndex) => (
+                          <div className="set-row" key={set.id}>
+                            <div className="set-number">Set {setIndex + 1}</div>
+                            <Field label="Weight">
+                              <NumericInput
+                                value={set.weight}
+                                onChange={(v) => updateWorkoutSet(item.id, set.id, "weight", v)}
+                                placeholder={previous ? String(numberOrDefault(previous.weight, 0)) : "New"}
+                              />
+                            </Field>
+                            <Field label="Reps">
+                              <NumericInput
+                                value={set.reps}
+                                onChange={(v) => updateWorkoutSet(item.id, set.id, "reps", v)}
+                                placeholder={previous ? String(numberOrDefault(previous.repsDone, 0)) : ""}
+                              />
+                            </Field>
+                            <Field label="RPE">
+                              <NumericInput
+                                value={set.rpe}
+                                onChange={(v) => updateWorkoutSet(item.id, set.id, "rpe", v)}
+                              />
+                            </Field>
+                            <button
+                              className="btn warn compact-exercise-btn"
+                              onClick={() => deleteSetFromExercise(item.id, set.id)}
+                              disabled={item.workoutSets.length <= 1}
+                            >
+                              Delete set
+                            </button>
+                          </div>
+                        ))}
                       </div>
 
                       <Field label="Notes">
@@ -1309,7 +1435,7 @@ export default function Page() {
                         <td>
                           {session.exercises
                             .filter((exercise) => calculateExerciseVolume(exercise) > 0)
-                            .map((exercise) => `${exercise.exercise}: ${numberOrDefault(exercise.weight, 0)} x ${numberOrDefault(exercise.repsDone, 0)}`)
+                            .map((exercise) => `${exercise.exercise}: ${calculateExerciseVolume(exercise)} volume`)
                             .join(", ")}
                         </td>
                         <td>
@@ -2241,6 +2367,31 @@ function normalizeWorkoutLog(raw: Partial<ExerciseLog>): ExerciseLog {
     workoutTemplate.find((item) => item.day === raw.day) ||
     workoutTemplate[0];
 
+  const existingSets = Array.isArray(raw.workoutSets)
+    ? raw.workoutSets.map((set) => ({
+        id: set.id || cryptoSafeId(),
+        weight: cleanNumber(set.weight),
+        reps: cleanNumber(set.reps),
+        rpe: cleanNumber(set.rpe)
+      }))
+    : [];
+
+  const fallbackSets =
+    existingSets.length > 0
+      ? existingSets
+      : createWorkoutSets(numberOrDefault(raw.sets, templateMatch.sets)).map((set, index) =>
+          index === 0
+            ? {
+                ...set,
+                weight: cleanNumber(raw.weight),
+                reps: cleanNumber(raw.repsDone),
+                rpe: cleanNumber(raw.rpe)
+              }
+            : set
+        );
+
+  const topSet = fallbackSets[0] || { weight: "", reps: "", rpe: "" };
+
   return {
     id: raw.id || cryptoSafeId(),
     day: raw.day || templateMatch.day,
@@ -2248,11 +2399,12 @@ function normalizeWorkoutLog(raw: Partial<ExerciseLog>): ExerciseLog {
     pattern: raw.pattern || templateMatch.pattern || "Custom",
     exercise: raw.exercise || templateMatch.exercise,
     alternates: Array.isArray(raw.alternates) && raw.alternates.length ? raw.alternates : templateMatch.alternates || [templateMatch.exercise],
-    sets: numberOrDefault(raw.sets, templateMatch.sets),
+    sets: fallbackSets.length,
     targetReps: raw.targetReps || templateMatch.targetReps,
-    weight: cleanNumber(raw.weight),
-    repsDone: cleanNumber(raw.repsDone),
-    rpe: cleanNumber(raw.rpe),
+    workoutSets: fallbackSets,
+    weight: cleanNumber(topSet.weight),
+    repsDone: cleanNumber(topSet.reps),
+    rpe: cleanNumber(topSet.rpe),
     notes: raw.notes || ""
   };
 }
