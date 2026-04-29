@@ -1874,3 +1874,197 @@ button:disabled {
   color: #34d399;
   border-color: #34d399;
 }
+
+
+/* ===== COMPACT COLLAPSIBLE UX ===== */
+
+.compact-page {
+  gap: 14px;
+}
+
+.compact-section,
+.workout-day-shell {
+  display: grid;
+  gap: 10px;
+}
+
+.collapse-pill {
+  width: 100%;
+  border: 1px solid #273244;
+  background: #111827;
+  color: #e5e7eb;
+  border-radius: 999px;
+  padding: 14px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.collapse-pill.open {
+  border-color: rgba(52, 211, 153, 0.5);
+  background: rgba(52, 211, 153, 0.08);
+}
+
+.collapse-pill strong {
+  display: block;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.pill-subtext {
+  display: block;
+  margin-top: 4px;
+  color: #9ca3af;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.pill-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: #0f172a;
+  color: #34d399;
+  font-size: 20px;
+  font-weight: 800;
+  flex: 0 0 auto;
+}
+
+.compact-expanded {
+  margin-top: 0;
+  animation: compactExpand 160ms ease-out;
+}
+
+@keyframes compactExpand {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.exercise-pill-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.exercise-pill-card {
+  border: 1px solid #273244;
+  border-radius: 18px;
+  background: #0f172a;
+  overflow: hidden;
+}
+
+.exercise-collapse-pill {
+  border: 0;
+  box-shadow: none;
+  border-radius: 18px;
+  background: #0f172a;
+}
+
+.exercise-pill-card.open .exercise-collapse-pill {
+  background: rgba(52, 211, 153, 0.08);
+}
+
+.exercise-expanded {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+  border-top: 1px solid #273244;
+}
+
+.custom-exercise-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.inline-confirm {
+  max-width: 100%;
+}
+
+.set-detail-card,
+.meal-detail-card {
+  background: #111827;
+  border: 1px solid #273244;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.set-detail-card summary,
+.meal-detail-card summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.set-detail-card summary::-webkit-details-marker,
+.meal-detail-card summary::-webkit-details-marker {
+  display: none;
+}
+
+.set-detail-card summary span:last-child,
+.meal-detail-card summary span:last-child {
+  color: #9ca3af;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.set-detail-card[open] summary,
+.meal-detail-card[open] summary {
+  border-bottom: 1px solid #273244;
+}
+
+.set-detail-card .set-row {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.logged-meal-card.meal-detail-card {
+  padding: 0;
+}
+
+.meal-detail-card .meal-edit-grid {
+  padding: 16px;
+}
+
+.section-pill {
+  margin-bottom: 0;
+}
+
+@media (max-width: 760px) {
+  .collapse-pill {
+    border-radius: 20px;
+    padding: 13px 14px;
+  }
+
+  .custom-exercise-row {
+    grid-template-columns: 1fr;
+  }
+
+  .exercise-expanded {
+    padding: 14px;
+  }
+
+  .set-detail-card summary,
+  .meal-detail-card summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .set-detail-card summary span:last-child,
+  .meal-detail-card summary span:last-child {
+    white-space: normal;
+  }
+}

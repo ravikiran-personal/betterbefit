@@ -313,6 +313,16 @@ export default function Page() {
   const [tab, setTab] = useState<Tab>("dashboard");
   const [selectedDashboardDate, setSelectedDashboardDate] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
+  const [expandedExercises, setExpandedExercises] = useState<Record<string, boolean>>({});
+  const [expandedNutritionSections, setExpandedNutritionSections] = useState<Record<string, boolean>>({
+    logMeal: true,
+    smartSearch: false,
+    totals: true,
+    loggedMeals: true,
+    presets: false
+  });
+  const [customExerciseDrafts, setCustomExerciseDrafts] = useState<Record<string, string>>({});
   const [state, setState] = useState<AppState>(initialState);
   const [mealPresetName, setMealPresetName] = useState("");
   const [mealDraft, setMealDraft] = useState<FoodItem>({
@@ -696,6 +706,42 @@ export default function Page() {
         item.id === id ? { ...item, exercise } : item
       )
     }));
+  }
+
+  function toggleDay(day: string) {
+    setExpandedDays((prev) => ({ ...prev, [day]: !prev[day] }));
+  }
+
+  function toggleExercise(id: string) {
+    setExpandedExercises((prev) => ({ ...prev, [id]: !prev[id] }));
+  }
+
+  function toggleNutritionSection(section: string) {
+    setExpandedNutritionSections((prev) => ({ ...prev, [section]: !prev[section] }));
+  }
+
+  function addCustomExerciseChoice(id: string) {
+    const customName = customExerciseDrafts[id]?.trim();
+
+    if (!customName) {
+      alert("Enter the exercise name first.");
+      return;
+    }
+
+    setState((prev) => ({
+      ...prev,
+      workoutLogs: prev.workoutLogs.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              exercise: customName,
+              alternates: Array.from(new Set([...item.alternates, customName]))
+            }
+          : item
+      )
+    }));
+
+    setCustomExerciseDrafts((prev) => ({ ...prev, [id]: "" }));
   }
 
   function deleteExerciseFromWorkout(id: string) {
@@ -1240,173 +1286,165 @@ export default function Page() {
       )}
 
       {tab === "workouts" && (
-        <div className="grid">
+        <div className="grid compact-page">
           <div className="card airy-card">
             <div className="row space-between">
               <div>
                 <h2 style={{ margin: 0 }}>Training plan</h2>
                 <p className="small" style={{ marginTop: 6 }}>
-                  Focused volume for recovery, aesthetics, strength, and mobility.
+                  Tap a workout day, then tap an exercise to log sets.
                 </p>
               </div>
               <div className="row">
-                <button className="btn" onClick={logWorkout}>
-                  Log workout
-                </button>
-                <button className="btn secondary" onClick={() => setState((prev) => ({ ...prev, workoutLogs: seedWorkoutLogs() }))}>
-                  Reset
-                </button>
+                <button className="btn" onClick={logWorkout}>Log workout</button>
+                <button className="btn secondary" onClick={() => setState((prev) => ({ ...prev, workoutLogs: seedWorkoutLogs() }))}>Reset</button>
               </div>
             </div>
           </div>
 
-          {getWorkoutDayGroups(state.workoutLogs).map((group) => (
-            <div className="card workout-day-card" key={group.day}>
-              <div className="row space-between">
-                <div>
-                  <h2 style={{ margin: 0 }}>{group.dayLabel}</h2>
-                  <p className="small" style={{ marginTop: 6 }}>{getDayDescription(group.day)}</p>
-                </div>
-                {confirmingId === `add-${group.day}` ? (
-                  <div className="row">
-                    <span className="small" style={{ maxWidth: 360 }}>
-                      Adding an exercise is not advisable. The current plan's volume ensures maximum recovery, addition of exercises may cause reduced recovery.
-                    </span>
-                    <button className="btn warn" onClick={() => addExerciseToDay(group.day)}>
-                      Yes, add
-                    </button>
-                    <button className="btn secondary" onClick={() => setConfirmingId(null)}>
-                      Cancel
-                    </button>
+          {getWorkoutDayGroups(state.workoutLogs).map((group) => {
+            const isDayOpen = !!expandedDays[group.day];
+            const loggedExercises = group.exercises.filter((exercise) => calculateExerciseVolume(exercise) > 0).length;
+            const dayVolume = calculateSessionVolume(group.exercises);
+
+            return (
+              <div className="workout-day-shell" key={group.day}>
+                <button className={`collapse-pill workout-day-pill ${isDayOpen ? "open" : ""}`} onClick={() => toggleDay(group.day)}>
+                  <div>
+                    <strong>{group.dayLabel}</strong>
+                    <span className="pill-subtext">{group.exercises.length} exercises • {loggedExercises} logged • {dayVolume} volume</span>
                   </div>
-                ) : (
-                  <button className="btn secondary" onClick={() => setConfirmingId(`add-${group.day}`)}>
-                    Add exercise
-                  </button>
-                )}
-              </div>
+                  <span className="pill-icon">{isDayOpen ? "−" : "+"}</span>
+                </button>
 
-              <div className="workout-card-list">
-                {group.exercises.map((item) => {
-                  const previous = getPreviousExercise(item.exercise);
-                  const previousVolume = previous ? calculateExerciseVolume(previous) : 0;
-                  const currentVolume = calculateExerciseVolume(item);
-                  const hasCurrentVolume = currentVolume > 0;
-                  const hasProgress = previousVolume > 0 && currentVolume > previousVolume;
-                  const choices = Array.from(new Set([item.exercise, ...item.alternates]));
-
-                  return (
-                    <div className="exercise-card" key={item.id}>
-                      <div className="row space-between">
-                        <div>
-                          <div className="pattern-pill">{item.pattern}</div>
-                          <strong>{item.exercise}</strong>
+                {isDayOpen ? (
+                  <div className="card workout-day-card compact-expanded">
+                    <div className="row space-between">
+                      <p className="small" style={{ margin: 0 }}>{getDayDescription(group.day)}</p>
+                      {confirmingId === `add-${group.day}` ? (
+                        <div className="row inline-confirm">
+                          <span className="small">
+                            Adding an exercise is not advisable. The current plan's volume ensures maximum recovery, addition of exercises may cause reduced recovery.
+                          </span>
+                          <button className="btn warn" onClick={() => addExerciseToDay(group.day)}>Yes, add</button>
+                          <button className="btn secondary" onClick={() => setConfirmingId(null)}>Cancel</button>
                         </div>
-                        <div className="row">
-                          <span className="badge">{item.sets} sets • {item.targetReps}</span>
-                          {confirmingId === item.id ? (
-                            <>
-                              <span className="small">
-                                Deleting an exercise may reduce workout efficiency.
-                              </span>
-                              <button className="btn warn compact-exercise-btn" onClick={() => deleteExerciseFromWorkout(item.id)}>
-                                Yes, delete
-                              </button>
-                              <button className="btn secondary compact-exercise-btn" onClick={() => setConfirmingId(null)}>
-                                Cancel
-                              </button>
-                            </>
-                          ) : (
-                            <button className="btn warn compact-exercise-btn" onClick={() => setConfirmingId(item.id)}>
-                              Delete
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      <Field label="Choose exercise">
-                        <select
-                          className="input"
-                          value={item.exercise}
-                          onChange={(e) => updateExerciseChoice(item.id, e.target.value)}
-                        >
-                          {choices.map((choice) => (
-                            <option key={choice} value={choice}>{choice}</option>
-                          ))}
-                        </select>
-                      </Field>
-
-                      <div className="small">
-                        {previous
-                          ? `Previous: ${numberOrDefault(previous.weight, 0)} kg x ${numberOrDefault(previous.repsDone, 0)} reps = ${previousVolume}`
-                          : "New exercise"}
-                      </div>
-                      <div className="small overload-text">
-                        {hasCurrentVolume
-                          ? hasProgress
-                            ? "Progressive overload achieved"
-                            : previousVolume > 0
-                              ? `Beat ${previousVolume} total volume`
-                              : `Current volume: ${currentVolume}`
-                          : "Log weight and reps to compare progress."}
-                      </div>
-
-                      <div className="set-logger">
-                        <div className="row space-between">
-                          <strong>Sets</strong>
-                          <button className="btn secondary compact-exercise-btn" onClick={() => addSetToExercise(item.id)}>
-                            Add set
-                          </button>
-                        </div>
-
-                        {item.workoutSets.map((set, setIndex) => (
-                          <div className="set-row" key={set.id}>
-                            <div className="set-number">Set {setIndex + 1}</div>
-                            <Field label="Weight">
-                              <NumericInput
-                                value={set.weight}
-                                onChange={(v) => updateWorkoutSet(item.id, set.id, "weight", v)}
-                                placeholder={previous ? String(numberOrDefault(previous.weight, 0)) : "New"}
-                              />
-                            </Field>
-                            <Field label="Reps">
-                              <NumericInput
-                                value={set.reps}
-                                onChange={(v) => updateWorkoutSet(item.id, set.id, "reps", v)}
-                                placeholder={previous ? String(numberOrDefault(previous.repsDone, 0)) : ""}
-                              />
-                            </Field>
-                            <Field label="RPE">
-                              <NumericInput
-                                value={set.rpe}
-                                onChange={(v) => updateWorkoutSet(item.id, set.id, "rpe", v)}
-                              />
-                            </Field>
-                            <button
-                              className="btn warn compact-exercise-btn"
-                              onClick={() => deleteSetFromExercise(item.id, set.id)}
-                              disabled={item.workoutSets.length <= 1}
-                            >
-                              Delete set
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-
-                      <Field label="Notes">
-                        <input
-                          className="input"
-                          value={item.notes}
-                          onChange={(e) => updateWorkout(item.id, "notes", e.target.value)}
-                          placeholder="Form cues, pain, tempo, etc."
-                        />
-                      </Field>
+                      ) : (
+                        <button className="btn secondary" onClick={() => setConfirmingId(`add-${group.day}`)}>Add exercise</button>
+                      )}
                     </div>
-                  );
-                })}
+
+                    <div className="exercise-pill-list">
+                      {group.exercises.map((item) => {
+                        const previous = getPreviousExercise(item.exercise);
+                        const previousVolume = previous ? calculateExerciseVolume(previous) : 0;
+                        const currentVolume = calculateExerciseVolume(item);
+                        const hasCurrentVolume = currentVolume > 0;
+                        const hasProgress = previousVolume > 0 && currentVolume > previousVolume;
+                        const choices = Array.from(new Set([item.exercise, ...item.alternates]));
+                        const isExerciseOpen = !!expandedExercises[item.id];
+
+                        return (
+                          <div className={`exercise-pill-card ${isExerciseOpen ? "open" : ""}`} key={item.id}>
+                            <button className="collapse-pill exercise-collapse-pill" onClick={() => toggleExercise(item.id)}>
+                              <div>
+                                <span className="pattern-pill">{item.pattern}</span>
+                                <strong>{item.exercise}</strong>
+                                <span className="pill-subtext">
+                                  {item.workoutSets.length} sets • {currentVolume > 0 ? `${currentVolume} volume` : "Tap to log"}
+                                </span>
+                              </div>
+                              <span className="pill-icon">{isExerciseOpen ? "−" : "+"}</span>
+                            </button>
+
+                            {isExerciseOpen ? (
+                              <div className="exercise-expanded">
+                                <div className="row space-between">
+                                  <span className="badge">{item.sets} sets • {item.targetReps}</span>
+                                  {confirmingId === item.id ? (
+                                    <div className="row inline-confirm">
+                                      <span className="small">Deleting an exercise may reduce workout efficiency.</span>
+                                      <button className="btn warn compact-exercise-btn" onClick={() => deleteExerciseFromWorkout(item.id)}>Yes, delete</button>
+                                      <button className="btn secondary compact-exercise-btn" onClick={() => setConfirmingId(null)}>Cancel</button>
+                                    </div>
+                                  ) : (
+                                    <button className="btn warn compact-exercise-btn" onClick={() => setConfirmingId(item.id)}>Delete</button>
+                                  )}
+                                </div>
+
+                                <Field label="Choose exercise">
+                                  <select className="input" value={item.exercise} onChange={(e) => updateExerciseChoice(item.id, e.target.value)}>
+                                    {choices.map((choice) => (
+                                      <option key={choice} value={choice}>{choice}</option>
+                                    ))}
+                                  </select>
+                                </Field>
+
+                                <div className="custom-exercise-row">
+                                  <input
+                                    className="input"
+                                    value={customExerciseDrafts[item.id] || ""}
+                                    placeholder="Add custom exercise"
+                                    onChange={(e) => setCustomExerciseDrafts((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                                  />
+                                  <button className="btn secondary" onClick={() => addCustomExerciseChoice(item.id)}>Add option</button>
+                                </div>
+
+                                <div className="small">
+                                  {previous ? `Previous: ${numberOrDefault(previous.weight, 0)} kg x ${numberOrDefault(previous.repsDone, 0)} reps = ${previousVolume}` : "New exercise"}
+                                </div>
+                                <div className="small overload-text">
+                                  {hasCurrentVolume
+                                    ? hasProgress
+                                      ? "Progressive overload achieved"
+                                      : previousVolume > 0
+                                        ? `Beat ${previousVolume} total volume`
+                                        : `Current volume: ${currentVolume}`
+                                    : "Log weight and reps to compare progress."}
+                                </div>
+
+                                <div className="set-logger">
+                                  <div className="row space-between">
+                                    <strong>Sets</strong>
+                                    <button className="btn secondary compact-exercise-btn" onClick={() => addSetToExercise(item.id)}>Add set</button>
+                                  </div>
+
+                                  {item.workoutSets.map((set, setIndex) => (
+                                    <details className="set-detail-card" key={set.id} open={setIndex === 0}>
+                                      <summary>
+                                        <span>Set {setIndex + 1}</span>
+                                        <span>{numberOrDefault(set.weight, 0)} kg × {numberOrDefault(set.reps, 0)} reps</span>
+                                      </summary>
+                                      <div className="set-row">
+                                        <Field label="Weight">
+                                          <NumericInput value={set.weight} onChange={(v) => updateWorkoutSet(item.id, set.id, "weight", v)} placeholder={previous ? String(numberOrDefault(previous.weight, 0)) : "New"} />
+                                        </Field>
+                                        <Field label="Reps">
+                                          <NumericInput value={set.reps} onChange={(v) => updateWorkoutSet(item.id, set.id, "reps", v)} placeholder={previous ? String(numberOrDefault(previous.repsDone, 0)) : ""} />
+                                        </Field>
+                                        <Field label="RPE">
+                                          <NumericInput value={set.rpe} onChange={(v) => updateWorkoutSet(item.id, set.id, "rpe", v)} />
+                                        </Field>
+                                        <button className="btn warn compact-exercise-btn" onClick={() => deleteSetFromExercise(item.id, set.id)} disabled={item.workoutSets.length <= 1}>Delete set</button>
+                                      </div>
+                                    </details>
+                                  ))}
+                                </div>
+
+                                <Field label="Notes">
+                                  <input className="input" value={item.notes} onChange={(e) => updateWorkout(item.id, "notes", e.target.value)} placeholder="Form cues, pain, tempo, etc." />
+                                </Field>
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           <div className="card" style={{ background: "#0f172a" }}>
             <strong>Progression rule:</strong> stay 1-2 reps shy of failure on most sets. When you hit the top of the target rep range with solid form, increase load next week.
@@ -1440,12 +1478,8 @@ export default function Page() {
                         </td>
                         <td>
                           <div className="row">
-                            <button className="btn secondary" onClick={() => loadWorkoutSession(session)}>
-                              Load
-                            </button>
-                            <button className="btn warn" onClick={() => deleteWorkoutSession(session.id)}>
-                              Delete
-                            </button>
+                            <button className="btn secondary" onClick={() => loadWorkoutSession(session)}>Load</button>
+                            <button className="btn warn" onClick={() => deleteWorkoutSession(session.id)}>Delete</button>
                           </div>
                         </td>
                       </tr>
@@ -1459,302 +1493,245 @@ export default function Page() {
       )}
 
       {tab === "nutrition" && (
-        <div className="nutrition-page">
-          <section className="card nutrition-input-card">
-            <div className="row space-between">
+        <div className="nutrition-page compact-page">
+          <section className="compact-section">
+            <button className={`collapse-pill section-pill ${expandedNutritionSections.logMeal ? "open" : ""}`} onClick={() => toggleNutritionSection("logMeal")}>
               <div>
-                <h2 style={{ margin: 0 }}>Log meal</h2>
-                <p className="small" style={{ marginTop: 6 }}>
-                  Add a food item here. Once added, it moves into the logged meals section below.
-                </p>
+                <strong>Log meal</strong>
+                <span className="pill-subtext">Add food, grams, calories and macros</span>
               </div>
-            </div>
+              <span className="pill-icon">{expandedNutritionSections.logMeal ? "−" : "+"}</span>
+            </button>
 
-            <div className="meal-log-grid">
-              <Field label="Meal">
-                <select
-                  className="input"
-                  value={mealDraft.meal}
-                  onChange={(e) => updateMealDraft("meal", e.target.value)}
-                >
-                  <option value="Breakfast">Breakfast</option>
-                  <option value="Lunch">Lunch</option>
-                  <option value="Snack">Snack</option>
-                  <option value="Dinner">Dinner</option>
-                  <option value="Coffee">Coffee</option>
-                  <option value="Pre-workout">Pre-workout</option>
-                  <option value="Post-workout">Post-workout</option>
-                  <option value="Custom">Custom</option>
-                </select>
-              </Field>
+            {expandedNutritionSections.logMeal ? (
+              <div className="card nutrition-input-card compact-expanded">
+                <div className="meal-log-grid">
+                  <Field label="Meal">
+                    <select className="input" value={mealDraft.meal} onChange={(e) => updateMealDraft("meal", e.target.value)}>
+                      <option value="Breakfast">Breakfast</option>
+                      <option value="Lunch">Lunch</option>
+                      <option value="Snack">Snack</option>
+                      <option value="Dinner">Dinner</option>
+                      <option value="Coffee">Coffee</option>
+                      <option value="Pre-workout">Pre-workout</option>
+                      <option value="Post-workout">Post-workout</option>
+                      <option value="Custom">Custom</option>
+                    </select>
+                  </Field>
 
-              <Field label="Food / meal">
-                <input
-                  className="input"
-                  value={mealDraft.food}
-                  placeholder="e.g. chicken biryani"
-                  onChange={(e) => updateMealDraft("food", e.target.value)}
-                />
-              </Field>
+                  <Field label="Food / meal">
+                    <input className="input" value={mealDraft.food} placeholder="e.g. chicken biryani" onChange={(e) => updateMealDraft("food", e.target.value)} />
+                  </Field>
 
-              <Field label="Amount">
-                <div className="unit-row">
-                  <NumericInput
-                    value={mealDraft.grams}
-                    onChange={(v) => updateMealDraft("grams", v === "" ? 0 : v)}
-                  />
-                  <select
-                    className="input unit-select"
-                    value={mealDraftUnit}
-                    onChange={(e) => setMealDraftUnit(e.target.value as "g" | "ml" | "oz")}
-                  >
-                    <option value="g">g</option>
-                    <option value="ml">ml</option>
-                    <option value="oz">oz</option>
-                  </select>
-                </div>
-              </Field>
-
-              <Field label="Calories">
-                <NumericInput value={mealDraft.calories} onChange={(v) => updateMealDraft("calories", v === "" ? 0 : v)} />
-              </Field>
-              <Field label="Protein">
-                <NumericInput value={mealDraft.protein} onChange={(v) => updateMealDraft("protein", v === "" ? 0 : v)} />
-              </Field>
-              <Field label="Carbs">
-                <NumericInput value={mealDraft.carbs} onChange={(v) => updateMealDraft("carbs", v === "" ? 0 : v)} />
-              </Field>
-              <Field label="Fat">
-                <NumericInput value={mealDraft.fats} onChange={(v) => updateMealDraft("fats", v === "" ? 0 : v)} />
-              </Field>
-
-              <div className="meal-action-cell">
-                <button className="btn" onClick={addMealDraft}>
-                  Add
-                </button>
-                <button
-                  className="btn secondary"
-                  onClick={() =>
-                    setMealDraft({
-                      id: "draft",
-                      meal: mealDraft.meal,
-                      food: "",
-                      grams: 100,
-                      calories: 0,
-                      protein: 0,
-                      carbs: 0,
-                      fats: 0
-                    })
-                  }
-                >
-                  Clear
-                </button>
-              </div>
-            </div>
-          </section>
-
-          <section className="card" style={{ background: "#0f172a" }}>
-            <h3 style={{ marginTop: 0 }}>Smart food search</h3>
-            <p className="small">
-              Search standard foods using USDA first. Mixed or Indian-style meals are estimated with Claude.
-            </p>
-            <div className="row">
-              <input
-                className="input"
-                value={foodSearchQuery}
-                placeholder="e.g. chicken biryani, chicken breast, curd rice"
-                onChange={(e) => setFoodSearchQuery(e.target.value)}
-              />
-              <NumericInput
-                value={foodSearchGrams}
-                onChange={(v) => setFoodSearchGrams(v)}
-                placeholder="grams"
-              />
-              <button className="btn" onClick={searchFoodMacros} disabled={isSearchingFood}>
-                {isSearchingFood ? "Searching..." : "Search macros"}
-              </button>
-            </div>
-
-            {foodSearchResult ? (
-              <div className="card" style={{ marginTop: 14 }}>
-                <div className="row space-between">
-                  <div>
-                    <strong>{foodSearchResult.food}</strong>
-                    <div className="small">
-                      {foodSearchResult.grams}g | {foodSearchResult.calories} cal | P {foodSearchResult.protein}g | C {foodSearchResult.carbs}g | F {foodSearchResult.fats}g
+                  <Field label="Amount">
+                    <div className="unit-row">
+                      <NumericInput value={mealDraft.grams} onChange={(v) => updateMealDraft("grams", v === "" ? 0 : v)} />
+                      <select className="input unit-select" value={mealDraftUnit} onChange={(e) => setMealDraftUnit(e.target.value as "g" | "ml" | "oz")}>
+                        <option value="g">g</option>
+                        <option value="ml">ml</option>
+                        <option value="oz">oz</option>
+                      </select>
                     </div>
-                    <div className="small">
-                      {foodSearchResult.source === "usda" ? "Verified data" : foodSearchResult.source === "claude" ? "Estimated (AI)" : "Saved result"} | Confidence: {foodSearchResult.confidence}
-                    </div>
-                    <div className="small">{foodSearchResult.note}</div>
+                  </Field>
+
+                  <Field label="Calories"><NumericInput value={mealDraft.calories} onChange={(v) => updateMealDraft("calories", v === "" ? 0 : v)} /></Field>
+                  <Field label="Protein"><NumericInput value={mealDraft.protein} onChange={(v) => updateMealDraft("protein", v === "" ? 0 : v)} /></Field>
+                  <Field label="Carbs"><NumericInput value={mealDraft.carbs} onChange={(v) => updateMealDraft("carbs", v === "" ? 0 : v)} /></Field>
+                  <Field label="Fat"><NumericInput value={mealDraft.fats} onChange={(v) => updateMealDraft("fats", v === "" ? 0 : v)} /></Field>
+
+                  <div className="meal-action-cell">
+                    <button className="btn" onClick={addMealDraft}>Add</button>
+                    <button className="btn secondary" onClick={() => setMealDraft({ id: "draft", meal: mealDraft.meal, food: "", grams: 100, calories: 0, protein: 0, carbs: 0, fats: 0 })}>Clear</button>
                   </div>
-                  <button
-                    className="btn"
-                    onClick={() => {
-                      setMealDraft({
-                        id: "draft",
-                        meal: "Search",
-                        food: foodSearchResult.food,
-                        grams: foodSearchResult.grams,
-                        calories: foodSearchResult.calories,
-                        protein: foodSearchResult.protein,
-                        carbs: foodSearchResult.carbs,
-                        fats: foodSearchResult.fats
-                      });
-                      setMealDraftUnit("g");
-                      setFoodSearchQuery("");
-                      setFoodSearchGrams(100);
-                      setFoodSearchResult(null);
-                    }}
-                  >
-                    Use in log form
-                  </button>
                 </div>
               </div>
             ) : null}
           </section>
 
-          <section className="grid grid-2">
-            <div className="card">
-              <h2 style={{ marginTop: 0 }}>Planned totals</h2>
-              <p>Calories: <strong>{Math.round(foodTotals.calories)}</strong></p>
-              <p>Protein: <strong>{foodTotals.protein.toFixed(1)} g</strong></p>
-              <p>Carbs: <strong>{foodTotals.carbs.toFixed(1)} g</strong></p>
-              <p>Fats: <strong>{foodTotals.fats.toFixed(1)} g</strong></p>
-            </div>
-
-            <div className="card">
-              <h2 style={{ marginTop: 0 }}>Recomp target</h2>
-              <p>Calories target: <strong>{state.settings.targetCalories}</strong></p>
-              <p>Protein target: <strong>{state.settings.proteinTarget} g</strong></p>
-              <p>Carb target: <strong>{state.settings.carbTarget} g</strong></p>
-              <p>Fat target: <strong>{state.settings.fatTarget} g</strong></p>
-            </div>
-          </section>
-
-          <section className="card logged-meals-card">
-            <div className="row space-between">
+          <section className="compact-section">
+            <button className={`collapse-pill section-pill ${expandedNutritionSections.smartSearch ? "open" : ""}`} onClick={() => toggleNutritionSection("smartSearch")}>
               <div>
-                <h2 style={{ margin: 0 }}>Logged meals</h2>
-                <p className="small" style={{ marginTop: 6 }}>
-                  Edit or delete individual logged items here.
-                </p>
+                <strong>Smart food search</strong>
+                <span className="pill-subtext">Use USDA or AI-estimated macros</span>
               </div>
-              <button className="btn secondary" onClick={addFood}>
-                Add blank row
-              </button>
-            </div>
+              <span className="pill-icon">{expandedNutritionSections.smartSearch ? "−" : "+"}</span>
+            </button>
 
-            {state.foods.length === 0 ? (
-              <p className="small">No meals logged yet.</p>
-            ) : (
-              <div className="logged-meal-list">
-                {state.foods.map((item) => (
-                  <div className="logged-meal-card" key={item.id}>
-                    <div className="meal-edit-grid">
-                      <Field label="Meal">
-                        <input className="input" value={item.meal} onChange={(e) => updateFood(item.id, "meal", e.target.value)} />
-                      </Field>
-                      <Field label="Food">
-                        <input className="input" value={item.food} onChange={(e) => updateFood(item.id, "food", e.target.value)} />
-                      </Field>
-                      <Field label="g/ml/oz">
-                        <NumericInput value={item.grams} onChange={(v) => updateFood(item.id, "grams", v)} />
-                      </Field>
-                      <Field label="Cal">
-                        <NumericInput value={item.calories} onChange={(v) => updateFood(item.id, "calories", v)} />
-                      </Field>
-                      <Field label="Protein">
-                        <NumericInput value={item.protein} onChange={(v) => updateFood(item.id, "protein", v)} />
-                      </Field>
-                      <Field label="Carbs">
-                        <NumericInput value={item.carbs} onChange={(v) => updateFood(item.id, "carbs", v)} />
-                      </Field>
-                      <Field label="Fat">
-                        <NumericInput value={item.fats} onChange={(v) => updateFood(item.id, "fats", v)} />
-                      </Field>
-                      <div className="meal-action-cell">
-                        <button className="btn warn" onClick={() => deleteFood(item.id)}>
-                          Delete
-                        </button>
+            {expandedNutritionSections.smartSearch ? (
+              <div className="card compact-expanded" style={{ background: "#0f172a" }}>
+                <p className="small">Search standard foods using USDA first. Mixed or Indian-style meals are estimated with Claude.</p>
+                <div className="row">
+                  <input className="input" value={foodSearchQuery} placeholder="e.g. chicken biryani, chicken breast, curd rice" onChange={(e) => setFoodSearchQuery(e.target.value)} />
+                  <NumericInput value={foodSearchGrams} onChange={(v) => setFoodSearchGrams(v)} placeholder="grams" />
+                  <button className="btn" onClick={searchFoodMacros} disabled={isSearchingFood}>{isSearchingFood ? "Searching..." : "Search macros"}</button>
+                </div>
+
+                {foodSearchResult ? (
+                  <div className="card" style={{ marginTop: 14 }}>
+                    <div className="row space-between">
+                      <div>
+                        <strong>{foodSearchResult.food}</strong>
+                        <div className="small">{foodSearchResult.grams}g | {foodSearchResult.calories} cal | P {foodSearchResult.protein}g | C {foodSearchResult.carbs}g | F {foodSearchResult.fats}g</div>
+                        <div className="small">{foodSearchResult.source === "usda" ? "Verified data" : foodSearchResult.source === "claude" ? "Estimated (AI)" : "Saved result"} | Confidence: {foodSearchResult.confidence}</div>
+                        <div className="small">{foodSearchResult.note}</div>
                       </div>
+                      <button className="btn" onClick={() => {
+                        setMealDraft({
+                          id: "draft",
+                          meal: "Search",
+                          food: foodSearchResult.food,
+                          grams: foodSearchResult.grams,
+                          calories: foodSearchResult.calories,
+                          protein: foodSearchResult.protein,
+                          carbs: foodSearchResult.carbs,
+                          fats: foodSearchResult.fats
+                        });
+                        setMealDraftUnit("g");
+                        setFoodSearchQuery("");
+                        setFoodSearchGrams(100);
+                        setFoodSearchResult(null);
+                        setExpandedNutritionSections((prev) => ({ ...prev, logMeal: true }));
+                      }}>Use in log form</button>
                     </div>
                   </div>
-                ))}
+                ) : null}
               </div>
-            )}
+            ) : null}
           </section>
 
-          <section className="grid grid-2">
-            <div className="card">
-              <h3 style={{ marginTop: 0 }}>Full-day meal preset</h3>
-              <p className="small">
-                Save the current logged meals as a reusable full-day preset.
-              </p>
-              <div className="row">
-                <input
-                  className="input"
-                  value={mealPresetName}
-                  placeholder="Preset name, e.g. Normal training day"
-                  onChange={(e) => setMealPresetName(e.target.value)}
-                />
-                <button className="btn" onClick={saveCurrentMealsAsPreset}>
-                  Save preset
-                </button>
+          <section className="compact-section">
+            <button className={`collapse-pill section-pill ${expandedNutritionSections.totals ? "open" : ""}`} onClick={() => toggleNutritionSection("totals")}>
+              <div>
+                <strong>Nutrition totals</strong>
+                <span className="pill-subtext">{Math.round(foodTotals.calories)} cal • P {foodTotals.protein.toFixed(1)}g</span>
               </div>
-            </div>
+              <span className="pill-icon">{expandedNutritionSections.totals ? "−" : "+"}</span>
+            </button>
 
-            <div className="card">
-              <h2 style={{ marginTop: 0 }}>Suggested base setup</h2>
-              <div className="signal-stack">
-                {baseSetup.map((item) => (
-                  <div className="mini-signal" key={item}>{item}</div>
-                ))}
+            {expandedNutritionSections.totals ? (
+              <div className="grid grid-2 compact-expanded">
+                <div className="card">
+                  <h2 style={{ marginTop: 0 }}>Planned totals</h2>
+                  <p>Calories: <strong>{Math.round(foodTotals.calories)}</strong></p>
+                  <p>Protein: <strong>{foodTotals.protein.toFixed(1)} g</strong></p>
+                  <p>Carbs: <strong>{foodTotals.carbs.toFixed(1)} g</strong></p>
+                  <p>Fats: <strong>{foodTotals.fats.toFixed(1)} g</strong></p>
+                </div>
+                <div className="card">
+                  <h2 style={{ marginTop: 0 }}>Recomp target</h2>
+                  <p>Calories target: <strong>{state.settings.targetCalories}</strong></p>
+                  <p>Protein target: <strong>{state.settings.proteinTarget} g</strong></p>
+                  <p>Carb target: <strong>{state.settings.carbTarget} g</strong></p>
+                  <p>Fat target: <strong>{state.settings.fatTarget} g</strong></p>
+                </div>
               </div>
-            </div>
+            ) : null}
           </section>
 
-          <section className="card">
-            <h2 style={{ marginTop: 0 }}>Saved full-day presets</h2>
-            {state.mealPresets.length === 0 ? (
-              <p className="small">No presets yet. Build your nutrition log, name it, then save it.</p>
-            ) : (
-              <div className="grid">
-                {state.mealPresets.map((preset) => {
-                  const totals = preset.foods.reduce(
-                    (acc, food) => {
-                      acc.calories += food.calories;
-                      acc.protein += food.protein;
-                      acc.carbs += food.carbs;
-                      acc.fats += food.fats;
-                      return acc;
-                    },
-                    { calories: 0, protein: 0, carbs: 0, fats: 0 }
-                  );
+          <section className="compact-section">
+            <button className={`collapse-pill section-pill ${expandedNutritionSections.loggedMeals ? "open" : ""}`} onClick={() => toggleNutritionSection("loggedMeals")}>
+              <div>
+                <strong>Logged meals</strong>
+                <span className="pill-subtext">{state.foods.length} items logged</span>
+              </div>
+              <span className="pill-icon">{expandedNutritionSections.loggedMeals ? "−" : "+"}</span>
+            </button>
 
-                  return (
-                    <div key={preset.id} className="card" style={{ background: "#0f172a" }}>
-                      <div className="row space-between">
-                        <div>
-                          <strong>{preset.name}</strong>
-                          <div className="small">
-                            {Math.round(totals.calories)} cal | P {totals.protein.toFixed(1)}g | C {totals.carbs.toFixed(1)}g | F {totals.fats.toFixed(1)}g
+            {expandedNutritionSections.loggedMeals ? (
+              <div className="card logged-meals-card compact-expanded">
+                <div className="row space-between">
+                  <p className="small" style={{ margin: 0 }}>Edit or delete individual logged items here.</p>
+                  <button className="btn secondary" onClick={addFood}>Add blank row</button>
+                </div>
+
+                {state.foods.length === 0 ? (
+                  <p className="small">No meals logged yet.</p>
+                ) : (
+                  <div className="logged-meal-list">
+                    {state.foods.map((item) => (
+                      <details className="logged-meal-card meal-detail-card" key={item.id}>
+                        <summary>
+                          <span><strong>{item.meal}</strong> • {item.food}</span>
+                          <span>{item.calories} cal</span>
+                        </summary>
+                        <div className="meal-edit-grid">
+                          <Field label="Meal"><input className="input" value={item.meal} onChange={(e) => updateFood(item.id, "meal", e.target.value)} /></Field>
+                          <Field label="Food"><input className="input" value={item.food} onChange={(e) => updateFood(item.id, "food", e.target.value)} /></Field>
+                          <Field label="g/ml/oz"><NumericInput value={item.grams} onChange={(v) => updateFood(item.id, "grams", v)} /></Field>
+                          <Field label="Cal"><NumericInput value={item.calories} onChange={(v) => updateFood(item.id, "calories", v)} /></Field>
+                          <Field label="Protein"><NumericInput value={item.protein} onChange={(v) => updateFood(item.id, "protein", v)} /></Field>
+                          <Field label="Carbs"><NumericInput value={item.carbs} onChange={(v) => updateFood(item.id, "carbs", v)} /></Field>
+                          <Field label="Fat"><NumericInput value={item.fats} onChange={(v) => updateFood(item.id, "fats", v)} /></Field>
+                          <div className="meal-action-cell"><button className="btn warn" onClick={() => deleteFood(item.id)}>Delete</button></div>
+                        </div>
+                      </details>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </section>
+
+          <section className="compact-section">
+            <button className={`collapse-pill section-pill ${expandedNutritionSections.presets ? "open" : ""}`} onClick={() => toggleNutritionSection("presets")}>
+              <div>
+                <strong>Meal presets</strong>
+                <span className="pill-subtext">{state.mealPresets.length} saved presets</span>
+              </div>
+              <span className="pill-icon">{expandedNutritionSections.presets ? "−" : "+"}</span>
+            </button>
+
+            {expandedNutritionSections.presets ? (
+              <div className="grid grid-2 compact-expanded">
+                <div className="card">
+                  <h3 style={{ marginTop: 0 }}>Full-day meal preset</h3>
+                  <p className="small">Save the current logged meals as a reusable full-day preset.</p>
+                  <div className="row">
+                    <input className="input" value={mealPresetName} placeholder="Preset name, e.g. Normal training day" onChange={(e) => setMealPresetName(e.target.value)} />
+                    <button className="btn" onClick={saveCurrentMealsAsPreset}>Save preset</button>
+                  </div>
+                </div>
+                <div className="card">
+                  <h2 style={{ marginTop: 0 }}>Suggested base setup</h2>
+                  <div className="signal-stack">
+                    {baseSetup.map((item) => <div className="mini-signal" key={item}>{item}</div>)}
+                  </div>
+                </div>
+                <div className="card" style={{ gridColumn: "1 / -1" }}>
+                  <h2 style={{ marginTop: 0 }}>Saved full-day presets</h2>
+                  {state.mealPresets.length === 0 ? (
+                    <p className="small">No presets yet. Build your nutrition log, name it, then save it.</p>
+                  ) : (
+                    <div className="grid">
+                      {state.mealPresets.map((preset) => {
+                        const totals = preset.foods.reduce((acc, food) => {
+                          acc.calories += food.calories;
+                          acc.protein += food.protein;
+                          acc.carbs += food.carbs;
+                          acc.fats += food.fats;
+                          return acc;
+                        }, { calories: 0, protein: 0, carbs: 0, fats: 0 });
+
+                        return (
+                          <div key={preset.id} className="card" style={{ background: "#0f172a" }}>
+                            <div className="row space-between">
+                              <div>
+                                <strong>{preset.name}</strong>
+                                <div className="small">{Math.round(totals.calories)} cal | P {totals.protein.toFixed(1)}g | C {totals.carbs.toFixed(1)}g | F {totals.fats.toFixed(1)}g</div>
+                              </div>
+                              <div className="row">
+                                <button className="btn" onClick={() => applyMealPreset(preset)}>Apply</button>
+                                <button className="btn warn" onClick={() => deleteMealPreset(preset.id)}>Delete</button>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                        <div className="row">
-                          <button className="btn" onClick={() => applyMealPreset(preset)}>
-                            Apply
-                          </button>
-                          <button className="btn warn" onClick={() => deleteMealPreset(preset.id)}>
-                            Delete
-                          </button>
-                        </div>
-                      </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
+                  )}
+                </div>
               </div>
-            )}
+            ) : null}
           </section>
         </div>
       )}
