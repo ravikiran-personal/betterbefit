@@ -517,20 +517,19 @@ export default function Page() {
   const avgWaist = average(state.dailyLogs.map((d) => numberOrNull(d.waist)));
 
   const selectedDashboardLog = selectedDashboardDate
-  ? state.dailyLogs.find(
-      (log) =>
-        new Date(log.date).toISOString().split("T")[0] ===
-        new Date(selectedDashboardDate).toISOString().split("T")[0]
-    )
+  ? state.dailyLogs.find((log) => log.date === selectedDashboardDate) || null
   : null;
 
-  const displayWeight = selectedDashboardLog ? numberOrNull(selectedDashboardLog.weight) : avgWeight;
-  const displaySteps = selectedDashboardLog ? numberOrNull(selectedDashboardLog.steps) : avgSteps;
-  const displayCalories = selectedDashboardLog ? numberOrNull(selectedDashboardLog.calories) : avgCalories;
-  const displayProtein = selectedDashboardLog ? numberOrNull(selectedDashboardLog.protein) : avgProtein;
-  const displayCardio = selectedDashboardLog ? numberOrNull(selectedDashboardLog.cardioMinutes) : avgCardio;
-  const displayWaist = selectedDashboardLog ? numberOrNull(selectedDashboardLog.waist) : avgWaist;
-  const dashboardScopeLabel = selectedDashboardLog ? formatDisplayDate(selectedDashboardLog.date) : "Weekly average";
+const displayWeight = selectedDashboardDate ? numberOrNull(selectedDashboardLog?.weight) : avgWeight;
+const displaySteps = selectedDashboardDate ? numberOrNull(selectedDashboardLog?.steps) : avgSteps;
+const displayCalories = selectedDashboardDate ? numberOrNull(selectedDashboardLog?.calories) : avgCalories;
+const displayProtein = selectedDashboardDate ? numberOrNull(selectedDashboardLog?.protein) : avgProtein;
+const displayCardio = selectedDashboardDate ? numberOrNull(selectedDashboardLog?.cardioMinutes) : avgCardio;
+const displayWaist = selectedDashboardDate ? numberOrNull(selectedDashboardLog?.waist) : avgWaist;
+
+const dashboardScopeLabel = selectedDashboardDate
+  ? formatDisplayDate(selectedDashboardDate)
+  : "Weekly average";
 
   const foodTotals = useMemo(() => {
     return state.foods.reduce(
