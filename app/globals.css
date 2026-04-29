@@ -2263,3 +2263,15 @@ button:disabled {
   position: relative;
   z-index: 3;
 }
+
+/* Today (orange) */
+.today-day {
+  background: #f97316;
+  color: white;
+}
+
+/* User selected (blue) */
+.selected-day {
+  background: #60a5fa;
+  color: white;
+}
