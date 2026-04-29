@@ -2450,14 +2450,14 @@ function getTodaySignals(input: {
 
 function getWeekStatus(dailyLogs: DailyLog[]) {
   const dayLabels = ["S", "M", "T", "W", "T", "F", "S"];
-  const today = new Date(todayISO() + "T00:00:00");
+  const today = new Date(getLocalDateISO() + "T00:00:00");
   const start = new Date(today);
   start.setDate(today.getDate() - today.getDay());
 
   return Array.from({ length: 7 }).map((_, index) => {
     const date = new Date(start);
     date.setDate(start.getDate() + index);
-    const dateISO = date.toISOString().slice(0, 10);
+    const offset = date.getTimezoneOffset(); const localDate = new Date(date.getTime() - offset * 60000); const dateISO = localDate.toISOString().slice(0, 10);
     const log = dailyLogs.find((item) => item.date === dateISO) || dailyLogs[index];
 
     const hasUsefulData =
@@ -2467,8 +2467,7 @@ function getWeekStatus(dailyLogs: DailyLog[]) {
         numberOrNull(log.calories) !== null ||
         numberOrNull(log.protein) !== null);
 
-    const isToday = dateISO === todayISO();
-
+const isToday = dateISO === getLocalDateISO();
     return {
       label: dayLabels[date.getDay()],
       date: dateISO,
