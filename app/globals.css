@@ -2068,3 +2068,61 @@ button:disabled {
     white-space: normal;
   }
 }
+
+/* ===== MEAL GROUP ===== */
+
+.meal-group {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.meal-table {
+  background: #0f172a;
+  border-radius: 14px;
+  padding: 10px;
+}
+
+.meal-table-header {
+  display: grid;
+  grid-template-columns: 1.5fr 0.8fr 0.8fr 1fr;
+  font-size: 12px;
+  color: #9ca3af;
+  padding: 6px 8px;
+}
+
+.meal-row summary {
+  display: grid;
+  grid-template-columns: 1.5fr 0.8fr 0.8fr 1fr;
+  padding: 10px;
+  cursor: pointer;
+}
+
+.meal-row {
+  border-top: 1px solid #273244;
+}
+
+/* ===== CHECKIN ===== */
+
+.checkin-list {
+  display: grid;
+  gap: 12px;
+}
+
+.checkin-day {
+  display: grid;
+  gap: 8px;
+}
+
+.checkin-history {
+  display: grid;
+  gap: 8px;
+}
+
+.history-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  padding: 10px;
+  background: #0f172a;
+  border-radius: 10px;
+}
