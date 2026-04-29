@@ -2126,3 +2126,87 @@ button:disabled {
   background: #0f172a;
   border-radius: 10px;
 }
+
+
+/* ===== SWIPE TO DELETE ===== */
+
+.swipe-delete {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  touch-action: pan-y;
+}
+
+.swipe-delete.disabled {
+  opacity: 1;
+}
+
+.swipe-delete-bg {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding-right: 18px;
+  background: #7f1d1d;
+  color: #fecaca;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  z-index: 0;
+}
+
+.swipe-delete.disabled .swipe-delete-bg {
+  display: none;
+}
+
+.swipe-delete-content {
+  position: relative;
+  z-index: 1;
+  transition: transform 160ms ease;
+}
+
+.swipe-delete:not(.disabled):active .swipe-delete-content {
+  transform: translateX(-18px);
+}
+
+.exercise-swipe,
+.set-swipe,
+.meal-swipe,
+.preset-swipe,
+.history-swipe,
+.settings-reset-swipe {
+  display: block;
+}
+
+.history-card-list {
+  display: grid;
+  gap: 12px;
+}
+
+.history-card {
+  background: #0f172a;
+  border: 1px solid #273244;
+  border-radius: 16px;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.settings-reset-card {
+  background: #0f172a;
+  border-color: #7f1d1d;
+}
+
+.settings-reset-card p {
+  margin-top: 8px;
+}
+
+@media (max-width: 760px) {
+  .history-card {
+    grid-template-columns: 1fr;
+  }
+}

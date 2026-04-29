@@ -176,6 +176,74 @@ function NumericInput({
       }}
     />
   );
+
+}
+
+function SwipeToDelete({
+  children,
+  onDelete,
+  className = "",
+  disabled = false,
+  label = "Swipe left to delete"
+}: {
+  children: React.ReactNode;
+  onDelete: () => void;
+  className?: string;
+  disabled?: boolean;
+  label?: string;
+}) {
+  const startX = useRef<number | null>(null);
+  const startY = useRef<number | null>(null);
+  const currentX = useRef<number | null>(null);
+
+  function shouldIgnoreSwipe(target: EventTarget | null) {
+    if (!(target instanceof HTMLElement)) return false;
+    return !!target.closest("input, textarea, select, a");
+  }
+
+  function handleTouchStart(e: React.TouchEvent<HTMLDivElement>) {
+    if (disabled || shouldIgnoreSwipe(e.target)) return;
+    startX.current = e.touches[0].clientX;
+    startY.current = e.touches[0].clientY;
+    currentX.current = e.touches[0].clientX;
+  }
+
+  function handleTouchMove(e: React.TouchEvent<HTMLDivElement>) {
+    if (disabled || startX.current === null) return;
+    currentX.current = e.touches[0].clientX;
+  }
+
+  function handleTouchEnd() {
+    if (disabled || startX.current === null || currentX.current === null || startY.current === null) {
+      startX.current = null;
+      startY.current = null;
+      currentX.current = null;
+      return;
+    }
+
+    const deltaX = startX.current - currentX.current;
+
+    if (deltaX > 70) {
+      onDelete();
+    }
+
+    startX.current = null;
+    startY.current = null;
+    currentX.current = null;
+  }
+
+  return (
+    <div
+      className={`swipe-delete ${disabled ? "disabled" : ""} ${className}`}
+      aria-label={label}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      <div className="swipe-delete-bg">Delete</div>
+      <div className="swipe-delete-content">{children}</div>
+    </div>
+  );
 }
 const STORAGE_KEY = "recomp-tracker-v2";
 
@@ -1345,8 +1413,13 @@ export default function Page() {
                         const isExerciseOpen = !!expandedExercises[item.id];
 
                         return (
-                          <div className={`exercise-pill-card ${isExerciseOpen ? "open" : ""}`} key={item.id}>
-                            <button className="collapse-pill exercise-collapse-pill" onClick={() => toggleExercise(item.id)}>
+                          <SwipeToDelete
+                            key={item.id}
+                            className="exercise-swipe"
+                            onDelete={() => deleteExerciseFromWorkout(item.id)}
+                          >
+                            <div className={`exercise-pill-card ${isExerciseOpen ? "open" : ""}`}>
+                              <button className="collapse-pill exercise-collapse-pill" onClick={() => toggleExercise(item.id)}>
                               <div>
                                 <span className="pattern-pill">{item.pattern}</span>
                                 <strong>{item.exercise}</strong>
@@ -1361,15 +1434,7 @@ export default function Page() {
                               <div className="exercise-expanded">
                                 <div className="row space-between">
                                   <span className="badge">{item.sets} sets • {item.targetReps}</span>
-                                  {confirmingId === item.id ? (
-                                    <div className="row inline-confirm">
-                                      <span className="small">Deleting an exercise may reduce workout efficiency.</span>
-                                      <button className="btn warn compact-exercise-btn" onClick={() => deleteExerciseFromWorkout(item.id)}>Yes, delete</button>
-                                      <button className="btn secondary compact-exercise-btn" onClick={() => setConfirmingId(null)}>Cancel</button>
-                                    </div>
-                                  ) : (
-                                    <button className="btn warn compact-exercise-btn" onClick={() => setConfirmingId(item.id)}>Delete</button>
-                                  )}
+
                                 </div>
 
                                 <Field label="Choose exercise">
@@ -1410,8 +1475,14 @@ export default function Page() {
                                   </div>
 
                                   {item.workoutSets.map((set, setIndex) => (
-                                    <details className="set-detail-card" key={set.id} open={setIndex === 0}>
-                                      <summary>
+                                    <SwipeToDelete
+                                      key={set.id}
+                                      className="set-swipe"
+                                      disabled={item.workoutSets.length <= 1}
+                                      onDelete={() => deleteSetFromExercise(item.id, set.id)}
+                                    >
+                                      <details className="set-detail-card" open={setIndex === 0}>
+                                        <summary>
                                         <span>Set {setIndex + 1}</span>
                                         <span>{numberOrDefault(set.weight, 0)} kg × {numberOrDefault(set.reps, 0)} reps</span>
                                       </summary>
@@ -1425,9 +1496,9 @@ export default function Page() {
                                         <Field label="RPE">
                                           <NumericInput value={set.rpe} onChange={(v) => updateWorkoutSet(item.id, set.id, "rpe", v)} />
                                         </Field>
-                                        <button className="btn warn compact-exercise-btn" onClick={() => deleteSetFromExercise(item.id, set.id)} disabled={item.workoutSets.length <= 1}>Delete set</button>
                                       </div>
-                                    </details>
+                                      </details>
+                                    </SwipeToDelete>
                                   ))}
                                 </div>
 
@@ -1436,7 +1507,8 @@ export default function Page() {
                                 </Field>
                               </div>
                             ) : null}
-                          </div>
+                            </div>
+                          </SwipeToDelete>
                         );
                       })}
                     </div>
@@ -1455,37 +1527,28 @@ export default function Page() {
             {state.workoutHistory.length === 0 ? (
               <p className="small">No workouts logged yet. Fill today’s workout and press Log workout.</p>
             ) : (
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Date</th>
-                      <th>Total volume</th>
-                      <th>Exercises</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {state.workoutHistory.map((session) => (
-                      <tr key={session.id}>
-                        <td>{session.date}</td>
-                        <td>{session.totalVolume}</td>
-                        <td>
+              <div className="history-card-list">
+                {state.workoutHistory.map((session) => (
+                  <SwipeToDelete
+                    key={session.id}
+                    className="history-swipe"
+                    onDelete={() => deleteWorkoutSession(session.id)}
+                  >
+                    <div className="history-card">
+                      <div>
+                        <strong>{session.date}</strong>
+                        <div className="small">{session.totalVolume} total volume</div>
+                        <div className="small">
                           {session.exercises
                             .filter((exercise) => calculateExerciseVolume(exercise) > 0)
                             .map((exercise) => `${exercise.exercise}: ${calculateExerciseVolume(exercise)} volume`)
                             .join(", ")}
-                        </td>
-                        <td>
-                          <div className="row">
-                            <button className="btn secondary" onClick={() => loadWorkoutSession(session)}>Load</button>
-                            <button className="btn warn" onClick={() => deleteWorkoutSession(session.id)}>Delete</button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </div>
+                      </div>
+                      <button className="btn secondary" onClick={() => loadWorkoutSession(session)}>Load</button>
+                    </div>
+                  </SwipeToDelete>
+                ))}
               </div>
             )}
           </div>
@@ -1702,8 +1765,13 @@ export default function Page() {
                                 <div className="empty-meal-row">No items logged here yet.</div>
                               ) : (
                                 meals.map((item) => (
-                                  <details key={item.id} className="meal-row">
-                                    <summary>
+                                  <SwipeToDelete
+                                    key={item.id}
+                                    className="meal-swipe"
+                                    onDelete={() => deleteFood(item.id)}
+                                  >
+                                    <details className="meal-row">
+                                      <summary>
                                       <span>{item.food}</span>
                                       <span>{item.grams}</span>
                                       <span>{item.calories}</span>
@@ -1732,11 +1800,9 @@ export default function Page() {
                                       <Field label="Fat">
                                         <NumericInput value={item.fats} onChange={(v) => updateFood(item.id, "fats", v)} />
                                       </Field>
-                                      <div className="meal-action-cell">
-                                        <button className="btn warn" onClick={() => deleteFood(item.id)}>Delete</button>
-                                      </div>
                                     </div>
-                                  </details>
+                                    </details>
+                                  </SwipeToDelete>
                                 ))
                               )}
                             </div>
@@ -1791,18 +1857,23 @@ export default function Page() {
                         }, { calories: 0, protein: 0, carbs: 0, fats: 0 });
 
                         return (
-                          <div key={preset.id} className="card" style={{ background: "#0f172a" }}>
-                            <div className="row space-between">
+                          <SwipeToDelete
+                            key={preset.id}
+                            className="preset-swipe"
+                            onDelete={() => deleteMealPreset(preset.id)}
+                          >
+                            <div className="card" style={{ background: "#0f172a" }}>
+                              <div className="row space-between">
                               <div>
                                 <strong>{preset.name}</strong>
                                 <div className="small">{Math.round(totals.calories)} cal | P {totals.protein.toFixed(1)}g | C {totals.carbs.toFixed(1)}g | F {totals.fats.toFixed(1)}g</div>
                               </div>
                               <div className="row">
                                 <button className="btn" onClick={() => applyMealPreset(preset)}>Apply</button>
-                                <button className="btn warn" onClick={() => deleteMealPreset(preset.id)}>Delete</button>
                               </div>
                             </div>
-                          </div>
+                            </div>
+                          </SwipeToDelete>
                         );
                       })}
                     </div>
@@ -2045,9 +2116,9 @@ export default function Page() {
               <NumericInput value={state.settings.currentStepBaseline} onChange={(v) => updateSettings("currentStepBaseline", v === "" ? 0 : v)} />
             </Field>
 
-            <button
-              className="btn warn"
-              onClick={() => {
+            <SwipeToDelete
+              className="settings-reset-swipe"
+              onDelete={() => {
                 setState((prev) => ({
                   ...prev,
                   dailyLogs: seedWeekLogs(),
@@ -2057,8 +2128,11 @@ export default function Page() {
                 }));
               }}
             >
-              Delete all logs
-            </button>
+              <div className="card settings-reset-card">
+                <strong>Reset all logs</strong>
+                <p className="small">Swipe left on this card to clear check-ins, workouts, workout history and nutrition logs.</p>
+              </div>
+            </SwipeToDelete>
           </div>
 
           <div className="card">
