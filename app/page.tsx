@@ -517,8 +517,12 @@ export default function Page() {
   const avgWaist = average(state.dailyLogs.map((d) => numberOrNull(d.waist)));
 
   const selectedDashboardLog = selectedDashboardDate
-    ? state.dailyLogs.find((log) => log.date === selectedDashboardDate) || null
-    : null;
+  ? state.dailyLogs.find(
+      (log) =>
+        new Date(log.date).toISOString().split("T")[0] ===
+        new Date(selectedDashboardDate).toISOString().split("T")[0]
+    )
+  : null;
 
   const displayWeight = selectedDashboardLog ? numberOrNull(selectedDashboardLog.weight) : avgWeight;
   const displaySteps = selectedDashboardLog ? numberOrNull(selectedDashboardLog.steps) : avgSteps;
