@@ -1713,15 +1713,25 @@ export default function Page() {
                   <div className="meal-group-list">
                     {["Breakfast", "Lunch", "Snack", "Dinner", "Coffee", "Other"].map((mealType) => {
                       const meals = state.foods.filter((food) => {
-                        const mealName = food.meal.toLowerCase();
+                        const mealName = food.meal.trim().toLowerCase();
+
+                        const mealAliases: Record<string, string[]> = {
+                          Breakfast: ["breakfast"],
+                          Lunch: ["lunch"],
+                          Snack: ["snack", "snacks"],
+                          Dinner: ["dinner"],
+                          Coffee: ["coffee"]
+                        };
 
                         if (mealType === "Other") {
-                          return !["Breakfast", "Lunch", "Snack", "Dinner", "Coffee"].some((knownMeal) =>
-                            mealName.includes(knownMeal.toLowerCase())
-                          );
+                          return !Object.values(mealAliases)
+                            .flat()
+                            .some((alias) => mealName.includes(alias));
                         }
 
-                        return mealName.includes(mealType.toLowerCase());
+                        return (mealAliases[mealType] || [mealType.toLowerCase()]).some((alias) =>
+                          mealName.includes(alias)
+                        );
                       });
 
                       const mealTotals = meals.reduce(

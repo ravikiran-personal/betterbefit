@@ -2210,3 +2210,56 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* ===== SWIPE DELETE MEAL ROW FIX ===== */
+
+.meal-swipe {
+  border-radius: 0;
+  overflow: visible;
+}
+
+.meal-swipe .swipe-delete-bg {
+  right: 0;
+  border-radius: 12px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.meal-swipe:active .swipe-delete-bg {
+  opacity: 1;
+}
+
+.meal-swipe .swipe-delete-content {
+  background: #0f172a;
+  border-radius: 0;
+}
+
+.meal-row {
+  background: #0f172a;
+  position: relative;
+  z-index: 1;
+}
+
+.meal-row summary {
+  background: #0f172a;
+  position: relative;
+  z-index: 2;
+}
+
+.meal-row[open] {
+  background: #111827;
+}
+
+.meal-row[open] summary {
+  background: #111827;
+}
+
+.meal-table {
+  overflow: hidden;
+}
+
+.meal-table-header {
+  position: relative;
+  z-index: 3;
+}
