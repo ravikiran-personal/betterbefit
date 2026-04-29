@@ -1139,6 +1139,13 @@ export default function Page() {
     reader.readAsText(file);
   }
 
+function getLocalDateISO() {
+  const now = new Date();
+  const offset = now.getTimezoneOffset();
+  const local = new Date(now.getTime() - offset * 60000);
+  return local.toISOString().split("T")[0];
+}
+  
   return (
     <main className="container game-shell">
       <div className="game-header">
@@ -1220,22 +1227,36 @@ export default function Page() {
           </section>
 
           <section>
-            <h2 className="game-section-title">This week</h2>
-            <div className="week-row">
-              {weekStatus.map((day) => (
-                <button
-                  key={day.date}
-                  type="button"
-                  className={`week-day ${day.isToday ? "today" : "neutral"} ${selectedDashboardDate === day.date ? "selected" : ""}`}
-                  onClick={() => setSelectedDashboardDate((current) => current === day.date ? null : day.date)}
-                  title={`View dashboard metrics for ${day.date}`}
-                >
-                  <span className="week-date">{day.dateNumber}</span>
-                  <span className="week-label">{day.label}</span>
-                </button>
-              ))}
-            </div>
-          </section>
+  <h2 className="game-section-title">This week</h2>
+
+  <div className="week-row">
+    {weekStatus.map((day) => {
+      const today = getLocalDateISO();
+
+      const isSelected = selectedDashboardDate === day.date;
+      const isToday = day.date === today;
+
+      return (
+        <button
+          key={day.date}
+          type="button"
+          className={`week-day 
+            ${isSelected ? "selected-day" : ""} 
+            ${!selectedDashboardDate && isToday ? "today-day" : ""}
+          `}
+          onClick={() =>
+            setSelectedDashboardDate((prev) =>
+              prev === day.date ? null : day.date
+            )
+          }
+        >
+          <span className="week-date">{day.dateNumber}</span>
+          <span className="week-label">{day.label}</span>
+        </button>
+      );
+    })}
+  </div>
+</section>
 
           <section className="game-metrics">
             <GameMetricCard
@@ -1666,8 +1687,13 @@ export default function Page() {
             <button className={`collapse-pill section-pill ${expandedNutritionSections.totals ? "open" : ""}`} onClick={() => toggleNutritionSection("totals")}>
               <div>
                 <strong>Nutrition totals</strong>
-                <span className="pill-subtext">{Math.round(foodTotals.calories)} cal • P {foodTotals.protein.toFixed(1)}g</span>
-              </div>
+<span className="pill-subtext">
+  {state.foods.length} meals • 
+  {Math.round(foodTotals.calories)} cal • 
+  P {Math.round(foodTotals.protein)} • 
+  C {Math.round(foodTotals.carbs)} • 
+  F {Math.round(foodTotals.fats)}
+</span>              </div>
               <span className="pill-icon">{expandedNutritionSections.totals ? "−" : "+"}</span>
             </button>
 
