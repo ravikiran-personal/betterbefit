@@ -1142,13 +1142,6 @@ export default function Page() {
     };
     reader.readAsText(file);
   }
-
-function getLocalDateISO() {
-  const now = new Date();
-  const offset = now.getTimezoneOffset();
-  const local = new Date(now.getTime() - offset * 60000);
-  return local.toISOString().split("T")[0];
-}
   
   return (
     <main className="container game-shell">
@@ -2446,6 +2439,13 @@ function getTodaySignals(input: {
   }
 
   return signals.slice(0, 4);
+}
+
+function getLocalDateISO() {
+  const now = new Date();
+  const offset = now.getTimezoneOffset();
+  const local = new Date(now.getTime() - offset * 60000);
+  return local.toISOString().split("T")[0];
 }
 
 function getWeekStatus(dailyLogs: DailyLog[]) {
