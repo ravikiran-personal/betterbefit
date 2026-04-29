@@ -1634,38 +1634,116 @@ export default function Page() {
                 <strong>Logged meals</strong>
                 <span className="pill-subtext">{state.foods.length} items logged</span>
               </div>
-              <span className="pill-icon">{expandedNutritionSections.loggedMeals ? "−" : "+"}</span>
+              <span className="pill-icon">{expandedNutritionSections.loggedMeals ? "-" : "+"}</span>
             </button>
 
             {expandedNutritionSections.loggedMeals ? (
               <div className="card logged-meals-card compact-expanded">
                 <div className="row space-between">
-                  <p className="small" style={{ margin: 0 }}>Edit or delete individual logged items here.</p>
+                  <p className="small" style={{ margin: 0 }}>Meals are grouped so you can scan quickly and expand only what you need.</p>
                   <button className="btn secondary" onClick={addFood}>Add blank row</button>
                 </div>
 
                 {state.foods.length === 0 ? (
                   <p className="small">No meals logged yet.</p>
                 ) : (
-                  <div className="logged-meal-list">
-                    {state.foods.map((item) => (
-                      <details className="logged-meal-card meal-detail-card" key={item.id}>
-                        <summary>
-                          <span><strong>{item.meal}</strong> • {item.food}</span>
-                          <span>{item.calories} cal</span>
-                        </summary>
-                        <div className="meal-edit-grid">
-                          <Field label="Meal"><input className="input" value={item.meal} onChange={(e) => updateFood(item.id, "meal", e.target.value)} /></Field>
-                          <Field label="Food"><input className="input" value={item.food} onChange={(e) => updateFood(item.id, "food", e.target.value)} /></Field>
-                          <Field label="g/ml/oz"><NumericInput value={item.grams} onChange={(v) => updateFood(item.id, "grams", v)} /></Field>
-                          <Field label="Cal"><NumericInput value={item.calories} onChange={(v) => updateFood(item.id, "calories", v)} /></Field>
-                          <Field label="Protein"><NumericInput value={item.protein} onChange={(v) => updateFood(item.id, "protein", v)} /></Field>
-                          <Field label="Carbs"><NumericInput value={item.carbs} onChange={(v) => updateFood(item.id, "carbs", v)} /></Field>
-                          <Field label="Fat"><NumericInput value={item.fats} onChange={(v) => updateFood(item.id, "fats", v)} /></Field>
-                          <div className="meal-action-cell"><button className="btn warn" onClick={() => deleteFood(item.id)}>Delete</button></div>
+                  <div className="meal-group-list">
+                    {["Breakfast", "Lunch", "Snack", "Dinner", "Coffee", "Other"].map((mealType) => {
+                      const meals = state.foods.filter((food) => {
+                        const mealName = food.meal.toLowerCase();
+
+                        if (mealType === "Other") {
+                          return !["Breakfast", "Lunch", "Snack", "Dinner", "Coffee"].some((knownMeal) =>
+                            mealName.includes(knownMeal.toLowerCase())
+                          );
+                        }
+
+                        return mealName.includes(mealType.toLowerCase());
+                      });
+
+                      const mealTotals = meals.reduce(
+                        (acc, food) => {
+                          acc.calories += food.calories;
+                          acc.protein += food.protein;
+                          acc.carbs += food.carbs;
+                          acc.fats += food.fats;
+                          return acc;
+                        },
+                        { calories: 0, protein: 0, carbs: 0, fats: 0 }
+                      );
+
+                      const isMealOpen = !!expandedNutritionSections[`meal-${mealType}`];
+
+                      return (
+                        <div className="meal-group" key={mealType}>
+                          <button
+                            className={`collapse-pill meal-group-pill ${isMealOpen ? "open" : ""}`}
+                            onClick={() => toggleNutritionSection(`meal-${mealType}`)}
+                          >
+                            <div>
+                              <strong>{mealType}</strong>
+                              <span className="pill-subtext">
+                                {meals.length} items - {Math.round(mealTotals.calories)} cal - P {mealTotals.protein.toFixed(1)}g
+                              </span>
+                            </div>
+                            <span className="pill-icon">{isMealOpen ? "-" : "+"}</span>
+                          </button>
+
+                          {isMealOpen ? (
+                            <div className="meal-table">
+                              <div className="meal-table-header">
+                                <span>Food</span>
+                                <span>Grams</span>
+                                <span>Calories</span>
+                                <span>P/C/F</span>
+                              </div>
+
+                              {meals.length === 0 ? (
+                                <div className="empty-meal-row">No items logged here yet.</div>
+                              ) : (
+                                meals.map((item) => (
+                                  <details key={item.id} className="meal-row">
+                                    <summary>
+                                      <span>{item.food}</span>
+                                      <span>{item.grams}</span>
+                                      <span>{item.calories}</span>
+                                      <span>{item.protein}/{item.carbs}/{item.fats}</span>
+                                    </summary>
+
+                                    <div className="meal-edit-grid">
+                                      <Field label="Meal">
+                                        <input className="input" value={item.meal} onChange={(e) => updateFood(item.id, "meal", e.target.value)} />
+                                      </Field>
+                                      <Field label="Food">
+                                        <input className="input" value={item.food} onChange={(e) => updateFood(item.id, "food", e.target.value)} />
+                                      </Field>
+                                      <Field label="Grams">
+                                        <NumericInput value={item.grams} onChange={(v) => updateFood(item.id, "grams", v)} />
+                                      </Field>
+                                      <Field label="Calories">
+                                        <NumericInput value={item.calories} onChange={(v) => updateFood(item.id, "calories", v)} />
+                                      </Field>
+                                      <Field label="Protein">
+                                        <NumericInput value={item.protein} onChange={(v) => updateFood(item.id, "protein", v)} />
+                                      </Field>
+                                      <Field label="Carbs">
+                                        <NumericInput value={item.carbs} onChange={(v) => updateFood(item.id, "carbs", v)} />
+                                      </Field>
+                                      <Field label="Fat">
+                                        <NumericInput value={item.fats} onChange={(v) => updateFood(item.id, "fats", v)} />
+                                      </Field>
+                                      <div className="meal-action-cell">
+                                        <button className="btn warn" onClick={() => deleteFood(item.id)}>Delete</button>
+                                      </div>
+                                    </div>
+                                  </details>
+                                ))
+                              )}
+                            </div>
+                          ) : null}
                         </div>
-                      </details>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -1737,85 +1815,80 @@ export default function Page() {
       )}
 
       {tab === "checkin" && (
-        <div className="grid">
+        <div className="grid compact-page">
           <div className="card">
             <div className="row space-between">
-              <h2 style={{ margin: 0 }}>7-day check-in</h2>
+              <div>
+                <h2 style={{ margin: 0 }}>7-day check-in</h2>
+                <p className="small" style={{ marginTop: 6 }}>
+                  Tap a date to expand and log weight, waist, steps, calories, protein and cardio.
+                </p>
+              </div>
               <button className="btn secondary" onClick={resetWeek}>
                 Reset week
               </button>
             </div>
 
-            <div className="checkin-card-list">
-              {state.dailyLogs.map((row, index) => (
-                <div className="checkin-day-card" key={row.date + index}>
-                  <Field label="Date">
-                    <input
-                      className="input"
-                      type="date"
-                      value={row.date || todayISO()}
-                      onChange={(e) => updateDaily(index, "date", e.target.value)}
-                    />
-                  </Field>
+            <div className="checkin-list">
+              {state.dailyLogs.map((row, index) => {
+                const isOpen = !!expandedDays[`checkin-${row.date}-${index}`];
 
-                  <div className="checkin-input-grid">
-                    <Field label="Weight">
-                      <NumericInput value={row.weight} onChange={(v) => updateDaily(index, "weight", v)} />
-                    </Field>
-                    <Field label="Waist">
-                      <NumericInput value={row.waist} onChange={(v) => updateDaily(index, "waist", v)} />
-                    </Field>
-                    <Field label="Steps">
-                      <NumericInput value={row.steps} onChange={(v) => updateDaily(index, "steps", v)} />
-                    </Field>
-                    <Field label="Calories">
-                      <NumericInput value={row.calories} onChange={(v) => updateDaily(index, "calories", v)} />
-                    </Field>
-                    <Field label="Protein">
-                      <NumericInput value={row.protein} onChange={(v) => updateDaily(index, "protein", v)} />
-                    </Field>
-                    <Field label="Cardio min">
-                      <NumericInput value={row.cardioMinutes} onChange={(v) => updateDaily(index, "cardioMinutes", v)} />
-                    </Field>
+                return (
+                  <div className="checkin-day" key={row.date + index}>
+                    <button
+                      className={`collapse-pill checkin-day-pill ${isOpen ? "open" : ""}`}
+                      onClick={() =>
+                        setExpandedDays((prev) => ({
+                          ...prev,
+                          [`checkin-${row.date}-${index}`]: !prev[`checkin-${row.date}-${index}`]
+                        }))
+                      }
+                    >
+                      <div>
+                        <strong>{formatDisplayDate(row.date || todayISO())}</strong>
+                        <span className="pill-subtext">
+                          Weight: {row.weight || "-"} kg - Steps: {row.steps || "-"} - Protein: {row.protein || "-"}g
+                        </span>
+                      </div>
+                      <span className="pill-icon">{isOpen ? "-" : "+"}</span>
+                    </button>
+
+                    {isOpen ? (
+                      <div className="card compact-expanded checkin-expanded-card">
+                        <Field label="Date">
+                          <input
+                            className="input"
+                            type="date"
+                            value={row.date || todayISO()}
+                            onChange={(e) => updateDaily(index, "date", e.target.value)}
+                          />
+                        </Field>
+
+                        <div className="checkin-input-grid">
+                          <Field label="Weight">
+                            <NumericInput value={row.weight} onChange={(v) => updateDaily(index, "weight", v)} />
+                          </Field>
+                          <Field label="Waist">
+                            <NumericInput value={row.waist} onChange={(v) => updateDaily(index, "waist", v)} />
+                          </Field>
+                          <Field label="Steps">
+                            <NumericInput value={row.steps} onChange={(v) => updateDaily(index, "steps", v)} />
+                          </Field>
+                          <Field label="Calories">
+                            <NumericInput value={row.calories} onChange={(v) => updateDaily(index, "calories", v)} />
+                          </Field>
+                          <Field label="Protein">
+                            <NumericInput value={row.protein} onChange={(v) => updateDaily(index, "protein", v)} />
+                          </Field>
+                          <Field label="Cardio min">
+                            <NumericInput value={row.cardioMinutes} onChange={(v) => updateDaily(index, "cardioMinutes", v)} />
+                          </Field>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="table-wrap checkin-table-desktop" style={{ marginTop: 16 }}>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Weight</th>
-                    <th>Waist</th>
-                    <th>Steps</th>
-                    <th>Calories</th>
-                    <th>Protein</th>
-                    <th>Cardio min</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {state.dailyLogs.map((row, index) => (
-                    <tr key={row.date + index}>
-                      <td>
-                        <input
-                          className="input"
-                          type="date"
-                          value={row.date || todayISO()}
-                          onChange={(e) => updateDaily(index, "date", e.target.value)}
-                        />
-                      </td>
-                      <td><NumericInput value={row.weight} onChange={(v) => updateDaily(index, "weight", v)} /></td>
-                      <td><NumericInput value={row.waist} onChange={(v) => updateDaily(index, "waist", v)} /></td>
-                      <td><NumericInput value={row.steps} onChange={(v) => updateDaily(index, "steps", v)} /></td>
-                      <td><NumericInput value={row.calories} onChange={(v) => updateDaily(index, "calories", v)} /></td>
-                      <td><NumericInput value={row.protein} onChange={(v) => updateDaily(index, "protein", v)} /></td>
-                      <td><NumericInput value={row.cardioMinutes} onChange={(v) => updateDaily(index, "cardioMinutes", v)} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                );
+              })}
             </div>
           </div>
 
@@ -1823,6 +1896,29 @@ export default function Page() {
             <MetricCard title="Avg Weight" value={formatNumber(avgWeight, "kg")} hint="Use average, not daily spikes" />
             <MetricCard title="Avg Waist" value={formatNumber(avgWaist, "cm")} hint="Best fat-loss signal" />
             <MetricCard title="Avg Steps" value={formatNumber(displaySteps)} hint="NEAT target" />
+          </div>
+
+          <div className="card">
+            <h2 style={{ marginTop: 0 }}>Check-in logs</h2>
+            <div className="checkin-history">
+              <div className="checkin-history-header">
+                <span>Date</span>
+                <span>Weight</span>
+                <span>Steps</span>
+                <span>Calories</span>
+                <span>Protein</span>
+              </div>
+
+              {state.dailyLogs.map((row, index) => (
+                <div className="history-row" key={`history-${row.date}-${index}`}>
+                  <span>{formatDisplayDate(row.date || todayISO())}</span>
+                  <span>{row.weight || "-"}</span>
+                  <span>{row.steps || "-"}</span>
+                  <span>{row.calories || "-"}</span>
+                  <span>{row.protein || "-"}</span>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="card">
