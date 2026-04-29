@@ -2004,21 +2004,36 @@ const dashboardScopeLabel = selectedDashboardDate
           <div className="card">
             <h2 style={{ marginTop: 0 }}>Check-in logs</h2>
             <div className="checkin-history">
-  <div className="checkin-history-header">
-    <span>Date</span>
-    <span>Weight</span>
-    <span>Steps</span>
-    <span>Calories</span>
-    <span>Protein</span>
-  </div>
-
   {state.dailyLogs.map((row, index) => (
-    <div className="history-row" key={`history-${row.date}-${index}`}>
-      <span>{formatDisplayDate(row.date || todayISO())}</span>
-      <span>{row.weight || "-"}</span>
-      <span>{row.steps || "-"}</span>
-      <span>{row.calories || "-"}</span>
-      <span>{row.protein || "-"}</span>
+    <div className="history-card" key={`history-${row.date}-${index}`}>
+
+      <div className="history-date">
+        {formatDisplayDate(row.date || todayISO())}
+      </div>
+
+      <div className="history-metrics">
+
+        <div className="history-metric">
+          <span className="label">Weight</span>
+          <span className="value">{row.weight || "-"}</span>
+        </div>
+
+        <div className="history-metric">
+          <span className="label">Steps</span>
+          <span className="value">{row.steps || "-"}</span>
+        </div>
+
+        <div className="history-metric">
+          <span className="label">Calories</span>
+          <span className="value">{row.calories || "-"}</span>
+        </div>
+
+        <div className="history-metric">
+          <span className="label">Protein</span>
+          <span className="value">{row.protein || "-"}</span>
+        </div>
+
+      </div>
     </div>
   ))}
 </div>
