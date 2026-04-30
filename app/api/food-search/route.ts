@@ -284,6 +284,19 @@ function relevanceScore(query: string, name: string) {
   return score;
 }
 
+function dedupeResults(results: MacroResult[]) {
+  const seen = new Set<string>();
+
+  return results.filter((item) => {
+    const key = normalizeText(item.food);
+
+    if (seen.has(key)) return false;
+
+    seen.add(key);
+    return true;
+  });
+}
+
 function convertUsdaFood(
   food: Record<string, unknown>,
   query: string,
