@@ -65,6 +65,7 @@ type FoodSearchResult = {
   fats: number;
   confidence: "high" | "medium" | "low";
   note: string;
+  results?: FoodSearchResult[];
 };
 
 type Sex = "male" | "female";
@@ -404,6 +405,8 @@ export default function Page() {
     fats: 0
   });
   const [mealDraftUnit, setMealDraftUnit] = useState<"g" | "ml" | "oz">("g");
+  const [mealDraftSuggestions, setMealDraftSuggestions] = useState<FoodSearchResult[]>([]);
+  const [isSearchingMealDraft, setIsSearchingMealDraft] = useState(false);
   const [foodSearchQuery, setFoodSearchQuery] = useState("");
   const [foodSearchGrams, setFoodSearchGrams] = useState<number | "">(100);
   const [foodSearchResult, setFoodSearchResult] = useState<FoodSearchResult | null>(null);
@@ -892,6 +895,60 @@ const dashboardScopeLabel = selectedDashboardDate
     }));
   }
 
+  function applyFoodResultToMealDraft(result: FoodSearchResult) {
+    setMealDraft((prev) => ({
+      ...prev,
+      food: result.food,
+      grams: result.grams,
+      calories: result.calories,
+      protein: result.protein,
+      carbs: result.carbs,
+      fats: result.fats
+    }));
+    setMealDraftUnit("g");
+    setMealDraftSuggestions([]);
+  }
+
+  async function searchMealDraftSuggestions(queryValue: string) {
+    const query = queryValue.trim();
+
+    setMealDraft((prev) => ({
+      ...prev,
+      food: queryValue
+    }));
+
+    if (query.length < 2) {
+      setMealDraftSuggestions([]);
+      return;
+    }
+
+    const grams = mealDraft.grams || 100;
+    setIsSearchingMealDraft(true);
+
+    try {
+      const response = await fetch("/api/food-search", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          query,
+          grams
+        })
+      });
+
+      if (!response.ok) throw new Error("Food search failed.");
+
+      const result = (await response.json()) as FoodSearchResult;
+      const suggestions = result.results?.length ? result.results : result.food ? [result] : [];
+      setMealDraftSuggestions(suggestions);
+    } catch {
+      setMealDraftSuggestions([]);
+    } finally {
+      setIsSearchingMealDraft(false);
+    }
+  }
+
   async function searchFoodMacros() {
     const query = foodSearchQuery.trim();
 
@@ -922,7 +979,7 @@ const dashboardScopeLabel = selectedDashboardDate
       }
 
       const result = (await response.json()) as FoodSearchResult;
-      setFoodSearchResult(result);
+      setFoodSearchResult(result.results?.[0] || result);
     } catch {
       alert("Could not search food. Check API keys and route deployment.");
     } finally {
@@ -993,6 +1050,7 @@ const dashboardScopeLabel = selectedDashboardDate
       fats: 0
     });
     setMealDraftUnit("g");
+    setMealDraftSuggestions([]);
   }
 
   function saveCurrentMealsAsPreset() {
@@ -1142,6 +1200,30 @@ const dashboardScopeLabel = selectedDashboardDate
     reader.readAsText(file);
   }
   
+  function getDailyTrend(index: number, key: keyof Pick<DailyLog, "weight" | "steps" | "calories" | "protein">) {
+    const current = numberOrNull(state.dailyLogs[index]?.[key]);
+    const previous = numberOrNull(state.dailyLogs[index - 1]?.[key]);
+
+    if (current === null || previous === null) return "neutral";
+    if (current > previous) return "up";
+    if (current < previous) return "down";
+    return "flat";
+  }
+
+  function getTrendArrow(trend: string) {
+    if (trend === "up") return "↑";
+    if (trend === "down") return "↓";
+    if (trend === "flat") return "→";
+    return "";
+  }
+
+  function getTrendTone(metric: "weight" | "steps" | "calories" | "protein", trend: string) {
+    if (trend === "neutral" || trend === "flat") return trend;
+    if (metric === "steps" || metric === "protein") return trend === "up" ? "good" : "warn";
+    if (metric === "calories") return trend === "up" ? "warn" : "good";
+    return trend;
+  }
+
   return (
     <main className="container game-shell">
       <div className="game-header">
@@ -1600,7 +1682,42 @@ const dashboardScopeLabel = selectedDashboardDate
                   </Field>
 
                   <Field label="Food / meal">
-                    <input className="input" value={mealDraft.food} placeholder="e.g. chicken biryani" onChange={(e) => updateMealDraft("food", e.target.value)} />
+                    <div className="food-autofill">
+                      <input
+                        className="input"
+                        value={mealDraft.food}
+                        placeholder="Type food, e.g. boiled basmati rice"
+                        onChange={(e) => searchMealDraftSuggestions(e.target.value)}
+                        onFocus={() => {
+                          if (mealDraftSuggestions.length === 0 && mealDraft.food.trim().length >= 2) {
+                            searchMealDraftSuggestions(mealDraft.food);
+                          }
+                        }}
+                      />
+                      {isSearchingMealDraft ? (
+                        <div className="food-autofill-status">Searching macros...</div>
+                      ) : null}
+                      {mealDraftSuggestions.length > 0 ? (
+                        <div className="food-suggestion-list">
+                          {mealDraftSuggestions.map((suggestion, suggestionIndex) => (
+                            <button
+                              type="button"
+                              className="food-suggestion"
+                              key={`${suggestion.food}-${suggestionIndex}`}
+                              onClick={() => applyFoodResultToMealDraft(suggestion)}
+                            >
+                              <span>
+                                <strong>{suggestion.food}</strong>
+                                <small>{suggestion.source === "usda" ? "Verified data" : suggestion.source === "cache" ? "Cached result" : "Manual fallback"}</small>
+                              </span>
+                              <span className="food-suggestion-macros">
+                                {suggestion.calories} cal | P {suggestion.protein} | C {suggestion.carbs} | F {suggestion.fats}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
                   </Field>
 
                   <Field label="Amount">
@@ -2004,38 +2121,42 @@ const dashboardScopeLabel = selectedDashboardDate
           <div className="card">
             <h2 style={{ marginTop: 0 }}>Check-in logs</h2>
             <div className="checkin-history">
-  {state.dailyLogs.map((row, index) => (
-    <div className="history-card" key={`history-${row.date}-${index}`}>
+  {state.dailyLogs.map((row, index) => {
+    const weightTrend = getDailyTrend(index, "weight");
+    const stepsTrend = getDailyTrend(index, "steps");
+    const caloriesTrend = getDailyTrend(index, "calories");
+    const proteinTrend = getDailyTrend(index, "protein");
 
-      <div className="history-date">
-        {formatDisplayDate(row.date || todayISO())}
+    return (
+      <div className="history-card" key={`history-${row.date}-${index}`}>
+        <div className="history-date">
+          {formatDisplayDate(row.date || todayISO())}
+        </div>
+
+        <div className="history-metrics">
+          <div className={`history-metric trend-${getTrendTone("weight", weightTrend)}`}>
+            <span className="label">Weight</span>
+            <span className="value">{row.weight || "-"} {getTrendArrow(weightTrend)}</span>
+          </div>
+
+          <div className={`history-metric trend-${getTrendTone("steps", stepsTrend)}`}>
+            <span className="label">Steps</span>
+            <span className="value">{row.steps || "-"} {getTrendArrow(stepsTrend)}</span>
+          </div>
+
+          <div className={`history-metric trend-${getTrendTone("calories", caloriesTrend)}`}>
+            <span className="label">Calories</span>
+            <span className="value">{row.calories || "-"} {getTrendArrow(caloriesTrend)}</span>
+          </div>
+
+          <div className={`history-metric trend-${getTrendTone("protein", proteinTrend)}`}>
+            <span className="label">Protein</span>
+            <span className="value">{row.protein || "-"} {getTrendArrow(proteinTrend)}</span>
+          </div>
+        </div>
       </div>
-
-      <div className="history-metrics">
-
-        <div className="history-metric">
-          <span className="label">Weight</span>
-          <span className="value">{row.weight || "-"}</span>
-        </div>
-
-        <div className="history-metric">
-          <span className="label">Steps</span>
-          <span className="value">{row.steps || "-"}</span>
-        </div>
-
-        <div className="history-metric">
-          <span className="label">Calories</span>
-          <span className="value">{row.calories || "-"}</span>
-        </div>
-
-        <div className="history-metric">
-          <span className="label">Protein</span>
-          <span className="value">{row.protein || "-"}</span>
-        </div>
-
-      </div>
-    </div>
-  ))}
+    );
+  })}
 </div>
           </div>
 

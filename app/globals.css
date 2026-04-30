@@ -2328,3 +2328,113 @@ button:disabled {
     grid-template-columns: repeat(4, 1fr);
   }
 }
+
+
+/* ===== FOOD AI AUTOFILL ===== */
+
+.food-autofill {
+  position: relative;
+}
+
+.food-autofill-status {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.food-suggestion-list {
+  margin-top: 8px;
+  display: grid;
+  gap: 8px;
+  background: #020617;
+  border: 1px solid #273244;
+  border-radius: 14px;
+  padding: 8px;
+  max-height: 280px;
+  overflow: auto;
+  box-shadow: 0 12px 24px rgba(0,0,0,0.28);
+}
+
+.food-suggestion {
+  width: 100%;
+  border: 1px solid #1f2937;
+  background: #0f172a;
+  color: #e5e7eb;
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 10px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.food-suggestion:hover,
+.food-suggestion:focus-visible {
+  border-color: rgba(52, 211, 153, 0.55);
+  outline: none;
+}
+
+.food-suggestion strong {
+  display: block;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.food-suggestion small {
+  display: block;
+  margin-top: 3px;
+  color: #9ca3af;
+  font-size: 11px;
+}
+
+.food-suggestion-macros {
+  color: #cbd5e1;
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: right;
+}
+
+/* ===== CHECK-IN TREND SIGNALS ===== */
+
+.history-metric {
+  border: 1px solid #1f2937;
+}
+
+.history-metric.trend-good {
+  border-color: rgba(52, 211, 153, 0.45);
+  background: rgba(52, 211, 153, 0.08);
+}
+
+.history-metric.trend-warn {
+  border-color: rgba(248, 113, 113, 0.45);
+  background: rgba(248, 113, 113, 0.08);
+}
+
+.history-metric.trend-up {
+  border-color: rgba(96, 165, 250, 0.45);
+  background: rgba(96, 165, 250, 0.08);
+}
+
+.history-metric.trend-down {
+  border-color: rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.history-metric.trend-flat {
+  border-color: rgba(148, 163, 184, 0.32);
+}
+
+.history-metric .value {
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .food-suggestion {
+    grid-template-columns: 1fr;
+  }
+
+  .food-suggestion-macros {
+    text-align: left;
+  }
+}
