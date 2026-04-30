@@ -230,13 +230,12 @@ async function searchUsdaResults(query: string, grams: number): Promise<MacroRes
 function normalizeIndianFood(query: string) {
   const q = query.toLowerCase().trim();
 
-  if (q.includes("amul") && q.includes("milk")) return "milk whole";
-  if (q.includes("basmati")) return "basmati rice cooked";
-  if (q.includes("curd")) return "yogurt plain whole milk";
-  if (q.includes("paneer")) return "paneer cheese";
-  if (q.includes("ghee")) return "ghee clarified butter";
-
-  return q;
+  // remove brand names only
+  return q
+    .replace("amul", "")
+    .replace("mother dairy", "")
+    .replace("aavin", "")
+    .trim();
 }
 
 function normalizeText(value: string) {
@@ -255,52 +254,44 @@ function getImportantWords(value: string) {
 }
 
 function isRelevantFood(query: string, name: string) {
-  const q = normalizeText(query);
+  const qWords = getImportantWords(query);
   const n = normalizeText(name);
 
-  const riceQuery = q.includes("rice") || q.includes("basmati");
-  const riceName = n.includes("rice") || n.includes("basmati");
+  if (!qWords.length) return n.includes(normalizeText(query));
 
-  if (riceQuery && !riceName) return false;
-
-  return q.split(" ").every((w) => n.includes(w));
+  // MUST match all key words
+  return qWords.every((word) => n.includes(word));
 }
 
 function isLooseFoodMatch(query: string, name: string) {
-  const q = normalizeText(query);
+  const qWords = getImportantWords(query);
   const n = normalizeText(name);
-  const importantWords = getImportantWords(query);
 
-  if (!importantWords.length) return n.includes(q) || q.includes(n);
+  if (!qWords.length) return false;
 
-  const isBasmatiQuery = q.includes("basmati");
-  const isRiceQuery = importantWords.includes("rice") || q.includes("rice");
+  // At least 50% of key words must match
+  const matches = qWords.filter((word) => n.includes(word)).length;
 
-  if (isBasmatiQuery) {
-    return n.includes("basmati") && n.includes("rice");
-  }
-
-  if (isRiceQuery) {
-    const bannedRiceMeals = ["dirty rice", "fried rice", "spanish rice", "rice mix", "rice dish", "rice casserole"];
-    if (bannedRiceMeals.some((bad) => n.includes(bad))) return false;
-
-    return n.includes("rice");
-  }
-
-  return importantWords.some((word) => n.includes(word));
+  return matches >= Math.ceil(qWords.length / 2);
 }
 
 function relevanceScore(query: string, name: string) {
-  const q = normalizeText(query);
+  const qWords = getImportantWords(query);
   const n = normalizeText(name);
 
   let score = 0;
-  if (n === q) score += 100;
-  if (n.includes(q)) score += 50;
-  if (q.includes("basmati") && !n.includes("basmati")) score -= 100;
-if (q.includes("basmati") && n.includes("basmati")) score += 100;
-if (n.includes("dirty rice")) score -= 100;
-if (n.includes("fried rice")) score -= 100;
+
+  for (const word of qWords) {
+    if (n.includes(word)) score += 20;
+    else score -= 20;
+  }
+
+  // exact match boost
+  if (n === normalizeText(query)) score += 100;
+
+  // strong penalty for extra noise words
+  const nameWords = n.split(" ");
+  if (nameWords.length > qWords.length + 3) score -= 15;
 
   return score;
 }
