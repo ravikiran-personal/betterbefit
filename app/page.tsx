@@ -955,37 +955,29 @@ const latestQueryRef = useRef("");
       if (latestQueryRef.current !== query) return;
 
       // ✅ FIXED FILTER LOGIC (this is your bug)
-      const cleanedQuery = query
-        .toLowerCase()
-        .replace("boiled", "")
-        .replace("cooked", "")
-        .trim();
+      const stopWords = ["boiled", "cooked", "raw", "fresh"];
 
-      const queryWords = cleanedQuery
-        .split(" ")
-        .map((w) => w.trim())
-        .filter(Boolean);
+const queryWords = query
+  .toLowerCase()
+  .split(" ")
+  .map((word) => word.trim())
+  .filter((word) => word && !stopWords.includes(word));
 
-      const filteredSuggestions = (
-        result.results?.length
-          ? result.results
-          : result.food
-          ? [result]
-          : []
-      ).filter((item) => {
-        const name = item.food.toLowerCase();
+const filteredSuggestions = (
+  result.results?.length
+    ? result.results
+    : result.food
+    ? [result]
+    : []
+).filter((item) => {
+  const name = item.food.toLowerCase();
 
-        const matchCount = queryWords.filter((word) =>
-          name.includes(word)
-        ).length;
+  return queryWords.every((word) => name.includes(word));
+});
 
-        return matchCount >= Math.ceil(queryWords.length / 2);
-      });
-
-      const suggestions = filteredSuggestions
-        .filter((item) => item.confidence !== "low")
-        .slice(0, 6);
-
+const suggestions = filteredSuggestions
+  .filter((item) => item.confidence !== "low")
+  .slice(0, 6);
       setMealDraftSuggestions(suggestions);
     } catch {
       if (latestQueryRef.current !== query) return;
