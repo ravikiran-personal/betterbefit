@@ -103,7 +103,7 @@ async function searchUsdaResults(query: string, grams: number): Promise<MacroRes
   return foods
     .map((food: Record<string, unknown>) => convertUsdaFood(food, query, grams))
     .filter((item: MacroResult | null): item is MacroResult => item !== null)
-    .sort((a, b) => relevanceScore(query, b.food) - relevanceScore(query, a.food));
+    .sort((a: MacroResult, b: MacroResult) =>    relevanceScore(query, b.food) - relevanceScore(query, a.food) );
 }
 
 function convertUsdaFood(food: Record<string, unknown>, query: string, grams: number): MacroResult | null {
