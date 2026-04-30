@@ -415,6 +415,7 @@ export default function Page() {
   const [isCalculatingTargets, setIsCalculatingTargets] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const mealSearchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestQueryRef = useRef("");
 
   useEffect(() => {
     try {
@@ -909,86 +910,69 @@ const dashboardScopeLabel = selectedDashboardDate
     setMealDraftUnit("g");
     setMealDraftSuggestions([]);
   }
-const latestQueryRef = useRef("");
 
   async function searchMealDraftSuggestions(queryValue: string, gramsValue: number) {
-  setMealDraft((prev) => ({
-    ...prev,
-    food: queryValue
-  }));
+    setMealDraft((prev) => ({
+      ...prev,
+      food: queryValue
+    }));
 
-  if (mealSearchTimeoutRef.current) {
-    clearTimeout(mealSearchTimeoutRef.current);
-  }
-
-  const query = queryValue.trim();
-  latestQueryRef.current = query;
-
-  if (query.length < 3) {
-    setMealDraftSuggestions([]);
-    setIsSearchingMealDraft(false);
-    return;
-  }
-
-  mealSearchTimeoutRef.current = setTimeout(async () => {
-    const grams = gramsValue || 100;
-
-    setIsSearchingMealDraft(true);
-
-    try {
-      const response = await fetch("/api/food-search", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json"
-        },
-        body: JSON.stringify({
-          query,
-          grams
-        })
-      });
-
-      if (!response.ok) throw new Error("Food search failed.");
-
-      const result = (await response.json()) as FoodSearchResult;
-
-      // ✅ request guard
-      if (latestQueryRef.current !== query) return;
-
-      // ✅ FIXED FILTER LOGIC (this is your bug)
-      const stopWords = ["boiled", "cooked", "raw", "fresh"];
-
-const queryWords = query
-  .toLowerCase()
-  .split(" ")
-  .map((word) => word.trim())
-  .filter((word) => word && !stopWords.includes(word));
-
-const filteredSuggestions = (
-  result.results?.length
-    ? result.results
-    : result.food
-    ? [result]
-    : []
-).filter((item) => {
-  const name = item.food.toLowerCase();
-
-  return queryWords.every((word) => name.includes(word));
-});
-
-const suggestions = filteredSuggestions
-  .filter((item) => item.confidence !== "low")
-  .slice(0, 6);
-      setMealDraftSuggestions(suggestions);
-    } catch {
-      if (latestQueryRef.current !== query) return;
-      setMealDraftSuggestions([]);
-    } finally {
-      if (latestQueryRef.current === query) {
-        setIsSearchingMealDraft(false);
-      }
+    if (mealSearchTimeoutRef.current) {
+      clearTimeout(mealSearchTimeoutRef.current);
     }
-  }, 450);
-}
+
+    const query = queryValue.trim();
+    latestQueryRef.current = query;
+
+    if (query.length < 3) {
+      setMealDraftSuggestions([]);
+      setIsSearchingMealDraft(false);
+      return;
+    }
+
+    mealSearchTimeoutRef.current = setTimeout(async () => {
+      const grams = gramsValue || 100;
+      setIsSearchingMealDraft(true);
+
+      try {
+        const response = await fetch("/api/food-search", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json"
+          },
+          body: JSON.stringify({
+            query,
+            grams
+          })
+        });
+
+        if (!response.ok) throw new Error("Food search failed.");
+
+        const result = (await response.json()) as FoodSearchResult;
+
+        if (latestQueryRef.current !== query) return;
+
+        const apiSuggestions = result.results?.length
+          ? result.results
+          : result.food
+          ? [result]
+          : [];
+
+        const suggestions = apiSuggestions
+          .filter((item) => item.confidence !== "low")
+          .slice(0, 8);
+
+        setMealDraftSuggestions(suggestions);
+      } catch {
+        if (latestQueryRef.current !== query) return;
+        setMealDraftSuggestions([]);
+      } finally {
+        if (latestQueryRef.current === query) {
+          setIsSearchingMealDraft(false);
+        }
+      }
+    }, 450);
+  }
 
   async function searchFoodMacros() {
     const query = foodSearchQuery.trim();
@@ -1773,7 +1757,7 @@ async function addMealDraft() {
                             >
                               <span>
                                 <strong>{suggestion.food}</strong>
-                                <small>{suggestion.source === "usda" ? "Verified data" : suggestion.source === "cache" ? "Cached result" : "Manual fallback"}</small>
+                                <small>{suggestion.source === "usda" ? "Verified data" : suggestion.source === "local" ? "Verified app data" : suggestion.source === "claude" ? "Estimated (AI)" : suggestion.source === "cache" ? "Cached result" : "Manual fallback"}</small>
                               </span>
                               <span className="food-suggestion-macros">
                                 {suggestion.calories} cal | P {suggestion.protein} | C {suggestion.carbs} | F {suggestion.fats}
