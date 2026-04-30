@@ -23,9 +23,20 @@ type FoodSearchResponse = MacroResult & {
   results: MacroResult[];
 };
 
-const cache = new Map<string, { timestamp: number; data: FoodSearchResponse }>();
-
+const validatedCache = new Map<string, MacroResult>();
 export async function POST(request: Request) {
+const normalizedQuery = normalizeText(query);
+
+if (validatedCache.has(normalizedQuery)) {
+  const result = validatedCache.get(normalizedQuery)!;
+
+  return NextResponse.json({
+    ...result,
+    source: "cache",
+    results: [result]
+  });
+}
+  
   try {
     const body = (await request.json()) as FoodSearchRequest;
     const query = String(body.query || "").trim();
@@ -41,16 +52,6 @@ export async function POST(request: Request) {
       query: normalizeText(normalizedQuery),
       grams
     });
-
-    const cached = cache.get(cacheKey);
-
-    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      return NextResponse.json({
-        ...cached.data,
-        source: "cache",
-        results: cached.data.results.map((item) => ({ ...item, source: "cache" }))
-      });
-    }
 
     const usdaResults = await searchUsdaResults(normalizedQuery, grams);
 
