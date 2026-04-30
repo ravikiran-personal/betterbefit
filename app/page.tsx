@@ -920,9 +920,8 @@ const latestQueryRef = useRef("");
   if (mealSearchTimeoutRef.current) {
     clearTimeout(mealSearchTimeoutRef.current);
   }
-  const query = queryValue.trim();
 
-  // ✅ track latest query
+  const query = queryValue.trim();
   latestQueryRef.current = query;
 
   if (query.length < 3) {
@@ -932,7 +931,7 @@ const latestQueryRef = useRef("");
   }
 
   mealSearchTimeoutRef.current = setTimeout(async () => {
-    const grams = gramsValue || 100; // ✅ use passed value, not stale state
+    const grams = gramsValue || 100;
 
     setIsSearchingMealDraft(true);
 
@@ -949,40 +948,49 @@ const latestQueryRef = useRef("");
       });
 
       if (!response.ok) throw new Error("Food search failed.");
+
       const result = (await response.json()) as FoodSearchResult;
 
-       if (latestQueryRef.current !== query) return;
-
-const queryWords = query
-  .toLowerCase()
-  .split(" ")
-  .map((word) => word.trim())
-  .filter(Boolean);
-
-const filteredSuggestions = (
-  result.results?.length
-    ? result.results
-    : result.food
-    ? [result]
-    : []
-).filter((item) => {
-  const name = item.food.toLowerCase();
-
-  return queryWords.every((word) => name.includes(word));
-});
-
-const suggestions = filteredSuggestions.filter((item) => {
-  return item.confidence !== "low";
-});
-
-setMealDraftSuggestions(suggestions);
-    } catch {
-      // ✅ ignore stale errors too
+      // ✅ request guard
       if (latestQueryRef.current !== query) return;
 
+      // ✅ FIXED FILTER LOGIC (this is your bug)
+      const cleanedQuery = query
+        .toLowerCase()
+        .replace("boiled", "")
+        .replace("cooked", "")
+        .trim();
+
+      const queryWords = cleanedQuery
+        .split(" ")
+        .map((w) => w.trim())
+        .filter(Boolean);
+
+      const filteredSuggestions = (
+        result.results?.length
+          ? result.results
+          : result.food
+          ? [result]
+          : []
+      ).filter((item) => {
+        const name = item.food.toLowerCase();
+
+        const matchCount = queryWords.filter((word) =>
+          name.includes(word)
+        ).length;
+
+        return matchCount >= Math.ceil(queryWords.length / 2);
+      });
+
+      const suggestions = filteredSuggestions
+        .filter((item) => item.confidence !== "low")
+        .slice(0, 6);
+
+      setMealDraftSuggestions(suggestions);
+    } catch {
+      if (latestQueryRef.current !== query) return;
       setMealDraftSuggestions([]);
     } finally {
-      // ✅ prevent flicker from stale responses
       if (latestQueryRef.current === query) {
         setIsSearchingMealDraft(false);
       }
