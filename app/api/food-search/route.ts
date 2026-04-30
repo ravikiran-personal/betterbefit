@@ -228,13 +228,13 @@ async function searchUsdaResults(query: string, grams: number): Promise<MacroRes
 ========================= */
 
 function normalizeIndianFood(query: string) {
-  const q = query.toLowerCase();
+  const q = query.toLowerCase().trim();
 
-  if (q.includes("amul")) return q.replace("amul", "").trim();
-  if (q.includes("basmati")) return "basmati rice";
-  if (q.includes("curd")) return "yogurt";
-  if (q.includes("paneer")) return "cheese paneer";
-  if (q.includes("ghee")) return "butter oil";
+  if (q.includes("amul") && q.includes("milk")) return "milk whole";
+  if (q.includes("basmati")) return "basmati rice cooked";
+  if (q.includes("curd")) return "yogurt plain whole milk";
+  if (q.includes("paneer")) return "paneer cheese";
+  if (q.includes("ghee")) return "ghee clarified butter";
 
   return q;
 }
@@ -269,8 +269,25 @@ function isRelevantFood(query: string, name: string) {
 function isLooseFoodMatch(query: string, name: string) {
   const q = normalizeText(query);
   const n = normalizeText(name);
+  const importantWords = getImportantWords(query);
 
-  return q.split(" ").some((w) => n.includes(w));
+  if (!importantWords.length) return n.includes(q) || q.includes(n);
+
+  const isBasmatiQuery = q.includes("basmati");
+  const isRiceQuery = importantWords.includes("rice") || q.includes("rice");
+
+  if (isBasmatiQuery) {
+    return n.includes("basmati") && n.includes("rice");
+  }
+
+  if (isRiceQuery) {
+    const bannedRiceMeals = ["dirty rice", "fried rice", "spanish rice", "rice mix", "rice dish", "rice casserole"];
+    if (bannedRiceMeals.some((bad) => n.includes(bad))) return false;
+
+    return n.includes("rice");
+  }
+
+  return importantWords.some((word) => n.includes(word));
 }
 
 function relevanceScore(query: string, name: string) {
@@ -280,6 +297,10 @@ function relevanceScore(query: string, name: string) {
   let score = 0;
   if (n === q) score += 100;
   if (n.includes(q)) score += 50;
+  if (q.includes("basmati") && !n.includes("basmati")) score -= 100;
+if (q.includes("basmati") && n.includes("basmati")) score += 100;
+if (n.includes("dirty rice")) score -= 100;
+if (n.includes("fried rice")) score -= 100;
 
   return score;
 }
