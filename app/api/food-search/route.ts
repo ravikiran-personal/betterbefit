@@ -25,7 +25,6 @@ type FoodSearchResponse = MacroResult & {
 
 const validatedCache = new Map<string, MacroResult>();
 export async function POST(request: Request) {
-const normalizedQuery = normalizeText(query);
 
 if (validatedCache.has(normalizedQuery)) {
   const result = validatedCache.get(normalizedQuery)!;
@@ -47,6 +46,8 @@ if (validatedCache.has(normalizedQuery)) {
     }
 
     const normalizedQuery = normalizeIndianFood(query);
+    const normalizedQuery = normalizeText(query);
+
 
     const cacheKey = JSON.stringify({
       query: normalizeText(normalizedQuery),
