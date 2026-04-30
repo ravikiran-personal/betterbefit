@@ -8,7 +8,7 @@ type FoodSearchRequest = {
 };
 
 type MacroResult = {
-  source: "usda" | "claude" | "fallback";
+  source: "usda" | "cache" | "fallback";
   food: string;
   grams: number;
   calories: number;
@@ -19,7 +19,11 @@ type MacroResult = {
   note: string;
 };
 
-const cache = new Map<string, { timestamp: number; data: MacroResult }>();
+type FoodSearchResponse = MacroResult & {
+  results: MacroResult[];
+};
+
+const cache = new Map<string, { timestamp: number; data: FoodSearchResponse }>();
 
 export async function POST(request: Request) {
   try {
@@ -31,40 +35,44 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Food search query is required." }, { status: 400 });
     }
 
-    const cacheKey = JSON.stringify({ query: query.toLowerCase(), grams });
+    const cacheKey = JSON.stringify({ query: normalizeText(query), grams });
     const cached = cache.get(cacheKey);
 
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      return NextResponse.json({   ...cached.data,   source: "cache" });
+      return NextResponse.json({
+        ...cached.data,
+        source: "cache",
+        results: cached.data.results.map((item) => ({ ...item, source: "cache" }))
+      });
     }
 
-    const usdaResult = await searchUsda(query, grams);
+    const usdaResults = await searchUsdaResults(query, grams);
+    const relevantResults = usdaResults.filter((item) => isRelevantFood(query, item.food));
+    const looseResults = usdaResults.filter((item) => isLooseFoodMatch(query, item.food));
 
-    if (usdaResult && shouldUseUsda(query)) {
-      cache.set(cacheKey, { timestamp: Date.now(), data: usdaResult });
-      return NextResponse.json(usdaResult);
-    }
+    const suggestions = dedupeResults([...relevantResults, ...looseResults]).slice(0, 6);
 
-    const claudeResult = await estimateWithClaude(query, grams, usdaResult);
-
-    const result =
-      claudeResult ||
-      usdaResult ||
+    const best =
+      suggestions[0] ||
       ({
         source: "fallback",
         food: query,
         grams,
-        calories: Math.round(grams * 1.5),
+        calories: 0,
         protein: 0,
         carbs: 0,
         fats: 0,
         confidence: "low",
-        note: "Fallback estimate only. Could not find reliable nutrition data."
+        note: "No reliable match found. Please enter macros manually."
       } satisfies MacroResult);
 
-    cache.set(cacheKey, { timestamp: Date.now(), data: result });
+    const response: FoodSearchResponse = {
+      ...best,
+      results: suggestions
+    };
 
-    return NextResponse.json(result);
+    cache.set(cacheKey, { timestamp: Date.now(), data: response });
+    return NextResponse.json(response);
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unknown food search error." },
@@ -73,59 +81,36 @@ export async function POST(request: Request) {
   }
 }
 
-function shouldUseUsda(query: string) {
-  const lower = query.toLowerCase();
-
-  const mixedMealWords = [
-    "biryani",
-    "dosa",
-    "idli",
-    "sambar",
-    "chutney",
-    "parotta",
-    "paratha",
-    "chapati",
-    "roti",
-    "paneer",
-    "curd rice",
-    "fried rice",
-    "meals",
-    "thali",
-    "curry",
-    "gravy",
-    "masala",
-    "korma",
-    "tikka",
-    "naan",
-    "pongal",
-    "upma",
-    "poha"
-  ];
-
-  return !mixedMealWords.some((word) => lower.includes(word));
-}
-
-async function searchUsda(query: string, grams: number): Promise<MacroResult | null> {
+async function searchUsdaResults(query: string, grams: number): Promise<MacroResult[]> {
   const apiKey = process.env.USDA_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey) return [];
 
   const response = await fetch(`https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${apiKey}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
       query,
-      pageSize: 5,
+      pageSize: 15,
       dataType: ["Foundation", "SR Legacy", "Survey (FNDDS)"]
     })
   });
 
-  if (!response.ok) return null;
+  if (!response.ok) return [];
 
   const data = await response.json();
-  const food = data.foods?.[0];
-  if (!food) return null;
+  const foods = Array.isArray(data.foods) ? data.foods : [];
 
-  const nutrients = food.foodNutrients || [];
+  return foods
+    .map((food: Record<string, unknown>) => convertUsdaFood(food, query, grams))
+    .filter((item: MacroResult | null): item is MacroResult => item !== null)
+    .sort((a, b) => relevanceScore(query, b.food) - relevanceScore(query, a.food));
+}
+
+function convertUsdaFood(food: Record<string, unknown>, query: string, grams: number): MacroResult | null {
+  const description = String(food.description || "").trim();
+  if (!description) return null;
+
+  const nutrients = Array.isArray(food.foodNutrients) ? (food.foodNutrients as Array<Record<string, unknown>>) : [];
 
   const caloriesPer100 = getNutrient(nutrients, ["Energy"], ["208"]);
   const proteinPer100 = getNutrient(nutrients, ["Protein"], ["203"]);
@@ -136,87 +121,110 @@ async function searchUsda(query: string, grams: number): Promise<MacroResult | n
 
   return {
     source: "usda",
-    food: food.description || query,
+    food: description || query,
     grams,
     calories: Math.round(caloriesPer100 * multiplier),
     protein: round1(proteinPer100 * multiplier),
     carbs: round1(carbsPer100 * multiplier),
     fats: round1(fatsPer100 * multiplier),
-    confidence: "high",
-    note: "Calculated from USDA FoodData Central per-100g nutrients."
+    confidence: isRelevantFood(query, description) ? "high" : "medium",
+    note: "Calculated from USDA FoodData Central and cached for 24 hours."
   };
 }
 
-async function estimateWithClaude(
-  query: string,
-  grams: number,
-  usdaResult: MacroResult | null
-): Promise<MacroResult | null> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return null;
-
-  const prompt = `
-Return ONLY valid JSON. No markdown.
-
-Estimate nutrition for this food:
-Food: ${query}
-Serving size: ${grams} grams
-
-Context:
-- User may enter Indian foods, restaurant-style dishes, or mixed meals.
-- Use typical cooked food assumptions.
-- If USDA data is available below, use it as a reference but adjust if the query is a mixed Indian dish.
-
-USDA reference:
-${usdaResult ? JSON.stringify(usdaResult) : "None"}
-
-Return this exact JSON shape:
-{
-  "food": "clean food name",
-  "grams": ${grams},
-  "calories": 500,
-  "protein": 25,
-  "carbs": 60,
-  "fats": 15,
-  "confidence": "high | medium | low",
-  "note": "short explanation"
+function normalizeText(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
-`;
 
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01"
-    },
-    body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 500,
-      messages: [{ role: "user", content: prompt }]
-    })
+function getImportantWords(value: string) {
+  const stopWords = new Set([
+    "and",
+    "with",
+    "the",
+    "a",
+    "an",
+    "of",
+    "style",
+    "fresh",
+    "plain",
+    "cooked",
+    "boiled",
+    "steamed",
+    "raw",
+    "white"
+  ]);
+
+  return normalizeText(value)
+    .split(" ")
+    .filter((word) => word.length > 2 && !stopWords.has(word));
+}
+
+function isRelevantFood(query: string, name: string) {
+  const q = normalizeText(query);
+  const n = normalizeText(name);
+  const importantWords = getImportantWords(query);
+
+  if (!importantWords.length) return n.includes(q);
+
+  const riceQuery = importantWords.includes("rice") || q.includes("basmati");
+  const riceName = n.includes("rice") || n.includes("basmati");
+
+  if (riceQuery && !riceName) return false;
+
+  return importantWords.every((word) => n.includes(word));
+}
+
+function isLooseFoodMatch(query: string, name: string) {
+  const q = normalizeText(query);
+  const n = normalizeText(name);
+  const importantWords = getImportantWords(query);
+
+  if (!importantWords.length) return n.includes(q) || q.includes(n);
+
+  const riceQuery = importantWords.includes("rice") || q.includes("basmati");
+  const riceName = n.includes("rice") || n.includes("basmati");
+
+  if (riceQuery && !riceName) return false;
+
+  return importantWords.some((word) => n.includes(word));
+}
+
+function relevanceScore(query: string, name: string) {
+  const q = normalizeText(query);
+  const n = normalizeText(name);
+  const importantWords = getImportantWords(query);
+
+  let score = 0;
+
+  if (n === q) score += 100;
+  if (n.includes(q)) score += 50;
+
+  for (const word of importantWords) {
+    if (n.includes(word)) score += 10;
+  }
+
+  if (q.includes("boiled") || q.includes("cooked") || q.includes("steamed")) {
+    if (n.includes("cooked") || n.includes("boiled") || n.includes("steamed")) score += 15;
+  }
+
+  if (q.includes("basmati") && n.includes("basmati")) score += 20;
+  if (q.includes("rice") && !n.includes("rice")) score -= 100;
+
+  return score;
+}
+
+function dedupeResults(results: MacroResult[]) {
+  const seen = new Set<string>();
+  return results.filter((item) => {
+    const key = normalizeText(item.food);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
   });
-
-  if (!response.ok) return null;
-
-  const raw = await response.json();
-  const text = raw.content?.[0]?.text;
-  if (!text) return null;
-
-  const cleanedText = text.replace(/```json/g, "").replace(/```/g, "").trim();
-  const parsed = JSON.parse(cleanedText);
-
-  return {
-    source: "claude",
-    food: String(parsed.food || query),
-    grams,
-    calories: Math.round(safeNumber(parsed.calories, 0)),
-    protein: round1(safeNumber(parsed.protein, 0)),
-    carbs: round1(safeNumber(parsed.carbs, 0)),
-    fats: round1(safeNumber(parsed.fats, 0)),
-    confidence: normalizeConfidence(parsed.confidence),
-    note: String(parsed.note || "Estimated with Claude.")
-  };
 }
 
 function getNutrient(
@@ -247,9 +255,4 @@ function safeNumber(value: unknown, fallback: number) {
 
 function round1(value: number) {
   return Math.round(value * 10) / 10;
-}
-
-function normalizeConfidence(value: unknown): "high" | "medium" | "low" {
-  if (value === "high" || value === "medium" || value === "low") return value;
-  return "medium";
 }
