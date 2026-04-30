@@ -25,28 +25,32 @@ type FoodSearchResponse = MacroResult & {
 
 const validatedCache = new Map<string, MacroResult>();
 export async function POST(request: Request) {
-
-if (validatedCache.has(normalizedQuery)) {
-  const result = validatedCache.get(normalizedQuery)!;
-
-  return NextResponse.json({
-    ...result,
-    source: "cache",
-    results: [result]
-  });
-}
-  
   try {
     const body = (await request.json()) as FoodSearchRequest;
+
     const query = String(body.query || "").trim();
     const grams = safeNumber(body.grams, 100);
 
     if (!query) {
-      return NextResponse.json({ error: "Food search query is required." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Food search query is required." },
+        { status: 400 }
+      );
     }
 
-const normalizedQuery = normalizeText(normalizeIndianFood(query));
+    // ✅ DEFINE BEFORE USE
+    const normalizedQuery = normalizeText(normalizeIndianFood(query));
 
+    // ✅ CACHE CHECK AFTER DEFINITION
+    if (validatedCache.has(normalizedQuery)) {
+      const result = validatedCache.get(normalizedQuery)!;
+
+      return NextResponse.json({
+        ...result,
+        source: "cache",
+        results: [result]
+      });
+    }
 
     const cacheKey = JSON.stringify({
       query: normalizeText(normalizedQuery),
@@ -68,17 +72,17 @@ const normalizedQuery = normalizeText(normalizeIndianFood(query));
       ...looseResults
     ]).slice(0, 6);
 
-    let best: MacroResult | undefined = suggestions[0];  // fallback to ANY USDA result before AI 
-    if (!best && usdaResults.length > 0) {   best = usdaResults[0]; }
+    let best: MacroResult | undefined = suggestions[0];
 
-    // ✅ AI fallback ONLY if nothing found
+    // fallback to ANY USDA result before AI
+    if (!best && usdaResults.length > 0) {
+      best = usdaResults[0];
+    }
+
+    // AI fallback ONLY if nothing found
     if (!best) {
       best = await fallbackEstimate(query, grams);
     }
-
-    if (!best) {
-  best = await fallbackEstimate(query, grams);
-}
 
     const finalSuggestions = suggestions.length ? suggestions : [best];
 
@@ -87,12 +91,20 @@ const normalizedQuery = normalizeText(normalizeIndianFood(query));
       results: finalSuggestions
     };
 
-    cache.set(cacheKey, { timestamp: Date.now(), data: response });
+    cache.set(cacheKey, {
+      timestamp: Date.now(),
+      data: response
+    });
 
     return NextResponse.json(response);
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unknown food search error." },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Unknown food search error."
+      },
       { status: 500 }
     );
   }
