@@ -45,8 +45,7 @@ if (validatedCache.has(normalizedQuery)) {
       return NextResponse.json({ error: "Food search query is required." }, { status: 400 });
     }
 
-    const normalizedQuery = normalizeIndianFood(query);
-    const normalizedQuery = normalizeText(query);
+const normalizedQuery = normalizeText(normalizeIndianFood(query));
 
 
     const cacheKey = JSON.stringify({
