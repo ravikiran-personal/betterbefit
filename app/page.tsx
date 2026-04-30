@@ -414,6 +414,7 @@ export default function Page() {
   const [targetReason, setTargetReason] = useState("");
   const [isCalculatingTargets, setIsCalculatingTargets] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const mealSearchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     try {
@@ -908,21 +909,31 @@ const dashboardScopeLabel = selectedDashboardDate
     setMealDraftUnit("g");
     setMealDraftSuggestions([]);
   }
+const latestQueryRef = useRef("");
 
-  async function searchMealDraftSuggestions(queryValue: string) {
-    const query = queryValue.trim();
+  async function searchMealDraftSuggestions(queryValue: string, gramsValue: number) {
+  setMealDraft((prev) => ({
+    ...prev,
+    food: queryValue
+  }));
 
-    setMealDraft((prev) => ({
-      ...prev,
-      food: queryValue
-    }));
+  if (mealSearchTimeoutRef.current) {
+    clearTimeout(mealSearchTimeoutRef.current);
+  }
+  const query = queryValue.trim();
 
-    if (query.length < 2) {
-      setMealDraftSuggestions([]);
-      return;
-    }
+  // ✅ track latest query
+  latestQueryRef.current = query;
 
-    const grams = mealDraft.grams || 100;
+  if (query.length < 3) {
+    setMealDraftSuggestions([]);
+    setIsSearchingMealDraft(false);
+    return;
+  }
+
+  mealSearchTimeoutRef.current = setTimeout(async () => {
+    const grams = gramsValue || 100; // ✅ use passed value, not stale state
+
     setIsSearchingMealDraft(true);
 
     try {
@@ -938,16 +949,46 @@ const dashboardScopeLabel = selectedDashboardDate
       });
 
       if (!response.ok) throw new Error("Food search failed.");
-
       const result = (await response.json()) as FoodSearchResult;
-      const suggestions = result.results?.length ? result.results : result.food ? [result] : [];
-      setMealDraftSuggestions(suggestions);
+
+       if (latestQueryRef.current !== query) return;
+
+const queryWords = query
+  .toLowerCase()
+  .split(" ")
+  .map((word) => word.trim())
+  .filter(Boolean);
+
+const filteredSuggestions = (
+  result.results?.length
+    ? result.results
+    : result.food
+    ? [result]
+    : []
+).filter((item) => {
+  const name = item.food.toLowerCase();
+
+  return queryWords.every((word) => name.includes(word));
+});
+
+const suggestions = filteredSuggestions.filter((item) => {
+  return item.confidence !== "low";
+});
+
+setMealDraftSuggestions(suggestions);
     } catch {
+      // ✅ ignore stale errors too
+      if (latestQueryRef.current !== query) return;
+
       setMealDraftSuggestions([]);
     } finally {
-      setIsSearchingMealDraft(false);
+      // ✅ prevent flicker from stale responses
+      if (latestQueryRef.current === query) {
+        setIsSearchingMealDraft(false);
+      }
     }
-  }
+  }, 450);
+}
 
   async function searchFoodMacros() {
     const query = foodSearchQuery.trim();
@@ -1019,54 +1060,64 @@ const dashboardScopeLabel = selectedDashboardDate
     }));
   }
 
-  function addMealDraft() {
-    const foodName = mealDraft.food.trim();
+async function addMealDraft() {
+  const draftToSave = {
+    ...mealDraft,
+    food: mealDraft.food.trim()
+  };
 
-    if (!foodName) {
-      alert("Enter the food or meal name first.");
-      return;
-      await fetch("/api/food-search/save", {
-  method: "POST",
-  body: JSON.stringify({
-    query: mealDraft.food,
-    data: {
-      food: mealDraft.food,
-      calories: mealDraft.calories,
-      protein: mealDraft.protein,
-      carbs: mealDraft.carbs,
-      fats: mealDraft.fats,
-      grams: mealDraft.grams
-    }
-  })
-});
-    }
-
-    setState((prev) => ({
-      ...prev,
-      foods: [
-        ...prev.foods,
-        {
-          ...mealDraft,
-          id: cryptoSafeId(),
-          food: foodName
-        }
-      ]
-    }));
-
-    setMealDraft({
-      id: "draft",
-      meal: mealDraft.meal,
-      food: "",
-      grams: 100,
-      calories: 0,
-      protein: 0,
-      carbs: 0,
-      fats: 0
-    });
-    setMealDraftUnit("g");
-    setMealDraftSuggestions([]);
+  if (!draftToSave.food) {
+    alert("Enter the food or meal name first.");
+    return;
   }
 
+  setState((prev) => ({
+    ...prev,
+    foods: [
+      ...prev.foods,
+      {
+        ...draftToSave,
+        id: cryptoSafeId()
+      }
+    ]
+  }));
+
+  try {
+    await fetch("/api/food-search/save", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({
+        query: draftToSave.food,
+        data: {
+          food: draftToSave.food,
+          calories: draftToSave.calories,
+          protein: draftToSave.protein,
+          carbs: draftToSave.carbs,
+          fats: draftToSave.fats,
+          grams: draftToSave.grams
+        }
+      })
+    });
+  } catch (error) {
+    console.error("Food cache save failed:", error);
+  }
+
+  setMealDraft({
+    id: "draft",
+    meal: draftToSave.meal,
+    food: "",
+    grams: 100,
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fats: 0
+  });
+
+  setMealDraftUnit("g");
+  setMealDraftSuggestions([]);
+}
   function saveCurrentMealsAsPreset() {
     const name = mealPresetName.trim();
 
@@ -1701,10 +1752,10 @@ const dashboardScopeLabel = selectedDashboardDate
                         className="input"
                         value={mealDraft.food}
                         placeholder="Type food, e.g. boiled basmati rice"
-                        onChange={(e) => searchMealDraftSuggestions(e.target.value)}
+                        onChange={(e) => searchMealDraftSuggestions(e.target.value, mealDraft.grams)}
                         onFocus={() => {
-                          if (mealDraftSuggestions.length === 0 && mealDraft.food.trim().length >= 2) {
-                            searchMealDraftSuggestions(mealDraft.food);
+                          if (mealDraftSuggestions.length === 0 && mealDraft.food.trim().length >= 3) {
+                            searchMealDraftSuggestions(mealDraft.food, mealDraft.grams);
                           }
                         }}
                       />
