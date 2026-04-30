@@ -1025,6 +1025,20 @@ const dashboardScopeLabel = selectedDashboardDate
     if (!foodName) {
       alert("Enter the food or meal name first.");
       return;
+      await fetch("/api/food-search/save", {
+  method: "POST",
+  body: JSON.stringify({
+    query: mealDraft.food,
+    data: {
+      food: mealDraft.food,
+      calories: mealDraft.calories,
+      protein: mealDraft.protein,
+      carbs: mealDraft.carbs,
+      fats: mealDraft.fats,
+      grams: mealDraft.grams
+    }
+  })
+});
     }
 
     setState((prev) => ({
