@@ -216,7 +216,7 @@ async function searchUsdaResults(query: string, grams: number): Promise<MacroRes
     .map((food: Record<string, unknown>) =>
       convertUsdaFood(food, query, grams)
     )
-    .filter((item): item is MacroResult => item !== null)
+    .filter((item: MacroResult | null): item is MacroResult => item !== null)
     .sort(
       (a: MacroResult, b: MacroResult) =>
         relevanceScore(query, b.food) - relevanceScore(query, a.food)
