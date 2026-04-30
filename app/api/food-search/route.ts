@@ -52,11 +52,6 @@ export async function POST(request: Request) {
       });
     }
 
-    const cacheKey = JSON.stringify({
-      query: normalizeText(normalizedQuery),
-      grams
-    });
-
     const usdaResults = await searchUsdaResults(normalizedQuery, grams);
 
     const relevantResults = usdaResults.filter((item) =>
@@ -90,11 +85,6 @@ export async function POST(request: Request) {
       ...best,
       results: finalSuggestions
     };
-
-    cache.set(cacheKey, {
-      timestamp: Date.now(),
-      data: response
-    });
 
     return NextResponse.json(response);
   } catch (error) {
