@@ -67,12 +67,17 @@ export async function POST(request: Request) {
       ...looseResults
     ]).slice(0, 6);
 
-    let best: MacroResult | undefined = suggestions[0];
+    let best: MacroResult | undefined = suggestions[0];  // fallback to ANY USDA result before AI 
+    if (!best && usdaResults.length > 0) {   best = usdaResults[0]; }
 
     // ✅ AI fallback ONLY if nothing found
     if (!best) {
       best = await fallbackEstimate(query, grams);
     }
+
+    if (!best) {
+  best = await fallbackEstimate(query, grams);
+}
 
     const finalSuggestions = suggestions.length ? suggestions : [best];
 
@@ -259,8 +264,10 @@ function isRelevantFood(query: string, name: string) {
 
   if (!qWords.length) return n.includes(normalizeText(query));
 
-  // MUST match all key words
-  return qWords.every((word) => n.includes(word));
+  const matches = qWords.filter((word) => n.includes(word)).length;
+
+  // require strong match but not perfect
+  return matches >= qWords.length - 1;
 }
 
 function isLooseFoodMatch(query: string, name: string) {
@@ -269,10 +276,10 @@ function isLooseFoodMatch(query: string, name: string) {
 
   if (!qWords.length) return false;
 
-  // At least 50% of key words must match
   const matches = qWords.filter((word) => n.includes(word)).length;
 
-  return matches >= Math.ceil(qWords.length / 2);
+  // relaxed fallback (was too strict earlier)
+  return matches >= 1;
 }
 
 function relevanceScore(query: string, name: string) {
