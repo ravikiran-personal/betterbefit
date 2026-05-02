@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { generateFitnessPlan } from "@/lib/fitness-engine";
+import type { GeneratedExercise } from "@/lib/fitness-engine";
 
 type Tab = "dashboard" | "workouts" | "nutrition" | "checkin" | "settings";
 
@@ -360,6 +362,18 @@ function seedWorkoutLogs(): ExerciseLog[] {
   }));
 }
 
+function createExerciseLogFromGenerated(item: GeneratedExercise): ExerciseLog {
+  return {
+    id: cryptoSafeId(),
+    ...item,
+    workoutSets: createWorkoutSets(item.sets),
+    weight: "",
+    repsDone: "",
+    rpe: "",
+    notes: ""
+  };
+}
+
 type AppState = {
   settings: Settings;
   dailyLogs: DailyLog[];
@@ -628,6 +642,46 @@ const dashboardScopeLabel = selectedDashboardDate
     workoutCompletion,
     settings: state.settings
   });
+
+  const generatedPlan = useMemo(() => generateFitnessPlan(state.settings), [state.settings]);
+
+  function applyGeneratedNutritionPlan() {
+    setState((prev) => ({
+      ...prev,
+      settings: {
+        ...prev.settings,
+        targetCalories: generatedPlan.nutrition.calories,
+        proteinTarget: generatedPlan.nutrition.protein,
+        carbTarget: generatedPlan.nutrition.carbs,
+        fatTarget: generatedPlan.nutrition.fats
+      }
+    }));
+
+    setTargetReason("Research-backed nutrition targets applied from your current settings.");
+  }
+
+  function applyGeneratedWorkoutPlan() {
+    setState((prev) => ({
+      ...prev,
+      workoutLogs: generatedPlan.workout.exercises.map((exercise) => createExerciseLogFromGenerated(exercise))
+    }));
+  }
+
+  function applyGeneratedFullPlan() {
+    setState((prev) => ({
+      ...prev,
+      settings: {
+        ...prev.settings,
+        targetCalories: generatedPlan.nutrition.calories,
+        proteinTarget: generatedPlan.nutrition.protein,
+        carbTarget: generatedPlan.nutrition.carbs,
+        fatTarget: generatedPlan.nutrition.fats
+      },
+      workoutLogs: generatedPlan.workout.exercises.map((exercise) => createExerciseLogFromGenerated(exercise))
+    }));
+
+    setTargetReason("Research-backed nutrition and workout plan applied from your current settings.");
+  }
 
   async function calculateTargetsWithAI() {
     setIsCalculatingTargets(true);
@@ -2307,6 +2361,48 @@ async function addMealDraft() {
               <Field label="Injuries / limitations">
                 <input className="input" value={state.settings.limitations} onChange={(e) => updateSettings("limitations", e.target.value)} placeholder="e.g. knee pain, shoulder discomfort, none" />
               </Field>
+            </div>
+
+            <div className="card research-plan-card" style={{ marginTop: 14, background: "#0f172a" }}>
+              <div className="row space-between">
+                <div>
+                  <h3 style={{ marginTop: 0 }}>Research-backed plan preview</h3>
+                  <p className="small" style={{ lineHeight: 1.6 }}>
+                    Generated from your body metrics, goal, lifestyle, training experience, equipment and session length. Nothing changes unless you tap Apply.
+                  </p>
+                </div>
+                <span className="badge">Confidence: {generatedPlan.nutrition.confidence}</span>
+              </div>
+
+              <div className="research-plan-grid">
+                <div className="mini-signal">
+                  <strong>Nutrition</strong>
+                  <span>{generatedPlan.nutrition.calories} kcal • P {generatedPlan.nutrition.protein}g • C {generatedPlan.nutrition.carbs}g • F {generatedPlan.nutrition.fats}g</span>
+                </div>
+                <div className="mini-signal">
+                  <strong>Workout</strong>
+                  <span>{generatedPlan.workout.split} • {generatedPlan.workout.exercises.length} exercises</span>
+                </div>
+                <div className="mini-signal">
+                  <strong>Cardio</strong>
+                  <span>{generatedPlan.cardio.weeklyMinutes} min/week • {generatedPlan.cardio.confidence} confidence</span>
+                </div>
+              </div>
+
+              <div className="research-reason-list">
+                {[...generatedPlan.nutrition.reasoning, ...generatedPlan.workout.reasoning, ...generatedPlan.cardio.reasoning].slice(0, 6).map((reason) => (
+                  <div className="game-signal" key={reason}>
+                    <span className="signal-dot" />
+                    <p>{reason}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="row">
+                <button className="btn" onClick={applyGeneratedNutritionPlan}>Apply nutrition targets</button>
+                <button className="btn secondary" onClick={applyGeneratedWorkoutPlan}>Apply workout plan</button>
+                <button className="btn secondary" onClick={applyGeneratedFullPlan}>Apply full plan</button>
+              </div>
             </div>
 
             <button className="btn" onClick={calculateTargetsWithAI} disabled={isCalculatingTargets}>
