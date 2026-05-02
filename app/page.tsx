@@ -1887,26 +1887,31 @@ async function addMealDraft() {
                         <div className="small">{foodSearchResult.source === "usda" ? "Verified data" : foodSearchResult.source === "claude" ? "Estimated (AI)" : "Saved result"} | Confidence: {foodSearchResult.confidence}</div>
                         <div className="small">{foodSearchResult.note}</div>
                       </div>
-                     <button className="btn" onClick={() => {
-  if (!foodSearchResult) return;
+                    <button className="btn" onClick={() => {
+  const selectedFoodSearchResult = foodSearchResult;
+
+  if (!selectedFoodSearchResult) return;
 
   setMealDraft({
     id: "draft",
     date: getLocalDateISO(),
     meal: "Search",
-    food: foodSearchResult.food,
-                          grams: foodSearchResult.grams,
-                          calories: foodSearchResult.calories,
-                          protein: foodSearchResult.protein,
-                          carbs: foodSearchResult.carbs,
-                          fats: foodSearchResult.fats
-                        });
-                        setMealDraftUnit("g");
-                        setFoodSearchQuery("");
-                        setFoodSearchGrams(100);
-                        setFoodSearchResult(null);
-                        setExpandedNutritionSections((prev) => ({ ...prev, logMeal: true }));
-                      }}>Use in log form</button>
+    food: selectedFoodSearchResult.food,
+    grams: selectedFoodSearchResult.grams,
+    calories: selectedFoodSearchResult.calories,
+    protein: selectedFoodSearchResult.protein,
+    carbs: selectedFoodSearchResult.carbs,
+    fats: selectedFoodSearchResult.fats
+  });
+
+  setMealDraftUnit("g");
+  setFoodSearchQuery("");
+  setFoodSearchGrams(100);
+  setFoodSearchResult(null);
+  setExpandedNutritionSections((prev) => ({ ...prev, logMeal: true }));
+}}>
+  Use in log form
+</button>
                     </div>
                   </div>
                 ) : null}
