@@ -1153,17 +1153,17 @@ async function addMealDraft() {
     console.error("Food cache save failed:", error);
   }
 
-  setMealDraft({
-    id: "draft",
-      date: getLocalDateISO(),
-    meal: draftToSave.meal,
-    food: "",
-    grams: 100,
-    calories: 0,
-    protein: 0,
-    carbs: 0,
-    fats: 0
-  });
+ setMealDraft({
+  id: "draft",
+  date: getLocalDateISO(),
+  meal: "Search",
+  food: foodSearchResult.food,
+  grams: foodSearchResult.grams,
+  calories: foodSearchResult.calories,
+  protein: foodSearchResult.protein,
+  carbs: foodSearchResult.carbs,
+  fats: foodSearchResult.fats
+});
 
   setMealDraftUnit("g");
   setMealDraftSuggestions([]);
