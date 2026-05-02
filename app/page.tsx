@@ -404,6 +404,7 @@ export default function Page() {
     smartSearch: false,
     totals: true,
     loggedMeals: true,
+    nutritionHistory: true,
     presets: false
   });
   const [customExerciseDrafts, setCustomExerciseDrafts] = useState<Record<string, string>>({});
@@ -571,6 +572,10 @@ const foodsForSelectedDate = state.foods.filter((food) => {
       { calories: 0, protein: 0, carbs: 0, fats: 0 }
     );
 }, [foodsForSelectedDate]);
+
+  const nutritionHistory = useMemo(() => {
+    return getNutritionHistoryGroups(state.foods);
+  }, [state.foods]);
   
   const workoutCompletion = useMemo(() => {
     const filled = state.workoutLogs.filter(
@@ -958,6 +963,13 @@ const foodsForSelectedDate = state.foods.filter((food) => {
     setState((prev) => ({
       ...prev,
       foods: prev.foods.filter((x) => x.id !== id)
+    }));
+  }
+
+  function deleteFoodsByDate(date: string) {
+    setState((prev) => ({
+      ...prev,
+      foods: prev.foods.filter((food) => (food.date || getLocalDateISO()) !== date)
     }));
   }
 
@@ -2091,6 +2103,49 @@ async function addMealDraft() {
           </section>
 
           <section className="compact-section">
+            <button
+              className={`collapse-pill section-pill ${expandedNutritionSections.nutritionHistory ? "open" : ""}`}
+              onClick={() => toggleNutritionSection("nutritionHistory")}
+            >
+              <div>
+                <strong>Nutrition history</strong>
+                <span className="pill-subtext">{nutritionHistory.length} days logged</span>
+              </div>
+              <span className="pill-icon">{expandedNutritionSections.nutritionHistory ? "−" : "+"}</span>
+            </button>
+
+            {expandedNutritionSections.nutritionHistory ? (
+              <div className="card compact-expanded">
+                {nutritionHistory.length === 0 ? (
+                  <p className="small">No nutrition history yet.</p>
+                ) : (
+                  <div className="history-card-list">
+                    {nutritionHistory.map((group) => (
+                      <SwipeToDelete
+                        key={group.date}
+                        className="nutrition-history-swipe"
+                        onDelete={() => deleteFoodsByDate(group.date)}
+                      >
+                        <div className="history-card">
+                          <div>
+                            <strong>{formatDisplayDate(group.date)}</strong>
+                            <div className="small">
+                              {group.items.length} items • {Math.round(group.totals.calories)} cal | P {group.totals.protein.toFixed(1)}g | C {group.totals.carbs.toFixed(1)}g | F {group.totals.fats.toFixed(1)}g
+                            </div>
+                            <div className="small" style={{ marginTop: 6, lineHeight: 1.6 }}>
+                              {group.items.map((item) => `${item.meal}: ${item.food}`).join(", ")}
+                            </div>
+                          </div>
+                        </div>
+                      </SwipeToDelete>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </section>
+
+          <section className="compact-section">
             <button className={`collapse-pill section-pill ${expandedNutritionSections.presets ? "open" : ""}`} onClick={() => toggleNutritionSection("presets")}>
               <div>
                 <strong>Meal presets</strong>
@@ -2994,6 +3049,36 @@ function getStepPlan(start: number, target: number) {
     { week: 3, target: step3, note: "Add one longer evening walk" },
     { week: 4, target: step4, note: "Hold target consistently" }
   ];
+}
+
+function getNutritionHistoryGroups(foods: FoodItem[]) {
+  const groups = foods.reduce<Record<string, FoodItem[]>>((acc, food) => {
+    const date = food.date || getLocalDateISO();
+
+    if (!acc[date]) {
+      acc[date] = [];
+    }
+
+    acc[date].push(food);
+    return acc;
+  }, {});
+
+  return Object.entries(groups)
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([date, items]) => {
+      const totals = items.reduce(
+        (acc, food) => {
+          acc.calories += food.calories;
+          acc.protein += food.protein;
+          acc.carbs += food.carbs;
+          acc.fats += food.fats;
+          return acc;
+        },
+        { calories: 0, protein: 0, carbs: 0, fats: 0 }
+      );
+
+      return { date, items, totals };
+    });
 }
 
 function getRecommendation(input: {
