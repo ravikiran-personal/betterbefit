@@ -1853,7 +1853,7 @@ async function addMealDraft() {
 
                   <div className="meal-action-cell">
                     <button className="btn" onClick={addMealDraft}>Add</button>
-                    <button className="btn secondary" onClick={() => setMealDraft({ id: "draft", meal: mealDraft.meal, food: "", grams: 100, calories: 0, protein: 0, carbs: 0, fats: 0 })}>Clear</button>
+                    <button className="btn secondary" onClick={() => setMealDraft({ id: "draft", date: getLocalDateISO(), meal: mealDraft.meal, food: "", grams: 100, calories: 0, protein: 0, carbs: 0, fats: 0 })}>Clear</button>
                   </div>
                 </div>
               </div>
