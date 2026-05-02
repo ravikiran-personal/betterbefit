@@ -1084,6 +1084,7 @@ const foodsForSelectedDate = state.foods.filter((food) => {
         ...prev.foods,
         {
           id: cryptoSafeId(),
+            date: getLocalDateISO(),
           meal: "Search",
           food: foodSearchResult.food,
           grams: foodSearchResult.grams,
