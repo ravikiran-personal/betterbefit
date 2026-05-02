@@ -1887,11 +1887,14 @@ async function addMealDraft() {
                         <div className="small">{foodSearchResult.source === "usda" ? "Verified data" : foodSearchResult.source === "claude" ? "Estimated (AI)" : "Saved result"} | Confidence: {foodSearchResult.confidence}</div>
                         <div className="small">{foodSearchResult.note}</div>
                       </div>
-                      <button className="btn" onClick={() => {
-                        setMealDraft({
-                          id: "draft",
-                          meal: "Search",
-                          food: foodSearchResult.food,
+                     <button className="btn" onClick={() => {
+  if (!foodSearchResult) return;
+
+  setMealDraft({
+    id: "draft",
+    date: getLocalDateISO(),
+    meal: "Search",
+    food: foodSearchResult.food,
                           grams: foodSearchResult.grams,
                           calories: foodSearchResult.calories,
                           protein: foodSearchResult.protein,
