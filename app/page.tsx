@@ -41,6 +41,7 @@ type ExerciseLog = {
 
 type FoodItem = {
   id: string;
+  date: string;
   meal: string;
   food: string;
   grams: number;
@@ -408,16 +409,17 @@ export default function Page() {
   const [customExerciseDrafts, setCustomExerciseDrafts] = useState<Record<string, string>>({});
   const [state, setState] = useState<AppState>(initialState);
   const [mealPresetName, setMealPresetName] = useState("");
-  const [mealDraft, setMealDraft] = useState<FoodItem>({
-    id: "draft",
-    meal: "Breakfast",
-    food: "",
-    grams: 100,
-    calories: 0,
-    protein: 0,
-    carbs: 0,
-    fats: 0
-  });
+ const [mealDraft, setMealDraft] = useState<FoodItem>({
+  id: "draft",
+  date: getLocalDateISO(),
+  meal: "Breakfast",
+  food: "",
+  grams: 100,
+  calories: 0,
+  protein: 0,
+  carbs: 0,
+  fats: 0
+});
   const [mealDraftUnit, setMealDraftUnit] = useState<"g" | "ml" | "oz">("g");
   const [mealDraftSuggestions, setMealDraftSuggestions] = useState<FoodSearchResult[]>([]);
   const [isSearchingMealDraft, setIsSearchingMealDraft] = useState(false);
@@ -498,13 +500,14 @@ export default function Page() {
             }))
           : [],
         foods: (parsed.foods?.length ? parsed.foods : mealTemplate).map((f) => ({
-          ...f,
-          grams: numberOrDefault(f.grams, 0),
-          calories: numberOrDefault(f.calories, 0),
-          protein: numberOrDefault(f.protein, 0),
-          carbs: numberOrDefault(f.carbs, 0),
-          fats: numberOrDefault(f.fats, 0)
-        })),
+  ...f,
+  date: typeof (f as FoodItem).date === "string" ? (f as FoodItem).date : getLocalDateISO(),
+  grams: numberOrDefault(f.grams, 0),
+  calories: numberOrDefault(f.calories, 0),
+  protein: numberOrDefault(f.protein, 0),
+  carbs: numberOrDefault(f.carbs, 0),
+  fats: numberOrDefault(f.fats, 0)
+})),
         mealPresets: Array.isArray((parsed as AppState).mealPresets)
           ? (parsed as AppState).mealPresets.map((preset) => ({
               ...preset,
@@ -549,9 +552,14 @@ const displayWaist = selectedDashboardDate ? numberOrNull(selectedDashboardLog?.
 const dashboardScopeLabel = selectedDashboardDate
   ? formatDisplayDate(selectedDashboardDate)
   : "Weekly average";
+  const selectedNutritionDate = selectedDashboardDate || getLocalDateISO();
 
-  const foodTotals = useMemo(() => {
-    return state.foods.reduce(
+const foodsForSelectedDate = state.foods.filter((food) => {
+  return (food.date || getLocalDateISO()) === selectedNutritionDate;
+});
+
+ const foodTotals = useMemo(() => {
+  return foodsForSelectedDate.reduce(
       (acc, item) => {
         acc.calories += item.calories;
         acc.protein += item.protein;
@@ -561,8 +569,8 @@ const dashboardScopeLabel = selectedDashboardDate
       },
       { calories: 0, protein: 0, carbs: 0, fats: 0 }
     );
-  }, [state.foods]);
-
+}, [foodsForSelectedDate]);
+  
   const workoutCompletion = useMemo(() => {
     const filled = state.workoutLogs.filter(
       (x) =>
@@ -931,15 +939,16 @@ const dashboardScopeLabel = selectedDashboardDate
       foods: [
         ...prev.foods,
         {
-          id: cryptoSafeId(),
-          meal: "New meal",
-          food: "New food",
-          grams: 0,
-          calories: 0,
-          protein: 0,
-          carbs: 0,
-          fats: 0
-        }
+  id: cryptoSafeId(),
+  date: getLocalDateISO(),
+  meal: "New meal",
+  food: "New food",
+  grams: 0,
+  calories: 0,
+  protein: 0,
+  carbs: 0,
+  fats: 0
+}
       ]
     }));
   }
@@ -1114,8 +1123,9 @@ async function addMealDraft() {
     foods: [
       ...prev.foods,
       {
-        ...draftToSave,
-        id: cryptoSafeId()
+      ...draftToSave,
+  id: cryptoSafeId(),
+  date: getLocalDateISO()
       }
     ]
   }));
@@ -1144,6 +1154,7 @@ async function addMealDraft() {
 
   setMealDraft({
     id: "draft",
+      date: getLocalDateISO(),
     meal: draftToSave.meal,
     food: "",
     grams: 100,
@@ -1949,12 +1960,12 @@ async function addMealDraft() {
                   <button className="btn secondary" onClick={addFood}>Add blank row</button>
                 </div>
 
-                {state.foods.length === 0 ? (
-                  <p className="small">No meals logged yet.</p>
+{foodsForSelectedDate.length === 0 ? (
+  <p className="small">No meals logged yet.</p>
                 ) : (
                   <div className="meal-group-list">
                     {["Breakfast", "Lunch", "Snack", "Dinner", "Coffee", "Other"].map((mealType) => {
-                      const meals = state.foods.filter((food) => {
+                      const meals = foodsForSelectedDate.filter((food) => {
                         const mealName = food.meal.trim().toLowerCase();
 
                         const mealAliases: Record<string, string[]> = {
