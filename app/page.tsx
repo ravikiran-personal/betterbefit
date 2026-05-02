@@ -41,7 +41,7 @@ type ExerciseLog = {
 
 type FoodItem = {
   id: string;
-  date: string,
+  date: string;
   meal: string;
   food: string;
   grams: number;
@@ -513,6 +513,7 @@ export default function Page() {
               ...preset,
               foods: preset.foods.map((f) => ({
                 ...f,
+                date: typeof (f as FoodItem).date === "string" ? (f as FoodItem).date : getLocalDateISO(),
                 grams: numberOrDefault(f.grams, 0),
                 calories: numberOrDefault(f.calories, 0),
                 protein: numberOrDefault(f.protein, 0),
@@ -1153,17 +1154,17 @@ async function addMealDraft() {
     console.error("Food cache save failed:", error);
   }
 
- setMealDraft({
-  id: "draft",
-  date: getLocalDateISO(),
-  meal: "Search",
-  food: foodSearchResult.food,
-  grams: foodSearchResult.grams,
-  calories: foodSearchResult.calories,
-  protein: foodSearchResult.protein,
-  carbs: foodSearchResult.carbs,
-  fats: foodSearchResult.fats
-});
+  setMealDraft({
+    id: "draft",
+    date: getLocalDateISO(),
+    meal: draftToSave.meal,
+    food: "",
+    grams: 100,
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fats: 0
+  });
 
   setMealDraftUnit("g");
   setMealDraftSuggestions([]);
@@ -1176,7 +1177,7 @@ async function addMealDraft() {
       return;
     }
 
-    if (state.foods.length === 0) {
+    if (foodsForSelectedDate.length === 0) {
       alert("Add at least one food item before saving a preset.");
       return;
     }
@@ -1185,7 +1186,7 @@ async function addMealDraft() {
       id: cryptoSafeId(),
       name,
       createdAt: todayISO(),
-      foods: state.foods.map((food) => ({
+      foods: foodsForSelectedDate.map((food) => ({
         ...food,
         id: cryptoSafeId()
       }))
@@ -1204,7 +1205,8 @@ async function addMealDraft() {
       ...prev,
       foods: preset.foods.map((food) => ({
         ...food,
-        id: cryptoSafeId()
+        id: cryptoSafeId(),
+        date: getLocalDateISO()
       }))
     }));
   }
@@ -1924,7 +1926,7 @@ async function addMealDraft() {
               <div>
                 <strong>Nutrition totals</strong>
 <span className="pill-subtext">
-  {state.foods.length} meals • 
+  {foodsForSelectedDate.length} meals • 
   {Math.round(foodTotals.calories)} cal • 
   P {Math.round(foodTotals.protein)} • 
   C {Math.round(foodTotals.carbs)} • 
@@ -1957,7 +1959,7 @@ async function addMealDraft() {
             <button className={`collapse-pill section-pill ${expandedNutritionSections.loggedMeals ? "open" : ""}`} onClick={() => toggleNutritionSection("loggedMeals")}>
               <div>
                 <strong>Logged meals</strong>
-                <span className="pill-subtext">{state.foods.length} items logged</span>
+                <span className="pill-subtext">{foodsForSelectedDate.length} items logged for {formatDisplayDate(selectedNutritionDate)}</span>
               </div>
               <span className="pill-icon">{expandedNutritionSections.loggedMeals ? "-" : "+"}</span>
             </button>
