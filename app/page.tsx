@@ -41,7 +41,7 @@ type ExerciseLog = {
 
 type FoodItem = {
   id: string;
-  date: getLocalDateISO(),
+  date: string,
   meal: string;
   food: string;
   grams: number;
