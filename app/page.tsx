@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { generateFitnessPlan } from "../lib/fitness-engine";
+import { getWeeklyNutritionAdjustment } from "../lib/fitness-engine/intelligence";
 import type { GeneratedExercise } from "../lib/fitness-engine";
 
 type Tab = "dashboard" | "workouts" | "nutrition" | "checkin" | "settings";
@@ -576,6 +577,14 @@ const foodsForSelectedDate = state.foods.filter((food) => {
   const nutritionHistory = useMemo(() => {
     return getNutritionHistoryGroups(state.foods);
   }, [state.foods]);
+
+  const nutritionDaysForAdjustment = useMemo(() => {
+    return nutritionHistory.map((group) => ({
+      date: group.date,
+      calories: group.totals.calories,
+      protein: group.totals.protein
+    }));
+  }, [nutritionHistory]);
   
   const workoutCompletion = useMemo(() => {
     const filled = state.workoutLogs.filter(
@@ -658,6 +667,33 @@ const foodsForSelectedDate = state.foods.filter((food) => {
   });
 
   const generatedPlan = useMemo(() => generateFitnessPlan(state.settings), [state.settings]);
+
+  const weeklyNutritionAdjustment = useMemo(() => {
+    return getWeeklyNutritionAdjustment({
+      settings: state.settings,
+      dailyLogs: state.dailyLogs,
+      nutritionDays: nutritionDaysForAdjustment,
+      workoutCompletion
+    });
+  }, [state.settings, state.dailyLogs, nutritionDaysForAdjustment, workoutCompletion]);
+
+  function applyWeeklyNutritionAdjustment() {
+    if (weeklyNutritionAdjustment.calorieDelta === 0) {
+      setTargetReason(weeklyNutritionAdjustment.summary);
+      return;
+    }
+
+    setState((prev) => ({
+      ...prev,
+      settings: {
+        ...prev.settings,
+        targetCalories: Math.max(1200, prev.settings.targetCalories + weeklyNutritionAdjustment.calorieDelta)
+      }
+    }));
+
+    const sign = weeklyNutritionAdjustment.calorieDelta > 0 ? "+" : "";
+    setTargetReason(`Weekly adjustment applied: ${sign}${weeklyNutritionAdjustment.calorieDelta} kcal. ${weeklyNutritionAdjustment.summary}`);
+  }
 
   function applyGeneratedNutritionPlan() {
     setState((prev) => ({
@@ -1573,6 +1609,37 @@ async function addMealDraft() {
 
           <section className="card">
             <div className="row space-between">
+              <div>
+                <h2 style={{ margin: 0 }}>Weekly adjustment</h2>
+                <p className="small" style={{ marginTop: 6 }}>Nutrition logs, check-ins, steps and workout consistency are reviewed together.</p>
+              </div>
+              <span className="badge">Confidence: {weeklyNutritionAdjustment.confidence}</span>
+            </div>
+
+            <div className={`game-signal ${weeklyNutritionAdjustment.tone}`} style={{ marginTop: 14 }}>
+              <span className="signal-dot" />
+              <p><strong>{weeklyNutritionAdjustment.title}</strong> — {weeklyNutritionAdjustment.summary}</p>
+            </div>
+
+            <div className="signal-stack" style={{ marginTop: 14 }}>
+              {weeklyNutritionAdjustment.reasons.map((reason) => (
+                <div className="mini-signal" key={reason}>{reason}</div>
+              ))}
+            </div>
+
+            <div className="row" style={{ marginTop: 14 }}>
+              {weeklyNutritionAdjustment.calorieDelta !== 0 ? (
+                <button className="btn" onClick={applyWeeklyNutritionAdjustment}>
+                  Apply {weeklyNutritionAdjustment.calorieDelta > 0 ? "+" : ""}{weeklyNutritionAdjustment.calorieDelta} kcal
+                </button>
+              ) : (
+                <button className="btn secondary" onClick={applyWeeklyNutritionAdjustment}>Acknowledge</button>
+              )}
+            </div>
+          </section>
+
+          <section className="card">
+            <div className="row space-between">
               <h2 style={{ margin: 0 }}>Coach note</h2>
               <span className="badge">Auto-guided</span>
             </div>
@@ -2338,6 +2405,26 @@ async function addMealDraft() {
     );
   })}
 </div>
+          </div>
+
+          <div className="card">
+            <div className="row space-between">
+              <h2 style={{ marginTop: 0 }}>Weekly nutrition intelligence</h2>
+              <span className="badge">{weeklyNutritionAdjustment.confidence}</span>
+            </div>
+            <p style={{ lineHeight: 1.7 }}>
+              <strong>{weeklyNutritionAdjustment.title}</strong>: {weeklyNutritionAdjustment.summary}
+            </p>
+            <div className="signal-stack">
+              {weeklyNutritionAdjustment.reasons.map((reason) => (
+                <div className="mini-signal" key={reason}>{reason}</div>
+              ))}
+            </div>
+            {weeklyNutritionAdjustment.calorieDelta !== 0 ? (
+              <button className="btn" style={{ marginTop: 14 }} onClick={applyWeeklyNutritionAdjustment}>
+                Apply {weeklyNutritionAdjustment.calorieDelta > 0 ? "+" : ""}{weeklyNutritionAdjustment.calorieDelta} kcal
+              </button>
+            ) : null}
           </div>
 
           <div className="card">
