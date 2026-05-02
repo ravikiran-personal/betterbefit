@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { generateFitnessPlan } from "@/lib/fitness-engine";
-import type { GeneratedExercise } from "@/lib/fitness-engine";
+import { generateFitnessPlan } from "../lib/fitness-engine";
+import type { GeneratedExercise } from "../lib/fitness-engine";
 
 type Tab = "dashboard" | "workouts" | "nutrition" | "checkin" | "settings";
 
