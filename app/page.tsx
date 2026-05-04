@@ -1401,8 +1401,6 @@ const reader = new FileReader();
 reader.onload = () => {
 try {
 const parsed = JSON.parse(String(reader.result)) as Partial<AppState>;
-
-```
   const isObject =
     parsed !== null &&
     typeof parsed === "object" &&
@@ -1448,7 +1446,7 @@ const parsed = JSON.parse(String(reader.result)) as Partial<AppState>;
 } catch {
   alert("This backup file appears corrupted or from an incompatible version. No changes were made.");
 }
-```
+
 
 };
 
