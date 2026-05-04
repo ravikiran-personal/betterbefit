@@ -2619,3 +2619,38 @@ main {
   font-size: 12px;
   color: #6b7280;
 }
+
+.insight-card {
+  background: #111827;
+  border-radius: 16px;
+  padding: 20px;
+  border-left: 3px solid;
+}
+
+.insight-card.good {
+  border-left-color: #2dd4a3;
+}
+
+.insight-card.warn {
+  border-left-color: #f59e0b;
+}
+
+.insight-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #6b7280;
+  margin-bottom: 6px;
+}
+
+.insight-text {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #e5e7eb;
+}
+
+.insight-sub {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #6b7280;
+}
