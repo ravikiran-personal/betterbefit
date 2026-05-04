@@ -598,7 +598,6 @@ const foodsForSelectedDate = state.foods.filter((food) => {
     return Math.round((filled / state.workoutLogs.length) * 100);
   }, [state.workoutLogs]);
 
-  const stepPlan = getStepPlan(state.settings.currentStepBaseline, state.settings.stepTarget);
   const recommendation = getRecommendation({
     avgCalories,
     avgProtein,
@@ -607,16 +606,6 @@ const foodsForSelectedDate = state.foods.filter((food) => {
     avgWaist,
     workoutCompletion,
     settings: state.settings,
-    foodTotals
-  });
-
-  const todaySignals = getTodaySignals({
-    settings: state.settings,
-    avgCalories,
-    avgProtein,
-    avgSteps,
-    avgCardio,
-    workoutCompletion,
     foodTotals
   });
 
@@ -1256,8 +1245,8 @@ async function addMealDraft() {
   setMealDraftUnit("g");
   setMealDraftSuggestions([]);
   setFoodSearchQuery("");
-setFoodSearchResult(null);
-setFoodSearchGrams(100);
+  setFoodSearchResult(null);
+  setFoodSearchGrams(100);
 }
 
   function saveCurrentMealsAsPreset() {
@@ -1294,11 +1283,14 @@ setFoodSearchGrams(100);
   function applyMealPreset(preset: MealPreset) {
     setState((prev) => ({
       ...prev,
-      foods: preset.foods.map((food) => ({
-        ...food,
-        id: cryptoSafeId(),
-        date: getLocalDateISO()
-      }))
+      foods: [
+        ...prev.foods,
+        ...preset.foods.map((food) => ({
+          ...food,
+          id: cryptoSafeId(),
+          date: getLocalDateISO()
+        }))
+      ]
     }));
   }
 
@@ -1396,62 +1388,61 @@ setFoodSearchGrams(100);
   }
 
   function importBackup(file: File) {
-const reader = new FileReader();
+    const reader = new FileReader();
 
-reader.onload = () => {
-try {
-const parsed = JSON.parse(String(reader.result)) as Partial<AppState>;
-  const isObject =
-    parsed !== null &&
-    typeof parsed === "object" &&
-    !Array.isArray(parsed);
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result)) as Partial<AppState>;
 
-  const hasValidSettings =
-    isObject &&
-    parsed.settings !== undefined &&
-    parsed.settings !== null &&
-    typeof parsed.settings === "object" &&
-    typeof (parsed.settings as Settings).weightKg === "number" &&
-    typeof (parsed.settings as Settings).heightCm === "number" &&
-    typeof (parsed.settings as Settings).targetCalories === "number";
+        const isObject =
+          parsed !== null &&
+          typeof parsed === "object" &&
+          !Array.isArray(parsed);
 
-  const hasValidArrays =
-    isObject &&
-    Array.isArray(parsed.dailyLogs) &&
-    Array.isArray(parsed.workoutLogs) &&
-    Array.isArray(parsed.foods);
+        const hasValidSettings =
+          isObject &&
+          parsed.settings !== undefined &&
+          parsed.settings !== null &&
+          typeof parsed.settings === "object" &&
+          typeof (parsed.settings as Partial<Settings>).weightKg === "number" &&
+          typeof (parsed.settings as Partial<Settings>).heightCm === "number" &&
+          typeof (parsed.settings as Partial<Settings>).targetCalories === "number";
 
-  if (!isObject || !hasValidSettings || !hasValidArrays) {
-    alert("This backup file appears corrupted or from an incompatible version. No changes were made.");
-    return;
+        const hasValidArrays =
+          isObject &&
+          Array.isArray(parsed.dailyLogs) &&
+          Array.isArray(parsed.workoutLogs) &&
+          Array.isArray(parsed.foods);
+
+        if (!isObject || !hasValidSettings || !hasValidArrays) {
+          alert("This backup file appears corrupted or from an incompatible version. No changes were made.");
+          return;
+        }
+
+        setState({
+          ...initialState,
+          ...parsed,
+          settings: {
+            ...initialState.settings,
+            ...parsed.settings
+          },
+          dailyLogs: parsed.dailyLogs ?? initialState.dailyLogs,
+          workoutLogs: parsed.workoutLogs ?? initialState.workoutLogs,
+          workoutHistory: Array.isArray(parsed.workoutHistory)
+            ? parsed.workoutHistory
+            : initialState.workoutHistory,
+          foods: parsed.foods ?? initialState.foods,
+          mealPresets: Array.isArray(parsed.mealPresets)
+            ? parsed.mealPresets
+            : initialState.mealPresets
+        });
+      } catch {
+        alert("This backup file appears corrupted or from an incompatible version. No changes were made.");
+      }
+    };
+
+    reader.readAsText(file);
   }
-
-  setState({
-    ...initialState,
-    ...parsed,
-    settings: {
-      ...initialState.settings,
-      ...parsed.settings
-    },
-    dailyLogs: parsed.dailyLogs ?? initialState.dailyLogs,
-    workoutLogs: parsed.workoutLogs ?? initialState.workoutLogs,
-    workoutHistory: Array.isArray(parsed.workoutHistory)
-      ? parsed.workoutHistory
-      : initialState.workoutHistory,
-    foods: parsed.foods ?? initialState.foods,
-    mealPresets: Array.isArray(parsed.mealPresets)
-      ? parsed.mealPresets
-      : initialState.mealPresets
-  });
-} catch {
-  alert("This backup file appears corrupted or from an incompatible version. No changes were made.");
-}
-
-
-};
-
-reader.readAsText(file);
-}
 
   
   function getDailyTrend(index: number, key: keyof Pick<DailyLog, "weight" | "steps" | "calories" | "protein">) {
@@ -1551,184 +1542,7 @@ reader.readAsText(file);
 
       {tab === "dashboard" && (
         <div className="game-dashboard">
-          <div
-  className="hero-card"
-  style={{
-    borderLeftColor:
-      readinessScore >= 70
-        ? "#2dd4a3"
-        : readinessScore >= 50
-        ? "#f59e0b"
-        : "#ef4444"
-  }}
->
-  <div className="hero-score">{readinessScore}</div>
-
-  <div className="hero-message">
-    {displayProtein !== null && displayProtein < state.settings.proteinTarget
-      ? "Priority: Hit your protein target today"
-      : displaySteps !== null && displaySteps < state.settings.stepTarget
-      ? "Priority: Close your step gap"
-      : workoutCompletion < 50
-      ? "Priority: Log today's workout"
-      : "You're on track. Stay consistent."}
-  </div>
-
-  <div className="hero-stats">
-    <div
-      className={`stat-pill ${
-        displayProtein !== null && displayProtein >= state.settings.proteinTarget
-          ? "good"
-          : "warn"
-      }`}
-    >
-      {displayProtein ?? 0}g / {state.settings.proteinTarget}g
-    </div>
-
-    <div
-      className={`stat-pill ${
-        displaySteps !== null && displaySteps >= state.settings.stepTarget
-          ? "good"
-          : "warn"
-      }`}
-    >
-      {displaySteps ?? 0} / {state.settings.stepTarget}
-    </div>
-
-    <div
-      className={`stat-pill ${
-        displayCalories !== null &&
-        displayCalories >= state.settings.targetCalories
-          ? "good"
-          : "warn"
-      }`}
-    >
-      {displayCalories ?? 0} / {state.settings.targetCalories}
-    </div>
-  </div>
-</div>
-          <section className="dashboard-scope-card">
-            <div>
-              <div className="small">Dashboard view</div>
-              <strong>{dashboardScopeLabel}</strong>
-            </div>
-            {selectedDashboardDate ? (
-              <button className="btn secondary" onClick={() => setSelectedDashboardDate(null)}>
-                Show full week
-              </button>
-            ) : null}
-          </section>
-
-          <section className="level-card">
-            <div className="row space-between">
-              <div>
-                <div className="small">Weekly XP</div>
-                <h2 className="level-title">Level {weeklyXp.level} — {weeklyXp.title}</h2>
-              </div>
-              <div className="xp-number">{weeklyXp.xp} XP</div>
-            </div>
-
-            <div className="xp-track">
-              <div className="xp-fill" style={{ width: `${weeklyXp.progress}%` }} />
-            </div>
-
-            <div className="row space-between">
-              <span className="small">{weeklyXp.xp} XP earned</span>
-              <span className="small">{weeklyXp.remaining} XP to Level {weeklyXp.level + 1}</span>
-            </div>
-          </section>
-
-          <section>
-  {(() => {
-    const prioritySignal =
-      todaySignals.find((s) => s.type === "warn") || todaySignals[0];
-
-    if (!prioritySignal) return null;
-
-    const remainingCount = Math.max(0, todaySignals.length - 1);
-
-    return (
-      <div
-        className={`insight-card ${prioritySignal.type}`}
-      >
-        <div className="insight-label">TODAY'S FOCUS</div>
-
-        <div className="insight-text">
-          {prioritySignal.text}
-        </div>
-
-        <div className="insight-sub">
-          {remainingCount} more signals in check-in
-        </div>
-      </div>
-    );
-  })()}
-</section>
-          <section className="game-metrics">
-            <GameMetricCard
-  title="Protein"
-  value={`${displayProtein ?? 0}g`}
-  hint={`${displayProtein ?? 0} / ${state.settings.proteinTarget}g`}
-  tone={
-    (displayProtein ?? 0) >= state.settings.proteinTarget ? "green" : "amber"
-  }
-  progressPercent={Math.min(
-    100,
-    Math.round(((displayProtein ?? 0) / state.settings.proteinTarget) * 100)
-  )}
-/>
-
-<GameMetricCard
-  title="Steps"
-  value={`${displaySteps ?? 0}`}
-  hint={`${displaySteps ?? 0} / ${state.settings.stepTarget}`}
-  tone={
-    (displaySteps ?? 0) >= state.settings.stepTarget ? "green" : "amber"
-  }
-  progressPercent={Math.min(
-    100,
-    Math.round(((displaySteps ?? 0) / state.settings.stepTarget) * 100)
-  )}
-/>
-
-<GameMetricCard
-  title="Calories"
-  value={`${displayCalories ?? 0}`}
-  hint={`${displayCalories ?? 0} / ${state.settings.targetCalories}`}
-  tone={
-    (displayCalories ?? 0) >= state.settings.targetCalories
-      ? "green"
-      : "amber"
-  }
-  progressPercent={Math.min(
-    100,
-    Math.round(
-      ((displayCalories ?? 0) / state.settings.targetCalories) * 100
-    )
-  )}
-/>
-
-<GameMetricCard
-  title="Cardio"
-  value={`${displayCardio ?? 0} min`}
-  hint={`${displayCardio ?? 0} / 30 min`}
-  tone={(displayCardio ?? 0) >= 30 ? "green" : "amber"}
-  progressPercent={Math.min(
-    100,
-    Math.round(((displayCardio ?? 0) / 30) * 100)
-  )}
-/>
-
-<GameMetricCard
-  title="Workouts"
-  value={`${workoutCompletion}%`}
-  hint="Weekly completion"
-  tone={workoutCompletion >= 70 ? "green" : "amber"}
-  progressPercent={workoutCompletion}
-/>
-          </section>
-
-         <section
+          <section
   className="priority-card"
   style={{
     borderLeftColor:
@@ -1816,6 +1630,104 @@ reader.readAsText(file);
   <div className="priority-footer">Tap check-in to log today&apos;s data</div>
 </section>
 
+          <section className="dashboard-scope-card">
+            <div>
+              <div className="small">Dashboard view</div>
+              <strong>{dashboardScopeLabel}</strong>
+            </div>
+            {selectedDashboardDate ? (
+              <button className="btn secondary" onClick={() => setSelectedDashboardDate(null)}>
+                Show full week
+              </button>
+            ) : null}
+          </section>
+
+          <section className="level-card">
+            <div className="row space-between">
+              <div>
+                <div className="small">Weekly XP</div>
+                <h2 className="level-title">Level {weeklyXp.level} — {weeklyXp.title}</h2>
+              </div>
+              <div className="xp-number">{weeklyXp.xp} XP</div>
+            </div>
+
+            <div className="xp-track">
+              <div className="xp-fill" style={{ width: `${weeklyXp.progress}%` }} />
+            </div>
+
+            <div className="row space-between">
+              <span className="small">{weeklyXp.xp} XP earned</span>
+              <span className="small">{weeklyXp.remaining} XP to Level {weeklyXp.level + 1}</span>
+            </div>
+          </section>
+
+
+          <section className="game-metrics">
+            <GameMetricCard
+  title="Protein"
+  value={`${displayProtein ?? 0}g`}
+  hint={`${displayProtein ?? 0} / ${state.settings.proteinTarget}g`}
+  tone={
+    (displayProtein ?? 0) >= state.settings.proteinTarget ? "green" : "amber"
+  }
+  progressPercent={Math.min(
+    100,
+    Math.round(((displayProtein ?? 0) / state.settings.proteinTarget) * 100)
+  )}
+/>
+
+<GameMetricCard
+  title="Steps"
+  value={`${displaySteps ?? 0}`}
+  hint={`${displaySteps ?? 0} / ${state.settings.stepTarget}`}
+  tone={
+    (displaySteps ?? 0) >= state.settings.stepTarget ? "green" : "amber"
+  }
+  progressPercent={Math.min(
+    100,
+    Math.round(((displaySteps ?? 0) / state.settings.stepTarget) * 100)
+  )}
+/>
+
+<GameMetricCard
+  title="Calories"
+  value={`${displayCalories ?? 0}`}
+  hint={`${displayCalories ?? 0} / ${state.settings.targetCalories}`}
+  tone={
+    (displayCalories ?? 0) >= state.settings.targetCalories
+      ? "green"
+      : "amber"
+  }
+  progressPercent={Math.min(
+    100,
+    Math.round(
+      ((displayCalories ?? 0) / state.settings.targetCalories) * 100
+    )
+  )}
+/>
+
+<GameMetricCard
+  title="Cardio"
+  value={`${displayCardio ?? 0} min`}
+  hint={`${displayCardio ?? 0} / 30 min`}
+  tone={(displayCardio ?? 0) >= 30 ? "green" : "amber"}
+  progressPercent={Math.min(
+    100,
+    Math.round(((displayCardio ?? 0) / 30) * 100)
+  )}
+/>
+
+<GameMetricCard
+  title="Workouts"
+  value={`${workoutCompletion}%`}
+  hint="Weekly completion"
+  tone={workoutCompletion >= 70 ? "green" : "amber"}
+  progressPercent={workoutCompletion}
+/>
+          </section>
+
+
+
           <section>
             <h2 className="game-section-title">Unlock next</h2>
             <div className="badge-grid">
@@ -1844,17 +1756,7 @@ reader.readAsText(file);
             </p>
           </section>
 
-          <section>
-            <h2 className="game-section-title">Today’s signals</h2>
-            <div className="signal-stack">
-              {todaySignals.map((signal) => (
-                <div key={signal.text} className={`game-signal ${signal.type}`}>
-                  <span className="signal-dot" />
-                  <p>{signal.text}</p>
-                </div>
-              ))}
-            </div>
-          </section>
+
 
           <section className="grid grid-2">
             <div className="card">
@@ -3006,11 +2908,6 @@ function isGoal(value: unknown): value is Goal {
   return value === "recomp" || value === "maintain" || value === "lose_weight" || value === "be_more_active";
 }
 
-type CoachSignal = {
-  type: "good" | "warn";
-  text: string;
-};
-
 type Achievement = {
   icon: string;
   title: string;
@@ -3104,47 +3001,6 @@ function getCardioRoutine(input: {
   return items.slice(0, 5);
 }
 
-function getTodaySignals(input: {
-  settings: Settings;
-  avgCalories: number | null;
-  avgProtein: number | null;
-  avgSteps: number | null;
-  avgCardio: number | null;
-  workoutCompletion: number;
-  foodTotals: { calories: number; protein: number; carbs: number; fats: number };
-}): CoachSignal[] {
-  const signals: CoachSignal[] = [];
-
-  if ((input.avgProtein ?? input.foodTotals.protein) >= input.settings.proteinTarget) {
-    signals.push({ type: "good", text: "Protein is locked in. This is the core of recomp — protect it." });
-  } else {
-    signals.push({ type: "warn", text: "Protein is behind target. Add one high-protein meal or snack today." });
-  }
-
-  if ((input.avgSteps ?? 0) >= input.settings.stepTarget) {
-    signals.push({ type: "good", text: "Step target is on track. NEAT is compounding." });
-  } else {
-    signals.push({ type: "warn", text: "Steps are behind. Add a short walk after your next meal." });
-  }
-
-  const calories = input.avgCalories ?? input.foodTotals.calories;
-  if (Math.abs(calories - input.settings.targetCalories) <= 150) {
-    signals.push({ type: "good", text: "Calories are close to target. Keep today boring and consistent." });
-  } else if (calories < input.settings.targetCalories - 250) {
-    signals.push({ type: "warn", text: "Calories are running low. Under-eating blunts recovery and stalls recomp." });
-  } else {
-    signals.push({ type: "warn", text: "Calories are running high. Trim sugar, oil, or extra portions first." });
-  }
-
-  if (input.workoutCompletion >= 70) {
-    signals.push({ type: "good", text: "Training consistency is strong. Keep progressive overload the priority." });
-  } else {
-    signals.push({ type: "warn", text: "Workout logging is incomplete. Log the next session fully." });
-  }
-
-  return signals.slice(0, 4);
-}
-
 function getLocalDateISO() {
   const now = new Date();
   const offset = now.getTimezoneOffset();
@@ -3195,7 +3051,7 @@ const isToday = dateISO === getLocalDateISO();
       index,
       hasUsefulData,
       isToday,
-      status: isToday ? "today" : "neutral"
+      status: hasUsefulData ? "done" : isToday ? "today" : "neutral"
     };
   });
 }
