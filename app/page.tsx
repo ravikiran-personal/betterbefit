@@ -734,31 +734,29 @@ const foodsForSelectedDate = state.foods.filter((food) => {
   }
 
   async function calculateTargetsWithAI() {
-    setIsCalculatingTargets(true);
-    setTargetReason("");
+setIsCalculatingTargets(true);
+setTargetReason("");
 
-    try {
-      const response = await fetch("/api/calculate-targets", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json"
-        },
-        body: JSON.stringify({
-          weightKg: state.settings.weightKg,
-          heightCm: state.settings.heightCm,
-          age: state.settings.age,
-          sex: state.settings.sex,
-          lifestyle: state.settings.lifestyle,
-          goal: state.settings.goal
-        })
-      });
+const payload = {
+weightKg: state.settings.weightKg,
+heightCm: state.settings.heightCm,
+age: state.settings.age,
+sex: state.settings.sex,
+lifestyle: state.settings.lifestyle,
+goal: state.settings.goal
+};
 
-      if (!response.ok) {
-        throw new Error("Target calculation failed.");
-      }
+const cacheKey = "targets_" + JSON.stringify(payload);
+const TTL = 24 * 60 * 60 * 1000;
 
-      const result = await response.json();
-      console.log("AI target result:", result);
+try {
+// Try localStorage first
+try {
+const cachedRaw = localStorage.getItem(cacheKey);
+if (cachedRaw) {
+const cached = JSON.parse(cachedRaw);
+if (cached?.timestamp && Date.now() - cached.timestamp < TTL) {
+const result = cached.data;
 
       setState((prev) => ({
         ...prev,
@@ -772,13 +770,58 @@ const foodsForSelectedDate = state.foods.filter((food) => {
         }
       }));
 
-      setTargetReason(String(result.reason || "Targets updated."));
-    } catch {
-      alert("Could not calculate targets. Check your API route and Vercel environment variables.");
-    } finally {
-      setIsCalculatingTargets(false);
+      setTargetReason(String(result.reason || "Targets loaded from cache."));
+      return;
     }
   }
+} catch {
+  // ignore localStorage errors
+}
+
+// Fallback to API
+const response = await fetch("/api/calculate-targets", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify(payload)
+});
+
+if (!response.ok) throw new Error("Target calculation failed.");
+
+const result = await response.json();
+
+setState((prev) => ({
+  ...prev,
+  settings: {
+    ...prev.settings,
+    targetCalories: numberOrDefault(result.calories, prev.settings.targetCalories),
+    proteinTarget: numberOrDefault(result.protein, prev.settings.proteinTarget),
+    carbTarget: numberOrDefault(result.carbs, prev.settings.carbTarget),
+    fatTarget: numberOrDefault(result.fats, prev.settings.fatTarget),
+    stepTarget: numberOrDefault(result.steps, prev.settings.stepTarget)
+  }
+}));
+
+setTargetReason(String(result.reason || "Targets updated."));
+
+// Save to localStorage
+try {
+  localStorage.setItem(
+    cacheKey,
+    JSON.stringify({
+      timestamp: Date.now(),
+      data: result
+    })
+  );
+} catch {
+  // ignore localStorage errors
+}
+
+} catch {
+alert("Could not calculate targets.");
+} finally {
+setIsCalculatingTargets(false);
+}
+}
 
   function updateSettings<K extends keyof Settings>(key: K, value: Settings[K]) {
     setState((prev) => ({
