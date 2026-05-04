@@ -2079,6 +2079,9 @@ reader.readAsText(file);
 }}>
   Use in log form
 </button>
+                      <button className="btn secondary" onClick={addFoodSearchResult}>
+  Add directly
+</button>
                     </div>
                   </div>
                 ) : null}
