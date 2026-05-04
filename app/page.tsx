@@ -1255,6 +1255,9 @@ async function addMealDraft() {
 
   setMealDraftUnit("g");
   setMealDraftSuggestions([]);
+  setFoodSearchQuery("");
+setFoodSearchResult(null);
+setFoodSearchGrams(100);
 }
 
   function saveCurrentMealsAsPreset() {
