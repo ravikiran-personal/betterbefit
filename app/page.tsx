@@ -636,6 +636,13 @@ const foodsForSelectedDate = state.foods.filter((food) => {
     workoutCompletion
   });
 
+  const readinessScore = getReadinessScore({
+  avgProtein,
+  avgSteps,
+  workoutCompletion,
+  settings: state.settings
+});
+
   const weekStatus = getWeekStatus(state.dailyLogs);
   const streakDays = getCurrentStreak(state.dailyLogs);
   const weeklyXp = getWeeklyXp({
