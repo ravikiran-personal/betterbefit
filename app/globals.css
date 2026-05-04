@@ -2521,3 +2521,46 @@ button:disabled {
 main {
   padding-bottom: 80px;
 }
+
+.hero-card {
+  width: 100%;
+  background: #111827;
+  border-left: 4px solid;
+  border-radius: 20px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.hero-score {
+  font-size: 42px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.hero-message {
+  margin-top: 8px;
+  font-size: 14px;
+  color: #9ca3af;
+}
+
+.hero-stats {
+  margin-top: 16px;
+  display: flex;
+  gap: 10px;
+}
+
+.stat-pill {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: #1f2937;
+  color: #6b7280;
+}
+
+.stat-pill.good {
+  color: #2dd4a3;
+}
+
+.stat-pill.warn {
+  color: #f59e0b;
+}
