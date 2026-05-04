@@ -1507,23 +1507,47 @@ reader.readAsText(file);
         </div>
       </div>
 
-      <div className="tabbar">
-        <button className={`tab ${tab === "dashboard" ? "active" : ""}`} onClick={() => setTab("dashboard")}>
-          Dashboard
-        </button>
-        <button className={`tab ${tab === "workouts" ? "active" : ""}`} onClick={() => setTab("workouts")}>
-          Workouts
-        </button>
-        <button className={`tab ${tab === "nutrition" ? "active" : ""}`} onClick={() => setTab("nutrition")}>
-          Nutrition
-        </button>
-        <button className={`tab ${tab === "checkin" ? "active" : ""}`} onClick={() => setTab("checkin")}>
-          Weekly Check-In
-        </button>
-        <button className={`tab ${tab === "settings" ? "active" : ""}`} onClick={() => setTab("settings")}>
-          Settings
-        </button>
-      </div>
+      <div className="bottom-nav">
+  <button
+    className={`bottom-tab ${tab === "dashboard" ? "active" : ""}`}
+    onClick={() => setTab("dashboard")}
+  >
+    <span className="icon">◎</span>
+    <span className="label">Dashboard</span>
+  </button>
+
+  <button
+    className={`bottom-tab ${tab === "workouts" ? "active" : ""}`}
+    onClick={() => setTab("workouts")}
+  >
+    <span className="icon">↑</span>
+    <span className="label">Workouts</span>
+  </button>
+
+  <button
+    className={`bottom-tab ${tab === "nutrition" ? "active" : ""}`}
+    onClick={() => setTab("nutrition")}
+  >
+    <span className="icon">●</span>
+    <span className="label">Nutrition</span>
+  </button>
+
+  <button
+    className={`bottom-tab ${tab === "checkin" ? "active" : ""}`}
+    onClick={() => setTab("checkin")}
+  >
+    <span className="icon">✓</span>
+    <span className="label">Check-In</span>
+  </button>
+
+  <button
+    className={`bottom-tab ${tab === "settings" ? "active" : ""}`}
+    onClick={() => setTab("settings")}
+  >
+    <span className="icon">⚙</span>
+    <span className="label">Settings</span>
+  </button>
+</div>
 
       {tab === "dashboard" && (
         <div className="game-dashboard">
