@@ -3043,12 +3043,12 @@ while (true) {
 const dateISO = currentDate.toISOString().slice(0, 10);
 const log = logMap.get(dateISO);
 
-```
+
 if (!hasData(log)) break;
 
 streak++;
 currentDate.setDate(currentDate.getDate() - 1);
-```
+
 
 }
 
