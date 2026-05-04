@@ -1551,6 +1551,62 @@ reader.readAsText(file);
 
       {tab === "dashboard" && (
         <div className="game-dashboard">
+          <div
+  className="hero-card"
+  style={{
+    borderLeftColor:
+      readinessScore >= 70
+        ? "#2dd4a3"
+        : readinessScore >= 50
+        ? "#f59e0b"
+        : "#ef4444"
+  }}
+>
+  <div className="hero-score">{readinessScore}</div>
+
+  <div className="hero-message">
+    {displayProtein !== null && displayProtein < state.settings.proteinTarget
+      ? "Priority: Hit your protein target today"
+      : displaySteps !== null && displaySteps < state.settings.stepTarget
+      ? "Priority: Close your step gap"
+      : workoutCompletion < 50
+      ? "Priority: Log today's workout"
+      : "You're on track. Stay consistent."}
+  </div>
+
+  <div className="hero-stats">
+    <div
+      className={`stat-pill ${
+        displayProtein !== null && displayProtein >= state.settings.proteinTarget
+          ? "good"
+          : "warn"
+      }`}
+    >
+      {displayProtein ?? 0}g / {state.settings.proteinTarget}g
+    </div>
+
+    <div
+      className={`stat-pill ${
+        displaySteps !== null && displaySteps >= state.settings.stepTarget
+          ? "good"
+          : "warn"
+      }`}
+    >
+      {displaySteps ?? 0} / {state.settings.stepTarget}
+    </div>
+
+    <div
+      className={`stat-pill ${
+        displayCalories !== null &&
+        displayCalories >= state.settings.targetCalories
+          ? "good"
+          : "warn"
+      }`}
+    >
+      {displayCalories ?? 0} / {state.settings.targetCalories}
+    </div>
+  </div>
+</div>
           <section className="dashboard-scope-card">
             <div>
               <div className="small">Dashboard view</div>
