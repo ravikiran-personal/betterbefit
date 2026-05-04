@@ -1216,46 +1216,30 @@ async function addMealDraft() {
     foods: [
       ...prev.foods,
       {
-      ...draftToSave,
-  id: cryptoSafeId(),
-  date: getLocalDateISO()
+        ...draftToSave,
+        id: cryptoSafeId(),
+        date: getLocalDateISO()
       }
     ]
   }));
 
-// 🔁 Replacement for the try/catch block
-try {
-  const key = draftToSave.food.toLowerCase().trim();
-  const existingCache = getLocalFoodCache();
-
-  existingCache[key] = {
-    food: draftToSave.food,
-    calories: draftToSave.calories,
-    protein: draftToSave.protein,
-    carbs: draftToSave.carbs,
-    fats: draftToSave.fats,
-    grams: draftToSave.grams
-  };
-
-  localStorage.setItem("food-cache", JSON.stringify(existingCache));
-} catch {
-  // silently ignore
-}
-
-// 🧩 Helper function
-function getLocalFoodCache(): Record<string, object> {
   try {
-    const raw = localStorage.getItem("food-cache");
-    if (!raw) return {};
+    const key = draftToSave.food.toLowerCase().trim();
+    const existingCache = getLocalFoodCache();
 
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      return parsed as Record<string, object>;
-    }
+    existingCache[key] = {
+      food: draftToSave.food,
+      calories: draftToSave.calories,
+      protein: draftToSave.protein,
+      carbs: draftToSave.carbs,
+      fats: draftToSave.fats,
+      grams: draftToSave.grams
+    };
 
-    return {};
+    localStorage.setItem("food-cache", JSON.stringify(existingCache));
   } catch {
-    
+    // silently ignore
+  }
 
   setMealDraft({
     id: "draft",
@@ -1272,6 +1256,7 @@ function getLocalFoodCache(): Record<string, object> {
   setMealDraftUnit("g");
   setMealDraftSuggestions([]);
 }
+
   function saveCurrentMealsAsPreset() {
     const name = mealPresetName.trim();
 
@@ -2993,6 +2978,22 @@ function getLocalDateISO() {
   return local.toISOString().split("T")[0];
 }
 
+function getLocalFoodCache(): Record<string, object> {
+  try {
+    const raw = localStorage.getItem("food-cache");
+    if (!raw) return {};
+
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, object>;
+    }
+
+    return {};
+  } catch {
+    return {};
+  }
+}
+
 function getWeekStatus(dailyLogs: DailyLog[]) {
   const dayLabels = ["S", "M", "T", "W", "T", "F", "S"];
   const today = new Date(getLocalDateISO() + "T00:00:00");
@@ -3338,5 +3339,4 @@ function getRecommendation(input: {
   }
 
   return messages.join(" ");
-}
 }
