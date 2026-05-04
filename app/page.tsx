@@ -1672,35 +1672,66 @@ reader.readAsText(file);
 
           <section className="game-metrics">
             <GameMetricCard
-              title="Protein"
-              value={formatNumber(displayProtein, "g")}
-              hint={(displayProtein ?? 0) >= state.settings.proteinTarget ? "Target hit" : `${Math.max(0, Math.round(state.settings.proteinTarget - (displayProtein ?? 0)))}g left`}
-              tone={(displayProtein ?? 0) >= state.settings.proteinTarget ? "green" : "amber"}
-            />
-            <GameMetricCard
-              title="Steps"
-              value={formatNumber(displaySteps)}
-              hint={(displaySteps ?? 0) >= state.settings.stepTarget ? "Target crushed" : `${Math.max(0, Math.round(state.settings.stepTarget - (displaySteps ?? 0))).toLocaleString()} left`}
-              tone={(displaySteps ?? 0) >= state.settings.stepTarget ? "green" : "amber"}
-            />
-            <GameMetricCard
-              title="Calories"
-              value={formatNumber(displayCalories)}
-              hint={displayCalories === null ? "Log intake" : `${Math.round(displayCalories - state.settings.targetCalories)} kcal vs target`}
-              tone={displayCalories !== null && Math.abs(displayCalories - state.settings.targetCalories) <= 150 ? "green" : "amber"}
-            />
-            <GameMetricCard
-              title="Cardio"
-              value={formatNumber(displayCardio, "min")}
-              hint="weekly average"
-              tone={(displayCardio ?? 0) >= 20 ? "green" : "amber"}
-            />
-            <GameMetricCard
-              title="Workouts"
-              value={`${workoutCompletion}%`}
-              hint={workoutCompletion >= 70 ? "locked in" : "log more"}
-              tone={workoutCompletion >= 70 ? "green" : "amber"}
-            />
+  title="Protein"
+  value={`${displayProtein ?? 0}g`}
+  hint={`${displayProtein ?? 0} / ${state.settings.proteinTarget}g`}
+  tone={
+    (displayProtein ?? 0) >= state.settings.proteinTarget ? "green" : "amber"
+  }
+  progressPercent={Math.min(
+    100,
+    Math.round(((displayProtein ?? 0) / state.settings.proteinTarget) * 100)
+  )}
+/>
+
+<GameMetricCard
+  title="Steps"
+  value={`${displaySteps ?? 0}`}
+  hint={`${displaySteps ?? 0} / ${state.settings.stepTarget}`}
+  tone={
+    (displaySteps ?? 0) >= state.settings.stepTarget ? "green" : "amber"
+  }
+  progressPercent={Math.min(
+    100,
+    Math.round(((displaySteps ?? 0) / state.settings.stepTarget) * 100)
+  )}
+/>
+
+<GameMetricCard
+  title="Calories"
+  value={`${displayCalories ?? 0}`}
+  hint={`${displayCalories ?? 0} / ${state.settings.targetCalories}`}
+  tone={
+    (displayCalories ?? 0) >= state.settings.targetCalories
+      ? "green"
+      : "amber"
+  }
+  progressPercent={Math.min(
+    100,
+    Math.round(
+      ((displayCalories ?? 0) / state.settings.targetCalories) * 100
+    )
+  )}
+/>
+
+<GameMetricCard
+  title="Cardio"
+  value={`${displayCardio ?? 0} min`}
+  hint={`${displayCardio ?? 0} / 30 min`}
+  tone={(displayCardio ?? 0) >= 30 ? "green" : "amber"}
+  progressPercent={Math.min(
+    100,
+    Math.round(((displayCardio ?? 0) / 30) * 100)
+  )}
+/>
+
+<GameMetricCard
+  title="Workouts"
+  value={`${workoutCompletion}%`}
+  hint="Weekly completion"
+  tone={workoutCompletion >= 70 ? "green" : "amber"}
+  progressPercent={workoutCompletion}
+/>
           </section>
 
           <section className="readiness-panel">
@@ -2837,21 +2868,29 @@ function GameMetricCard({
   title,
   value,
   hint,
-  tone
+  tone,
+  progressPercent
 }: {
   title: string;
   value: string;
   hint: string;
   tone: "green" | "amber";
+  progressPercent: number;
 }) {
   return (
-    <div className={`game-metric ${tone}`}>
-      <div className="game-metric-title">
-        <span className="signal-dot" />
-        {title}
+    <div className="metric-card">
+      <div className="metric-title">{title}</div>
+
+      <div className="metric-value">{value}</div>
+
+      <div className="metric-bar">
+        <div
+          className={`metric-bar-fill ${tone}`}
+          style={{ width: `${progressPercent}%` }}
+        />
       </div>
-      <div className="game-metric-value">{value}</div>
-      <div className="game-metric-pill">{hint}</div>
+
+      <div className="metric-hint">{hint}</div>
     </div>
   );
 }
