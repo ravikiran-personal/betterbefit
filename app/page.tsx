@@ -1223,25 +1223,43 @@ async function addMealDraft() {
     ]
   }));
 
+// 🔁 Replacement for the try/catch block
+try {
+  const key = draftToSave.food.toLowerCase().trim();
+
+  const existingCache = getLocalFoodCache();
+
+  existingCache[key] = {
+    food: draftToSave.food,
+    calories: draftToSave.calories,
+    protein: draftToSave.protein,
+    carbs: draftToSave.carbs,
+    fats: draftToSave.fats,
+    grams: draftToSave.grams
+  };
+
+  localStorage.setItem("food-cache", JSON.stringify(existingCache));
+} catch {
+  // silently ignore
+}
+
+
+// 🧩 Helper function
+function getLocalFoodCache(): Record<string, object> {
   try {
-    await fetch("/api/food-search/save", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json"
-      },
-      body: JSON.stringify({
-        query: draftToSave.food,
-        data: {
-          food: draftToSave.food,
-          calories: draftToSave.calories,
-          protein: draftToSave.protein,
-          carbs: draftToSave.carbs,
-          fats: draftToSave.fats,
-          grams: draftToSave.grams
-        }
-      })
-    });
-  } catch (error) {
+    const raw = localStorage.getItem("food-cache");
+    if (!raw) return {};
+
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, object>;
+    }
+
+    return {};
+  } catch {
+    return {};
+  }
+} catch (error) {
     console.error("Food cache save failed:", error);
   }
 
