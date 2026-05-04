@@ -122,12 +122,6 @@ a {
 }
 
 /* ===== TABS ===== */
-.tabbar {
-  display: flex;
-  gap: 8px;
-  margin: 16px 0 24px;
-  flex-wrap: wrap;
-}
 
 .tab {
   padding: 10px 14px;
