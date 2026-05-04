@@ -1728,18 +1728,93 @@ reader.readAsText(file);
 />
           </section>
 
-          <section className="readiness-panel">
-            <div
-              className="readiness-ring"
-              style={{ background: `conic-gradient(#2dd4a3 ${readinessScore * 3.6}deg, #30343b 0deg)` }}
-            >
-              <div className="readiness-inner">{readinessScore}%</div>
-            </div>
-            <div>
-              <h2>Readiness score</h2>
-              <p>{getReadinessMessage(readinessScore)}</p>
-            </div>
-          </section>
+         <section
+  className="priority-card"
+  style={{
+    borderLeftColor:
+      (displayProtein ?? 0) < state.settings.proteinTarget - 20 ||
+      (displaySteps ?? 0) < state.settings.stepTarget - 2000 ||
+      workoutCompletion < 50 ||
+      (displayCalories !== null && displayCalories > state.settings.targetCalories + 150)
+        ? "#f59e0b"
+        : "#2dd4a3"
+  }}
+>
+  {(() => {
+    const proteinGap = Math.round(state.settings.proteinTarget - (displayProtein ?? 0));
+    const stepGap = Math.round(state.settings.stepTarget - (displaySteps ?? 0)).toLocaleString();
+
+    if (proteinGap > 20) {
+      return (
+        <>
+          <div className="priority-top">
+            <span className="priority-icon">🥩</span>
+            <span className="priority-label">PROTEIN GAP</span>
+          </div>
+          <p className="priority-action">
+            Add {proteinGap}g of protein today. Try chicken breast, eggs, paneer or whey.
+          </p>
+        </>
+      );
+    }
+
+    if (state.settings.stepTarget - (displaySteps ?? 0) > 2000) {
+      return (
+        <>
+          <div className="priority-top">
+            <span className="priority-icon">👟</span>
+            <span className="priority-label">STEP GAP</span>
+          </div>
+          <p className="priority-action">
+            Take a 15-minute walk after your next meal to close {stepGap} steps.
+          </p>
+        </>
+      );
+    }
+
+    if (workoutCompletion < 50) {
+      return (
+        <>
+          <div className="priority-top">
+            <span className="priority-icon">🏋️</span>
+            <span className="priority-label">WORKOUT</span>
+          </div>
+          <p className="priority-action">
+            Open your workout tab and log today&apos;s session.
+          </p>
+        </>
+      );
+    }
+
+    if (displayCalories !== null && displayCalories > state.settings.targetCalories + 150) {
+      return (
+        <>
+          <div className="priority-top">
+            <span className="priority-icon">🍽️</span>
+            <span className="priority-label">CALORIES HIGH</span>
+          </div>
+          <p className="priority-action">
+            Trim one meal — reduce oil, rice or sugar to get closer to your target.
+          </p>
+        </>
+      );
+    }
+
+    return (
+      <>
+        <div className="priority-top">
+          <span className="priority-icon">✅</span>
+          <span className="priority-label">ON TRACK</span>
+        </div>
+        <p className="priority-action">
+          You&apos;re doing everything right today. Stay consistent and let the process work.
+        </p>
+      </>
+    );
+  })()}
+
+  <div className="priority-footer">Tap check-in to log today&apos;s data</div>
+</section>
 
           <section>
             <h2 className="game-section-title">Unlock next</h2>
