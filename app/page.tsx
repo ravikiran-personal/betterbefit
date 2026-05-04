@@ -1396,17 +1396,65 @@ async function addMealDraft() {
   }
 
   function importBackup(file: File) {
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const parsed = JSON.parse(String(reader.result)) as AppState;
-        setState(parsed);
-      } catch {
-        alert("Invalid backup file.");
-      }
-    };
-    reader.readAsText(file);
+const reader = new FileReader();
+
+reader.onload = () => {
+try {
+const parsed = JSON.parse(String(reader.result)) as Partial<AppState>;
+
+```
+  const isObject =
+    parsed !== null &&
+    typeof parsed === "object" &&
+    !Array.isArray(parsed);
+
+  const hasValidSettings =
+    isObject &&
+    parsed.settings !== undefined &&
+    parsed.settings !== null &&
+    typeof parsed.settings === "object" &&
+    typeof (parsed.settings as Settings).weightKg === "number" &&
+    typeof (parsed.settings as Settings).heightCm === "number" &&
+    typeof (parsed.settings as Settings).targetCalories === "number";
+
+  const hasValidArrays =
+    isObject &&
+    Array.isArray(parsed.dailyLogs) &&
+    Array.isArray(parsed.workoutLogs) &&
+    Array.isArray(parsed.foods);
+
+  if (!isObject || !hasValidSettings || !hasValidArrays) {
+    alert("This backup file appears corrupted or from an incompatible version. No changes were made.");
+    return;
   }
+
+  setState({
+    ...initialState,
+    ...parsed,
+    settings: {
+      ...initialState.settings,
+      ...parsed.settings
+    },
+    dailyLogs: parsed.dailyLogs ?? initialState.dailyLogs,
+    workoutLogs: parsed.workoutLogs ?? initialState.workoutLogs,
+    workoutHistory: Array.isArray(parsed.workoutHistory)
+      ? parsed.workoutHistory
+      : initialState.workoutHistory,
+    foods: parsed.foods ?? initialState.foods,
+    mealPresets: Array.isArray(parsed.mealPresets)
+      ? parsed.mealPresets
+      : initialState.mealPresets
+  });
+} catch {
+  alert("This backup file appears corrupted or from an incompatible version. No changes were made.");
+}
+```
+
+};
+
+reader.readAsText(file);
+}
+
   
   function getDailyTrend(index: number, key: keyof Pick<DailyLog, "weight" | "steps" | "calories" | "protein">) {
     const current = numberOrNull(state.dailyLogs[index]?.[key]);
