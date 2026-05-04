@@ -3014,13 +3014,45 @@ const isToday = dateISO === getLocalDateISO();
 }
 
 function getCurrentStreak(dailyLogs: DailyLog[]) {
-  return dailyLogs.filter(
-    (log) =>
-      numberOrNull(log.weight) !== null ||
-      numberOrNull(log.steps) !== null ||
-      numberOrNull(log.calories) !== null ||
-      numberOrNull(log.protein) !== null
-  ).length;
+const hasData = (log: DailyLog | undefined) =>
+!!log &&
+(
+numberOrNull(log.weight) !== null ||
+numberOrNull(log.steps) !== null ||
+numberOrNull(log.calories) !== null ||
+numberOrNull(log.protein) !== null
+);
+
+// Map logs by date for quick lookup
+const logMap = new Map<string, DailyLog>();
+for (const log of dailyLogs) {
+logMap.set(log.date, log);
+}
+
+// Start from today (or yesterday if today has no data)
+const todayISO = getLocalDateISO();
+let currentDate = new Date(todayISO + "T00:00:00");
+
+if (!hasData(logMap.get(todayISO))) {
+currentDate.setDate(currentDate.getDate() - 1);
+}
+
+let streak = 0;
+
+while (true) {
+const dateISO = currentDate.toISOString().slice(0, 10);
+const log = logMap.get(dateISO);
+
+```
+if (!hasData(log)) break;
+
+streak++;
+currentDate.setDate(currentDate.getDate() - 1);
+```
+
+}
+
+return streak;
 }
 
 function getWeeklyXp(input: {
