@@ -1639,37 +1639,31 @@ reader.readAsText(file);
           </section>
 
           <section>
-  <h2 className="game-section-title">This week</h2>
+  {(() => {
+    const prioritySignal =
+      todaySignals.find((s) => s.type === "warn") || todaySignals[0];
 
-  <div className="week-row">
-    {weekStatus.map((day) => {
-      const today = getLocalDateISO();
+    if (!prioritySignal) return null;
 
-      const isSelected = selectedDashboardDate === day.date;
-      const isToday = day.date === today;
+    const remainingCount = Math.max(0, todaySignals.length - 1);
 
-      return (
-        <button
-          key={day.date}
-          type="button"
-          className={`week-day 
-            ${isSelected ? "selected-day" : ""} 
-            ${!selectedDashboardDate && isToday ? "today-day" : ""}
-          `}
-          onClick={() =>
-            setSelectedDashboardDate((prev) =>
-              prev === day.date ? null : day.date
-            )
-          }
-        >
-          <span className="week-date">{day.dateNumber}</span>
-          <span className="week-label">{day.label}</span>
-        </button>
-      );
-    })}
-  </div>
+    return (
+      <div
+        className={`insight-card ${prioritySignal.type}`}
+      >
+        <div className="insight-label">TODAY'S FOCUS</div>
+
+        <div className="insight-text">
+          {prioritySignal.text}
+        </div>
+
+        <div className="insight-sub">
+          {remainingCount} more signals in check-in
+        </div>
+      </div>
+    );
+  })()}
 </section>
-
           <section className="game-metrics">
             <GameMetricCard
   title="Protein"
