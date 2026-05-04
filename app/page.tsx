@@ -1255,11 +1255,7 @@ function getLocalFoodCache(): Record<string, object> {
 
     return {};
   } catch {
-    return {};
-  }
-} catch (error) {
-    console.error("Food cache save failed:", error);
-  }
+    
 
   setMealDraft({
     id: "draft",
