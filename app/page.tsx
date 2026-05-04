@@ -2915,6 +2915,20 @@ type Achievement = {
   unlocked: boolean;
 };
 
+
+function getReadinessScore(input: {
+  avgProtein: number | null;
+  avgSteps: number | null;
+  workoutCompletion: number;
+  settings: Settings;
+}) {
+  const proteinScore = Math.min(((input.avgProtein ?? 0) / Math.max(input.settings.proteinTarget, 1)) * 40, 40);
+  const stepScore = Math.min(((input.avgSteps ?? 0) / Math.max(input.settings.stepTarget, 1)) * 35, 35);
+  const workoutScore = Math.min((input.workoutCompletion / 100) * 25, 25);
+
+  return Math.round(proteinScore + stepScore + workoutScore);
+}
+
 function getBaseSetup(input: {
   settings: Settings;
   avgCalories: number | null;
