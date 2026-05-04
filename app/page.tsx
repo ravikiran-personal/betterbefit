@@ -1226,7 +1226,6 @@ async function addMealDraft() {
 // 🔁 Replacement for the try/catch block
 try {
   const key = draftToSave.food.toLowerCase().trim();
-
   const existingCache = getLocalFoodCache();
 
   existingCache[key] = {
@@ -1242,7 +1241,6 @@ try {
 } catch {
   // silently ignore
 }
-
 
 // 🧩 Helper function
 function getLocalFoodCache(): Record<string, object> {
