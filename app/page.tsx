@@ -610,13 +610,6 @@ const foodsForSelectedDate = state.foods.filter((food) => {
     foodTotals
   });
 
-  const readinessScore = getReadinessScore({
-    avgProtein,
-    avgSteps,
-    workoutCompletion,
-    settings: state.settings
-  });
-
   const todaySignals = getTodaySignals({
     settings: state.settings,
     avgCalories,
@@ -3017,26 +3010,6 @@ type Achievement = {
   detail: string;
   unlocked: boolean;
 };
-
-function getReadinessScore(input: {
-  avgProtein: number | null;
-  avgSteps: number | null;
-  workoutCompletion: number;
-  settings: Settings;
-}) {
-  const proteinScore = Math.min(((input.avgProtein ?? 0) / Math.max(input.settings.proteinTarget, 1)) * 40, 40);
-  const stepScore = Math.min(((input.avgSteps ?? 0) / Math.max(input.settings.stepTarget, 1)) * 35, 35);
-  const workoutScore = Math.min((input.workoutCompletion / 100) * 25, 25);
-
-  return Math.round(proteinScore + stepScore + workoutScore);
-}
-
-function getReadinessMessage(score: number) {
-  if (score >= 85) return "Full recomp mode. Keep the streak alive and avoid unnecessary changes.";
-  if (score >= 70) return "Strong momentum. Fix one weak signal and the week is yours.";
-  if (score >= 50) return "You are in the game. Tighten steps, protein, or logging today.";
-  return "Reset the basics today: protein, steps, and one clean log.";
-}
 
 function getBaseSetup(input: {
   settings: Settings;
