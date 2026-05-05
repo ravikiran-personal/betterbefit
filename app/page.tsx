@@ -88,6 +88,16 @@ type FoodSearchResult = {
   results?: FoodSearchResult[];
 };
 
+type MealSuggestion = {
+  meal: "Breakfast" | "Lunch" | "Dinner";
+  food: string;
+  grams: number;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+};
+
 type Sex = "male" | "female";
 type Lifestyle = "sedentary" | "light" | "moderate" | "active";
 type Goal = "recomp" | "maintain" | "lose_weight" | "be_more_active";
@@ -485,6 +495,10 @@ const foodGramsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   >({});
   const [workoutSaveMessage, setWorkoutSaveMessage] = useState("");
   const [expandedAlternates, setExpandedAlternates] = useState<Record<string, boolean>>({});
+  const [mealSuggestions, setMealSuggestions] = useState<MealSuggestion[]>([]);
+  const [suggestionsGenerated, setSuggestionsGenerated] = useState(false);
+  const [addedMealSuggestions, setAddedMealSuggestions] = useState<Record<string, boolean>>({});
+  const [suggestionDate, setSuggestionDate] = useState(getLocalDateISO());
 
   useEffect(() => {
     try {
@@ -759,6 +773,32 @@ const foodsForSelectedDate = state.foods.filter((food) => {
     });
     setMissedWorkoutState("asking");
   }, [state.workoutHistory, splitPlan, missedWorkoutState]);
+
+  useEffect(() => {
+    const today = getLocalDateISO();
+
+    if (suggestionDate !== today) {
+      setSuggestionDate(today);
+      setSuggestionsGenerated(false);
+      setMealSuggestions([]);
+      setAddedMealSuggestions({});
+      return;
+    }
+
+    if (tab !== "nutrition") return;
+    if (suggestionsGenerated) return;
+
+    setMealSuggestions(generateMealSuggestions());
+    setSuggestionsGenerated(true);
+  }, [
+    tab,
+    suggestionDate,
+    suggestionsGenerated,
+    state.settings.targetCalories,
+    state.settings.proteinTarget,
+    displayCalories,
+    displayProtein
+  ]);
 
   const weeklyNutritionAdjustment = useMemo(() => {
     return getWeeklyNutritionAdjustment({
@@ -1409,6 +1449,147 @@ async function addMealDraft() {
   setFoodSearchGrams(100);
 }
 
+  function scaleIndianFood(food: string, grams: number, meal: MealSuggestion["meal"]): MealSuggestion {
+    const base = INDIAN_FOODS[food];
+    const multiplier = grams / 100;
+
+    return {
+      meal,
+      food,
+      grams,
+      calories: Math.round(base.calories * multiplier),
+      protein: Math.round(base.protein * multiplier * 10) / 10,
+      carbs: Math.round(base.carbs * multiplier * 10) / 10,
+      fats: Math.round(base.fats * multiplier * 10) / 10
+    };
+  }
+
+  function combineIndianFoods(
+    meal: MealSuggestion["meal"],
+    foods: Array<{ food: string; grams: number }>
+  ): MealSuggestion {
+    const totals = foods.reduce(
+      (acc, item) => {
+        const base = INDIAN_FOODS[item.food];
+        if (!base) return acc;
+
+        const multiplier = item.grams / 100;
+        acc.calories += base.calories * multiplier;
+        acc.protein += base.protein * multiplier;
+        acc.carbs += base.carbs * multiplier;
+        acc.fats += base.fats * multiplier;
+        acc.grams += item.grams;
+
+        return acc;
+      },
+      { calories: 0, protein: 0, carbs: 0, fats: 0, grams: 0 }
+    );
+
+    return {
+      meal,
+      food: foods.map((item) => `${item.grams}g ${item.food}`).join(" + "),
+      grams: totals.grams,
+      calories: Math.round(totals.calories),
+      protein: Math.round(totals.protein * 10) / 10,
+      carbs: Math.round(totals.carbs * 10) / 10,
+      fats: Math.round(totals.fats * 10) / 10
+    };
+  }
+
+  function generateMealSuggestions(): MealSuggestion[] {
+    const remainingCalories = Math.max(
+      0,
+      state.settings.targetCalories - (displayCalories ?? 0)
+    );
+
+    const remainingProtein = Math.max(
+      0,
+      state.settings.proteinTarget - (displayProtein ?? 0)
+    );
+
+    const breakfastOptions = [
+      "egg bhurji",
+      "besan chilla",
+      "omelette",
+      "idli",
+      "poha",
+      "upma"
+    ];
+
+    const breakfastFood =
+      breakfastOptions.find((food) => {
+        const item = INDIAN_FOODS[food];
+        if (!item) return false;
+
+        const caloriesFor200g = item.calories * 2;
+        const proteinFor200g = item.protein * 2;
+
+        return caloriesFor200g >= 200 && caloriesFor200g <= 450 && proteinFor200g > 8;
+      }) || "besan chilla";
+
+    const lunchCalories = remainingCalories > 0 ? remainingCalories * 0.35 : 600;
+    const dinnerCalories = remainingCalories > 0 ? remainingCalories * 0.3 : 500;
+
+    const lunch =
+      remainingProtein > 40
+        ? combineIndianFoods("Lunch", [
+            { food: "boiled basmati rice", grams: lunchCalories > 700 ? 250 : 200 },
+            { food: "chicken curry", grams: 200 },
+            { food: "curd", grams: 100 }
+          ])
+        : combineIndianFoods("Lunch", [
+            { food: "roti", grams: 100 },
+            { food: "dal tadka", grams: 200 },
+            { food: "mixed veg curry", grams: 150 }
+          ]);
+
+    const dinner =
+      remainingCalories < 600
+        ? combineIndianFoods("Dinner", [
+            { food: "roti", grams: 80 },
+            { food: "moong dal", grams: 200 },
+            { food: "curd", grams: 100 }
+          ])
+        : dinnerCalories > 650
+        ? combineIndianFoods("Dinner", [
+            { food: "boiled basmati rice", grams: 200 },
+            { food: "paneer tikka masala", grams: 150 },
+            { food: "mixed veg curry", grams: 100 }
+          ])
+        : combineIndianFoods("Dinner", [
+            { food: "roti", grams: 80 },
+            { food: "chicken curry", grams: 180 },
+            { food: "cabbage sabzi", grams: 150 }
+          ]);
+
+    return [scaleIndianFood(breakfastFood, 200, "Breakfast"), lunch, dinner];
+  }
+
+  function addMealSuggestionToLog(suggestion: MealSuggestion) {
+    setState((prev) => ({
+      ...prev,
+      foods: [
+        ...prev.foods,
+        {
+          id: cryptoSafeId(),
+          date: getLocalDateISO(),
+          meal: suggestion.meal,
+          food: suggestion.food,
+          grams: suggestion.grams,
+          calories: suggestion.calories,
+          protein: suggestion.protein,
+          carbs: suggestion.carbs,
+          fats: suggestion.fats
+        }
+      ]
+    }));
+
+    setAddedMealSuggestions((prev) => ({
+      ...prev,
+      [`${suggestion.meal}-${suggestion.food}`]: true
+    }));
+  }
+
   function saveCurrentMealsAsPreset() {
     const name = mealPresetName.trim();
 
@@ -1515,74 +1696,73 @@ async function addMealDraft() {
   }
 
   function saveWorkout() {
-  const loggedExercises = todaysExercises.reduce<ExerciseLog[]>((acc, exercise) => {
-    const loggedSets: WorkoutSet[] = (exerciseLogs[exercise.exercise] || [])
-      .filter((set) => set.done)
-      .map((set) => ({
-        id: cryptoSafeId(),
-        weight: numberOrDefault(Number(set.weight), 0),
-        reps: numberOrDefault(Number(set.reps), 0),
-        rpe: ""
-      }));
+    const loggedExercises: ExerciseLog[] = todaysExercises
+      .map((exercise) => {
+        const loggedSets: WorkoutSet[] = (exerciseLogs[exercise.exercise] || [])
+          .filter((set) => set.done)
+          .map((set) => ({
+            id: cryptoSafeId(),
+            weight: numberOrDefault(Number(set.weight), 0),
+            reps: numberOrDefault(Number(set.reps), 0),
+            rpe: ""
+          }));
 
-    if (loggedSets.length === 0) return acc;
+        if (loggedSets.length === 0) return null;
 
-    const firstSet = loggedSets[0];
+        const firstSet = loggedSets[0];
 
-    acc.push({
-      id: cryptoSafeId(),
-      day: exercise.day,
-      dayLabel: exercise.dayLabel,
-      pattern: exercise.pattern,
-      exercise: exercise.exercise,
-      alternates: exercise.alternates,
-      sets: loggedSets.length,
-      targetReps: exercise.targetReps,
-      workoutSets: loggedSets,
-      weight: firstSet.weight,
-      repsDone: firstSet.reps,
-      rpe: "",
-      notes: ""
-    });
+        return {
+          id: cryptoSafeId(),
+          day: exercise.day,
+          dayLabel: exercise.dayLabel,
+          pattern: exercise.pattern,
+          exercise: exercise.exercise,
+          alternates: exercise.alternates,
+          sets: loggedSets.length,
+          targetReps: exercise.targetReps,
+          workoutSets: loggedSets,
+          weight: firstSet.weight,
+          repsDone: firstSet.reps,
+          rpe: "",
+          notes: ""
+        };
+      })
+      .filter((exercise): exercise is ExerciseLog => exercise !== null);
 
-    return acc;
-  }, []);
+    if (loggedExercises.length === 0) return;
 
-  if (loggedExercises.length === 0) return;
+    const totalVolume = calculateSessionVolume(loggedExercises);
 
-  const totalVolume = loggedExercises.reduce((sum, exercise) => {
-    return sum + calculateExerciseVolume(exercise);
-  }, 0);
+    setState((prev) => ({
+      ...prev,
+      workoutHistory: [
+        {
+          id: cryptoSafeId(),
+          date: getLocalDateISO(),
+          dayType: todayWorkout.dayType,
+          completion: "completed",
+          totalVolume,
+          exercises: loggedExercises
+        },
+        ...prev.workoutHistory
+      ]
+    }));
 
-  setState((prev) => ({
-    ...prev,
-    workoutHistory: [
-      {
-        id: cryptoSafeId(),
-        date: getLocalDateISO(),
-        dayType: todayWorkout.dayType,
-        totalVolume,
-        exercises: loggedExercises
-      },
-      ...prev.workoutHistory
-    ]
-  }));
+    setWorkoutSaveMessage("Session saved. 🔥");
 
-  setWorkoutSaveMessage("Session saved. 🔥");
-
-  setExerciseLogs(
-    Object.fromEntries(
-      todaysExercises.map((exercise) => [
-        exercise.exercise,
-        Array.from({ length: exercise.sets }).map(() => ({
-          weight: "",
-          reps: "",
-          done: false
-        }))
-      ])
-    )
-  );
-}
+    setExerciseLogs(
+      Object.fromEntries(
+        todaysExercises.map((exercise) => [
+          exercise.exercise,
+          Array.from({ length: exercise.sets }).map(() => ({
+            weight: "",
+            reps: "",
+            done: false
+          }))
+        ])
+      )
+    );
+  }
 
   function loadWorkoutSession(session: WorkoutSession) {
     setState((prev) => ({
@@ -2315,6 +2495,12 @@ async function addMealDraft() {
 
       {tab === "nutrition" && (
         <div className="nutrition-page compact-page">
+          <MealSuggestionsSection
+            mealSuggestions={mealSuggestions}
+            addedMealSuggestions={addedMealSuggestions}
+            onAddSuggestion={addMealSuggestionToLog}
+          />
+
           <section className="compact-section">
             <button className={`collapse-pill section-pill ${expandedNutritionSections.logMeal ? "open" : ""}`} onClick={() => toggleNutritionSection("logMeal")}>
               <div>
@@ -3253,6 +3439,139 @@ function MissedWorkoutCard({
   }
 
   return null;
+}
+
+function MealSuggestionsSection({
+  mealSuggestions,
+  addedMealSuggestions,
+  onAddSuggestion
+}: {
+  mealSuggestions: MealSuggestion[];
+  addedMealSuggestions: Record<string, boolean>;
+  onAddSuggestion: (suggestion: MealSuggestion) => void;
+}) {
+  if (mealSuggestions.length === 0) return null;
+
+  return (
+    <section className="compact-section">
+      <div style={{ marginBottom: 12 }}>
+        <h2 style={{ margin: 0, color: "#ffffff", fontSize: 16, fontWeight: 600 }}>
+          Today&apos;s Meal Ideas
+        </h2>
+        <p className="small" style={{ marginTop: 4 }}>
+          Based on your remaining macros
+        </p>
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          gap: 12,
+          overflowX: "auto",
+          paddingBottom: 8
+        }}
+      >
+        {mealSuggestions.map((suggestion) => {
+          const key = `${suggestion.meal}-${suggestion.food}`;
+          const added = !!addedMealSuggestions[key];
+
+          return (
+            <div
+              key={key}
+              style={{
+                width: 200,
+                flexShrink: 0,
+                background: "#111827",
+                borderRadius: 16,
+                padding: 16,
+                border: added ? "1px solid #2dd4a3" : "1px solid #1f2937"
+              }}
+            >
+              <div
+                style={{
+                  color: "#6b7280",
+                  fontSize: 10,
+                  textTransform: "uppercase",
+                  letterSpacing: 1,
+                  fontWeight: 700
+                }}
+              >
+                {suggestion.meal}
+              </div>
+
+              <div
+                style={{
+                  color: "#ffffff",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  margin: "4px 0",
+                  lineHeight: 1.4
+                }}
+              >
+                {suggestion.food}
+              </div>
+
+              <div style={{ color: "#9ca3af", fontSize: 12 }}>
+                {suggestion.grams}g
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  gap: 6,
+                  flexWrap: "wrap",
+                  marginTop: 10,
+                  marginBottom: 12
+                }}
+              >
+                <span
+                  style={{
+                    background: "#1f2937",
+                    color: "#e5e7eb",
+                    borderRadius: 999,
+                    padding: "5px 8px",
+                    fontSize: 11
+                  }}
+                >
+                  {suggestion.calories} kcal
+                </span>
+
+                <span
+                  style={{
+                    background: "#1f2937",
+                    color: "#e5e7eb",
+                    borderRadius: 999,
+                    padding: "5px 8px",
+                    fontSize: 11
+                  }}
+                >
+                  {suggestion.protein}g protein
+                </span>
+              </div>
+
+              <button
+                className="btn"
+                disabled={added}
+                onClick={() => onAddSuggestion(suggestion)}
+                style={{
+                  background: added ? "#1f2937" : "#2dd4a3",
+                  color: added ? "#9ca3af" : "#0b1220",
+                  borderRadius: 8,
+                  padding: 8,
+                  width: "100%",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  minHeight: 38
+                }}
+              >
+                {added ? "✓ Added" : "Add to log"}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
 }
 
 function MetricCard({
