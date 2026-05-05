@@ -1696,38 +1696,38 @@ async function addMealDraft() {
   }
 
   function saveWorkout() {
-    const loggedExercises: ExerciseLog[] = todaysExercises
-      .map((exercise) => {
-        const loggedSets: WorkoutSet[] = (exerciseLogs[exercise.exercise] || [])
-          .filter((set) => set.done)
-          .map((set) => ({
-            id: cryptoSafeId(),
-            weight: numberOrDefault(Number(set.weight), 0),
-            reps: numberOrDefault(Number(set.reps), 0),
-            rpe: ""
-          }));
-
-        if (loggedSets.length === 0) return null;
-
-        const firstSet = loggedSets[0];
-
-        return {
+    const loggedExercises = todaysExercises.reduce<ExerciseLog[]>((acc, exercise) => {
+      const loggedSets: WorkoutSet[] = (exerciseLogs[exercise.exercise] || [])
+        .filter((set) => set.done)
+        .map((set) => ({
           id: cryptoSafeId(),
-          day: exercise.day,
-          dayLabel: exercise.dayLabel,
-          pattern: exercise.pattern,
-          exercise: exercise.exercise,
-          alternates: exercise.alternates,
-          sets: loggedSets.length,
-          targetReps: exercise.targetReps,
-          workoutSets: loggedSets,
-          weight: firstSet.weight,
-          repsDone: firstSet.reps,
-          rpe: "",
-          notes: ""
-        };
-      })
-      .filter((exercise): exercise is ExerciseLog => exercise !== null);
+          weight: numberOrDefault(Number(set.weight), 0),
+          reps: numberOrDefault(Number(set.reps), 0),
+          rpe: ""
+        }));
+
+      if (loggedSets.length === 0) return acc;
+
+      const firstSet = loggedSets[0];
+
+      acc.push({
+        id: cryptoSafeId(),
+        day: exercise.day,
+        dayLabel: exercise.dayLabel,
+        pattern: exercise.pattern,
+        exercise: exercise.exercise,
+        alternates: exercise.alternates,
+        sets: loggedSets.length,
+        targetReps: exercise.targetReps,
+        workoutSets: loggedSets,
+        weight: firstSet.weight,
+        repsDone: firstSet.reps,
+        rpe: "",
+        notes: ""
+      });
+
+      return acc;
+    }, []);
 
     if (loggedExercises.length === 0) return;
 
