@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { generateFitnessPlan } from "../lib/fitness-engine";
 import { getWeeklyNutritionAdjustment } from "../lib/fitness-engine/intelligence";
 import type { GeneratedExercise } from "../lib/fitness-engine";
+import { INDIAN_FOODS } from "../lib/indianFoods";
 
 type Tab = "dashboard" | "workouts" | "nutrition" | "checkin" | "settings";
 
