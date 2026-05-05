@@ -2878,3 +2878,70 @@ main,
   font-size: 11px !important;
   line-height: 1 !important;
 }
+
+.missed-workout-card {
+  width: 100%;
+  background: #111827;
+  border-radius: 20px;
+  padding: 24px;
+  margin-bottom: 16px;
+  border: 1px solid #1f2937;
+}
+
+.missed-workout-card h2 {
+  margin: 0;
+  font-size: 20px;
+  color: #e5e7eb;
+}
+
+.missed-workout-card p {
+  margin-top: 10px;
+  color: #9ca3af;
+  line-height: 1.6;
+}
+
+.missed-workout-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.missed-workout-actions.three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.missed-btn {
+  border: 0;
+  border-radius: 14px;
+  min-height: 52px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.missed-btn.skipped {
+  background: #1f2937;
+  color: #ffffff;
+}
+
+.missed-btn.forgot {
+  background: #2dd4a3;
+  color: #0b1220;
+}
+
+.missed-link {
+  margin-top: 14px;
+  background: transparent;
+  border: 0;
+  color: #6b7280;
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@media (max-width: 600px) {
+  .missed-workout-actions,
+  .missed-workout-actions.three {
+    grid-template-columns: 1fr;
+  }
+}
