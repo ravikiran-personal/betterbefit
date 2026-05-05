@@ -75,7 +75,7 @@ export type TodayWorkout = {
   splitName: string;
 };
 
-type MealSuggestion = {
+export type MealSuggestion = {
   meal: "Breakfast" | "Lunch" | "Dinner";
   food: string;
   grams: number;
