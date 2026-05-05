@@ -742,6 +742,58 @@ const foodsForSelectedDate = state.foods.filter((food) => {
   }).length;
   const hasAnyLoggedSet = Object.values(exerciseLogs).some((sets) => sets.some((set) => set.done));
 
+  const currentStreak = streakDays;
+  const totalXp = weeklyXp.xp;
+
+  const dailyTasks = [
+    {
+      id: "workout",
+      done: todayWorkout.isRestDay || workoutCompletion >= 80,
+      label: todayWorkout.isRestDay ? "Rest Day ✓" : `${todayWorkout.dayType} workout`,
+      tab: "workouts" as const
+    },
+    {
+      id: "protein",
+      done: (displayProtein ?? 0) >= state.settings.proteinTarget * 0.9,
+      label: `Protein: ${displayProtein ?? 0}g / ${state.settings.proteinTarget}g`,
+      tab: "nutrition" as const
+    },
+    {
+      id: "calories",
+      done: Math.abs((displayCalories ?? 0) - state.settings.targetCalories) < 150,
+      label: `Calories: ${displayCalories ?? 0} / ${state.settings.targetCalories}`,
+      tab: "nutrition" as const
+    },
+    {
+      id: "steps",
+      done: (displaySteps ?? 0) >= state.settings.stepTarget * 0.9,
+      label: `Steps: ${(displaySteps ?? 0).toLocaleString()} / ${state.settings.stepTarget.toLocaleString()}`,
+      tab: "checkin" as const
+    }
+  ];
+
+  const completedTasks = dailyTasks.filter((task) => task.done).length;
+  const dayScore = Math.round((completedTasks / dailyTasks.length) * 100);
+
+  const currentHour = new Date().getHours();
+  const greeting =
+    currentHour < 12
+      ? "Good morning 👋"
+      : currentHour < 17
+      ? "Good afternoon 👋"
+      : "Good evening 👋";
+
+  const todayDisplayDate = new Date(getLocalDateISO() + "T00:00:00").toLocaleDateString("en-IN", {
+    weekday: "long",
+    day: "2-digit",
+    month: "short"
+  });
+
+  const dayScoreColor = dayScore >= 75 ? "#2dd4a3" : dayScore >= 50 ? "#f59e0b" : "#ef4444";
+  const dayScoreCircumference = 339;
+  const dayScoreOffset = dayScoreCircumference - (dayScore / 100) * dayScoreCircumference;
+  const weeklyXpProgress = Math.min(100, Math.round((totalXp / 700) * 100));
+
   useEffect(() => {
     setExerciseLogs((prev) => {
       const nextLogs: Record<string, Array<{ weight: string; reps: string; done: boolean }>> = {};
@@ -1951,280 +2003,160 @@ async function addMealDraft() {
 </div>
 
       {tab === "dashboard" && (
-        <div className="game-dashboard">
-          <section
-  className="priority-card"
-  style={{
-    borderLeftColor:
-      (displayProtein ?? 0) < state.settings.proteinTarget - 20 ||
-      (displaySteps ?? 0) < state.settings.stepTarget - 2000 ||
-      workoutCompletion < 50 ||
-      (displayCalories !== null && displayCalories > state.settings.targetCalories + 150)
-        ? "#f59e0b"
-        : "#2dd4a3"
-  }}
->
-  {(() => {
-    const proteinGap = Math.round(state.settings.proteinTarget - (displayProtein ?? 0));
-    const stepGap = Math.round(state.settings.stepTarget - (displaySteps ?? 0)).toLocaleString();
-
-    if (proteinGap > 20) {
-      return (
-        <>
-          <div className="priority-top">
-            <span className="priority-icon">🥩</span>
-            <span className="priority-label">PROTEIN GAP</span>
-          </div>
-          <p className="priority-action">
-            Add {proteinGap}g of protein today. Try chicken breast, eggs, paneer or whey.
-          </p>
-        </>
-      );
-    }
-
-    if (state.settings.stepTarget - (displaySteps ?? 0) > 2000) {
-      return (
-        <>
-          <div className="priority-top">
-            <span className="priority-icon">👟</span>
-            <span className="priority-label">STEP GAP</span>
-          </div>
-          <p className="priority-action">
-            Take a 15-minute walk after your next meal to close {stepGap} steps.
-          </p>
-        </>
-      );
-    }
-
-    if (workoutCompletion < 50) {
-      return (
-        <>
-          <div className="priority-top">
-            <span className="priority-icon">🏋️</span>
-            <span className="priority-label">WORKOUT</span>
-          </div>
-          <p className="priority-action">
-            Open your workout tab and log today&apos;s session.
-          </p>
-        </>
-      );
-    }
-
-    if (displayCalories !== null && displayCalories > state.settings.targetCalories + 150) {
-      return (
-        <>
-          <div className="priority-top">
-            <span className="priority-icon">🍽️</span>
-            <span className="priority-label">CALORIES HIGH</span>
-          </div>
-          <p className="priority-action">
-            Trim one meal — reduce oil, rice or sugar to get closer to your target.
-          </p>
-        </>
-      );
-    }
-
-    return (
-      <>
-        <div className="priority-top">
-          <span className="priority-icon">✅</span>
-          <span className="priority-label">ON TRACK</span>
-        </div>
-        <p className="priority-action">
-          You&apos;re doing everything right today. Stay consistent and let the process work.
-        </p>
-      </>
-    );
-  })()}
-
-  <div className="priority-footer">Tap check-in to log today&apos;s data</div>
-</section>
-
-          <section className="dashboard-scope-card">
+        <div className="today-dashboard">
+          <section className="today-header">
             <div>
-              <div className="small">Dashboard view</div>
-              <strong>{dashboardScopeLabel}</strong>
+              <h1>{greeting}</h1>
+              <p>{todayDisplayDate}</p>
             </div>
-            {selectedDashboardDate ? (
-              <button className="btn secondary" onClick={() => setSelectedDashboardDate(null)}>
-                Show full week
-              </button>
-            ) : null}
+
+            <div className="today-streak-pill">🔥 {currentStreak} day streak</div>
           </section>
 
-          <section className="level-card">
-            <div className="row space-between">
-              <div>
-                <div className="small">Weekly XP</div>
-                <h2 className="level-title">Level {weeklyXp.level} — {weeklyXp.title}</h2>
+          <section className="day-score-card">
+            <div className="day-score-ring">
+              <svg width="140" height="140" viewBox="0 0 140 140">
+                <circle
+                  cx="70"
+                  cy="70"
+                  r="54"
+                  fill="none"
+                  stroke="#1f2937"
+                  strokeWidth="10"
+                />
+                <circle
+                  cx="70"
+                  cy="70"
+                  r="54"
+                  fill="none"
+                  stroke={dayScoreColor}
+                  strokeWidth="10"
+                  strokeLinecap="round"
+                  strokeDasharray={dayScoreCircumference}
+                  strokeDashoffset={dayScoreOffset}
+                  transform="rotate(-90 70 70)"
+                />
+              </svg>
+
+              <div className="day-score-center">
+                <strong>{dayScore}%</strong>
+                <span>today</span>
               </div>
-              <div className="xp-number">{weeklyXp.xp} XP</div>
             </div>
 
-            <div className="xp-track">
-              <div className="xp-fill" style={{ width: `${weeklyXp.progress}%` }} />
-            </div>
-
-            <div className="row space-between">
-              <span className="small">{weeklyXp.xp} XP earned</span>
-              <span className="small">{weeklyXp.remaining} XP to Level {weeklyXp.level + 1}</span>
-            </div>
-          </section>
-
-
-          <section className="game-metrics">
-            <GameMetricCard
-  title="Protein"
-  value={`${displayProtein ?? 0}g`}
-  hint={`${displayProtein ?? 0} / ${state.settings.proteinTarget}g`}
-  tone={
-    (displayProtein ?? 0) >= state.settings.proteinTarget ? "green" : "amber"
-  }
-  progressPercent={Math.min(
-    100,
-    Math.round(((displayProtein ?? 0) / state.settings.proteinTarget) * 100)
-  )}
-/>
-
-<GameMetricCard
-  title="Steps"
-  value={`${displaySteps ?? 0}`}
-  hint={`${displaySteps ?? 0} / ${state.settings.stepTarget}`}
-  tone={
-    (displaySteps ?? 0) >= state.settings.stepTarget ? "green" : "amber"
-  }
-  progressPercent={Math.min(
-    100,
-    Math.round(((displaySteps ?? 0) / state.settings.stepTarget) * 100)
-  )}
-/>
-
-<GameMetricCard
-  title="Calories"
-  value={`${displayCalories ?? 0}`}
-  hint={`${displayCalories ?? 0} / ${state.settings.targetCalories}`}
-  tone={
-    (displayCalories ?? 0) >= state.settings.targetCalories
-      ? "green"
-      : "amber"
-  }
-  progressPercent={Math.min(
-    100,
-    Math.round(
-      ((displayCalories ?? 0) / state.settings.targetCalories) * 100
-    )
-  )}
-/>
-
-<GameMetricCard
-  title="Cardio"
-  value={`${displayCardio ?? 0} min`}
-  hint={`${displayCardio ?? 0} / 30 min`}
-  tone={(displayCardio ?? 0) >= 30 ? "green" : "amber"}
-  progressPercent={Math.min(
-    100,
-    Math.round(((displayCardio ?? 0) / 30) * 100)
-  )}
-/>
-
-<GameMetricCard
-  title="Workouts"
-  value={`${workoutCompletion}%`}
-  hint="Weekly completion"
-  tone={workoutCompletion >= 70 ? "green" : "amber"}
-  progressPercent={workoutCompletion}
-/>
-          </section>
-
-
-
-          <section>
-            <h2 className="game-section-title">Unlock next</h2>
-            <div className="badge-grid">
-              {badges.map((badge) => (
-                <div key={badge.title} className={`achievement-card ${badge.unlocked ? "unlocked" : ""}`}>
-                  <div className="achievement-icon">{badge.icon}</div>
-                  <strong>{badge.title}</strong>
-                  <span>{badge.detail}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section>
-            <h2 className="game-section-title">How XP works</h2>
-            <div className="xp-rules-grid">
-              {xpRules.map((rule) => (
-                <div key={rule.label} className={`xp-rule ${rule.earned ? "earned" : ""}`}>
-                  <strong>{rule.points}</strong>
-                  <span>{rule.label}</span>
-                </div>
-              ))}
-            </div>
-            <p className="small" style={{ marginTop: 10 }}>
-              Nothing removes XP. Missed items simply do not earn points.
+            <p className="day-score-subtext">
+              {completedTasks} of {dailyTasks.length} tasks done
             </p>
           </section>
 
-
-
-          <section className="grid grid-2">
-            <div className="card">
-              <h2 style={{ marginTop: 0 }}>Cardio plan</h2>
-              <div className="signal-stack">
-                {cardioRoutine.map((item) => (
-                  <div className="mini-signal" key={item}>{item}</div>
-                ))}
-              </div>
-            </div>
-
-            <div className="card">
-              <h2 style={{ marginTop: 0 }}>Base setup</h2>
-              <div className="signal-stack">
-                {baseSetup.map((item) => (
-                  <div className="mini-signal" key={item}>{item}</div>
-                ))}
-              </div>
-            </div>
+          <section className="today-task-list">
+            {dailyTasks.map((task) => (
+              <button
+                key={task.id}
+                className={`today-task-card ${task.done ? "done" : ""}`}
+                onClick={() => setTab(task.tab)}
+              >
+                <span className="today-task-check">{task.done ? "✓" : ""}</span>
+                <span className="today-task-label">{task.label}</span>
+                <span className="today-task-arrow">›</span>
+              </button>
+            ))}
           </section>
 
-          <section className="card">
-            <div className="row space-between">
-              <div>
-                <h2 style={{ margin: 0 }}>Weekly adjustment</h2>
-                <p className="small" style={{ marginTop: 6 }}>Nutrition logs, check-ins, steps and workout consistency are reviewed together.</p>
-              </div>
-              <span className="badge">Confidence: {weeklyNutritionAdjustment.confidence}</span>
+          <section className="today-xp-card">
+            <div className="today-xp-label">XP THIS WEEK</div>
+            <div className="today-xp-bar">
+              <div className="today-xp-fill" style={{ width: `${weeklyXpProgress}%` }} />
             </div>
-
-            <div className={`game-signal ${weeklyNutritionAdjustment.tone}`} style={{ marginTop: 14 }}>
-              <span className="signal-dot" />
-              <p><strong>{weeklyNutritionAdjustment.title}</strong> — {weeklyNutritionAdjustment.summary}</p>
-            </div>
-
-            <div className="signal-stack" style={{ marginTop: 14 }}>
-              {weeklyNutritionAdjustment.reasons.map((reason) => (
-                <div className="mini-signal" key={reason}>{reason}</div>
-              ))}
-            </div>
-
-            <div className="row" style={{ marginTop: 14 }}>
-              {weeklyNutritionAdjustment.calorieDelta !== 0 ? (
-                <button className="btn" onClick={applyWeeklyNutritionAdjustment}>
-                  Apply {weeklyNutritionAdjustment.calorieDelta > 0 ? "+" : ""}{weeklyNutritionAdjustment.calorieDelta} kcal
-                </button>
-              ) : (
-                <button className="btn secondary" onClick={applyWeeklyNutritionAdjustment}>Acknowledge</button>
-              )}
-            </div>
+            <div className="today-xp-text">{totalXp} / 700 XP</div>
           </section>
 
-          <section className="card">
-            <div className="row space-between">
-              <h2 style={{ margin: 0 }}>Coach note</h2>
-              <span className="badge">Auto-guided</span>
-            </div>
-            <p style={{ marginTop: 12, lineHeight: 1.6 }}>{recommendation}</p>
+          <section
+            className="priority-card"
+            style={{
+              borderLeftColor:
+                (displayProtein ?? 0) < state.settings.proteinTarget - 20 ||
+                (displaySteps ?? 0) < state.settings.stepTarget - 2000 ||
+                workoutCompletion < 50 ||
+                (displayCalories !== null && displayCalories > state.settings.targetCalories + 150)
+                  ? "#f59e0b"
+                  : "#2dd4a3"
+            }}
+          >
+            {(() => {
+              const proteinGap = Math.round(state.settings.proteinTarget - (displayProtein ?? 0));
+              const stepGap = Math.round(state.settings.stepTarget - (displaySteps ?? 0)).toLocaleString();
+
+              if (proteinGap > 20) {
+                return (
+                  <>
+                    <div className="priority-top">
+                      <span className="priority-icon">🥩</span>
+                      <span className="priority-label">PROTEIN GAP</span>
+                    </div>
+                    <p className="priority-action">
+                      Add {proteinGap}g of protein today. Try chicken breast, eggs, paneer or whey.
+                    </p>
+                  </>
+                );
+              }
+
+              if (state.settings.stepTarget - (displaySteps ?? 0) > 2000) {
+                return (
+                  <>
+                    <div className="priority-top">
+                      <span className="priority-icon">👟</span>
+                      <span className="priority-label">STEP GAP</span>
+                    </div>
+                    <p className="priority-action">
+                      Take a 15-minute walk after your next meal to close {stepGap} steps.
+                    </p>
+                  </>
+                );
+              }
+
+              if (workoutCompletion < 50) {
+                return (
+                  <>
+                    <div className="priority-top">
+                      <span className="priority-icon">🏋️</span>
+                      <span className="priority-label">WORKOUT</span>
+                    </div>
+                    <p className="priority-action">
+                      Open your workout tab and log today&apos;s session.
+                    </p>
+                  </>
+                );
+              }
+
+              if (displayCalories !== null && displayCalories > state.settings.targetCalories + 150) {
+                return (
+                  <>
+                    <div className="priority-top">
+                      <span className="priority-icon">🍽️</span>
+                      <span className="priority-label">CALORIES HIGH</span>
+                    </div>
+                    <p className="priority-action">
+                      Trim one meal — reduce oil, rice or sugar to get closer to your target.
+                    </p>
+                  </>
+                );
+              }
+
+              return (
+                <>
+                  <div className="priority-top">
+                    <span className="priority-icon">✅</span>
+                    <span className="priority-label">ON TRACK</span>
+                  </div>
+                  <p className="priority-action">
+                    You&apos;re doing everything right today. Stay consistent and let the process work.
+                  </p>
+                </>
+              );
+            })()}
+
+            <div className="priority-footer">Tap check-in to log today&apos;s data</div>
           </section>
         </div>
       )}
