@@ -1515,73 +1515,74 @@ async function addMealDraft() {
   }
 
   function saveWorkout() {
-    const loggedExercises: ExerciseLog[] = todaysExercises
-      .map((exercise) => {
-        const loggedSets: WorkoutSet[] = (exerciseLogs[exercise.exercise] || [])
-          .filter((set) => set.done)
-          .map((set) => ({
-            id: cryptoSafeId(),
-            weight: numberOrDefault(Number(set.weight), 0),
-            reps: numberOrDefault(Number(set.reps), 0),
-            rpe: ""
-          }));
+  const loggedExercises = todaysExercises.reduce<ExerciseLog[]>((acc, exercise) => {
+    const loggedSets: WorkoutSet[] = (exerciseLogs[exercise.exercise] || [])
+      .filter((set) => set.done)
+      .map((set) => ({
+        id: cryptoSafeId(),
+        weight: numberOrDefault(Number(set.weight), 0),
+        reps: numberOrDefault(Number(set.reps), 0),
+        rpe: ""
+      }));
 
-        if (loggedSets.length === 0) return null;
+    if (loggedSets.length === 0) return acc;
 
-        const firstSet = loggedSets[0];
+    const firstSet = loggedSets[0];
 
-        return {
-          id: cryptoSafeId(),
-          day: exercise.day,
-          dayLabel: exercise.dayLabel,
-          pattern: exercise.pattern,
-          exercise: exercise.exercise,
-          alternates: exercise.alternates,
-          sets: loggedSets.length,
-          targetReps: exercise.targetReps,
-          workoutSets: loggedSets,
-          weight: firstSet.weight,
-          repsDone: firstSet.reps,
-          rpe: "",
-          notes: ""
-        };
-     })
-    .filter((exercise): exercise is ExerciseLog => exercise !== null);
+    acc.push({
+      id: cryptoSafeId(),
+      day: exercise.day,
+      dayLabel: exercise.dayLabel,
+      pattern: exercise.pattern,
+      exercise: exercise.exercise,
+      alternates: exercise.alternates,
+      sets: loggedSets.length,
+      targetReps: exercise.targetReps,
+      workoutSets: loggedSets,
+      weight: firstSet.weight,
+      repsDone: firstSet.reps,
+      rpe: "",
+      notes: ""
+    });
 
-    if (loggedExercises.length === 0) return;
+    return acc;
+  }, []);
 
-    const totalVolume = calculateSessionVolume(loggedExercises);
+  if (loggedExercises.length === 0) return;
 
-    setState((prev) => ({
-      ...prev,
-      workoutHistory: [
-        {
-          id: cryptoSafeId(),
-          date: getLocalDateISO(),
-          dayType: todayWorkout.dayType,
-          completion: "completed",
-          totalVolume,
-          exercises: loggedExercises
-        },
-        ...prev.workoutHistory
-      ]
-    }));
+  const totalVolume = loggedExercises.reduce((sum, exercise) => {
+    return sum + calculateExerciseVolume(exercise);
+  }, 0);
 
-    setWorkoutSaveMessage("Session saved. 🔥");
+  setState((prev) => ({
+    ...prev,
+    workoutHistory: [
+      {
+        id: cryptoSafeId(),
+        date: getLocalDateISO(),
+        dayType: todayWorkout.dayType,
+        totalVolume,
+        exercises: loggedExercises
+      },
+      ...prev.workoutHistory
+    ]
+  }));
 
-    setExerciseLogs(
-      Object.fromEntries(
-        todaysExercises.map((exercise) => [
-          exercise.exercise,
-          Array.from({ length: exercise.sets }).map(() => ({
-            weight: "",
-            reps: "",
-            done: false
-          }))
-        ])
-      )
-    );
-  }
+  setWorkoutSaveMessage("Session saved. 🔥");
+
+  setExerciseLogs(
+    Object.fromEntries(
+      todaysExercises.map((exercise) => [
+        exercise.exercise,
+        Array.from({ length: exercise.sets }).map(() => ({
+          weight: "",
+          reps: "",
+          done: false
+        }))
+      ])
+    )
+  );
+}
 
   function loadWorkoutSession(session: WorkoutSession) {
     setState((prev) => ({
