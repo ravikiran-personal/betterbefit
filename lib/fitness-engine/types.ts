@@ -59,3 +59,18 @@ export type FitnessPlan = {
   workout: WorkoutPlan;
   cardio: CardioPlan;
 };
+
+export type DayType = "push" | "pull" | "lower" | "upper" | "legs" | "full" | "rest";
+
+export type SplitPlan = {
+  splitName: string;
+  weeklySchedule: DayType[];
+  reasoning: string;
+};
+
+export type TodayWorkout = {
+  dayType: DayType;
+  isRestDay: boolean;
+  weekIndex: number;
+  splitName: string;
+};
