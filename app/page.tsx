@@ -449,7 +449,7 @@ const [foodBaseMacros, setFoodBaseMacros] = useState<{
   fats: number;
 } | null>(null);
 
-const foodGramsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);  const [foodSearchResult, setFoodSearchResult] = useState<FoodSearchResult | null>(null);
+const foodGramsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null); 
   const [isSearchingFood, setIsSearchingFood] = useState(false);
   const [targetReason, setTargetReason] = useState("");
   const [isCalculatingTargets, setIsCalculatingTargets] = useState(false);
