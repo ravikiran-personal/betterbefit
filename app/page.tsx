@@ -480,6 +480,11 @@ const foodGramsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     missedDate: string;
     missedDayType: DayType;
   } | null>(null);
+  const [exerciseLogs, setExerciseLogs] = useState<
+    Record<string, Array<{ weight: string; reps: string; done: boolean }>>
+  >({});
+  const [workoutSaveMessage, setWorkoutSaveMessage] = useState("");
+  const [expandedAlternates, setExpandedAlternates] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     try {
@@ -703,6 +708,43 @@ const foodsForSelectedDate = state.foods.filter((food) => {
 
   const generatedPlan = useMemo(() => generateFitnessPlan(state.settings), [state.settings]);
   const splitPlan = useMemo(() => getLocalSplitPlan(state.settings), [state.settings]);
+  const todayWorkout = useMemo(
+    () =>
+      getTodaysWorkoutType({
+        splitPlan,
+        workoutHistory: state.workoutHistory,
+        todayDate: getLocalDateISO()
+      }),
+    [splitPlan, state.workoutHistory]
+  );
+  const fullPlan = generatedPlan.workout;
+  const todaysExercises = useMemo(
+    () => fullPlan.exercises.filter((exercise) => exercise.day === todayWorkout.dayType),
+    [fullPlan.exercises, todayWorkout.dayType]
+  );
+  const loggedExerciseCount = todaysExercises.filter((exercise) => {
+    const logs = exerciseLogs[exercise.exercise] || [];
+    return logs.some((set) => set.done);
+  }).length;
+  const hasAnyLoggedSet = Object.values(exerciseLogs).some((sets) => sets.some((set) => set.done));
+
+  useEffect(() => {
+    setExerciseLogs((prev) => {
+      const nextLogs: Record<string, Array<{ weight: string; reps: string; done: boolean }>> = {};
+
+      todaysExercises.forEach((exercise) => {
+        nextLogs[exercise.exercise] =
+          prev[exercise.exercise] ||
+          Array.from({ length: exercise.sets }).map(() => ({
+            weight: "",
+            reps: "",
+            done: false
+          }));
+      });
+
+      return nextLogs;
+    });
+  }, [todaysExercises]);
 
   useEffect(() => {
     if (missedWorkoutState !== "idle") return;
@@ -1472,6 +1514,75 @@ async function addMealDraft() {
     }));
   }
 
+  function saveWorkout() {
+    const loggedExercises: ExerciseLog[] = todaysExercises
+      .map((exercise) => {
+        const loggedSets: WorkoutSet[] = (exerciseLogs[exercise.exercise] || [])
+          .filter((set) => set.done)
+          .map((set) => ({
+            id: cryptoSafeId(),
+            weight: numberOrDefault(Number(set.weight), 0),
+            reps: numberOrDefault(Number(set.reps), 0),
+            rpe: ""
+          }));
+
+        if (loggedSets.length === 0) return null;
+
+        const firstSet = loggedSets[0];
+
+        return {
+          id: cryptoSafeId(),
+          day: exercise.day,
+          dayLabel: exercise.dayLabel,
+          pattern: exercise.pattern,
+          exercise: exercise.exercise,
+          alternates: exercise.alternates,
+          sets: loggedSets.length,
+          targetReps: exercise.targetReps,
+          workoutSets: loggedSets,
+          weight: firstSet.weight,
+          repsDone: firstSet.reps,
+          rpe: "",
+          notes: ""
+        };
+      })
+      .filter((exercise): exercise is ExerciseLog => exercise !== null);
+
+    if (loggedExercises.length === 0) return;
+
+    const totalVolume = calculateSessionVolume(loggedExercises);
+
+    setState((prev) => ({
+      ...prev,
+      workoutHistory: [
+        {
+          id: cryptoSafeId(),
+          date: getLocalDateISO(),
+          dayType: todayWorkout.dayType,
+          completion: "completed",
+          totalVolume,
+          exercises: loggedExercises
+        },
+        ...prev.workoutHistory
+      ]
+    }));
+
+    setWorkoutSaveMessage("Session saved. 🔥");
+
+    setExerciseLogs(
+      Object.fromEntries(
+        todaysExercises.map((exercise) => [
+          exercise.exercise,
+          Array.from({ length: exercise.sets }).map(() => ({
+            weight: "",
+            reps: "",
+            done: false
+          }))
+        ])
+      )
+    );
+  }
+
   function loadWorkoutSession(session: WorkoutSession) {
     setState((prev) => ({
       ...prev,
@@ -1939,186 +2050,233 @@ async function addMealDraft() {
 
       {tab === "workouts" && (
         <div className="grid compact-page">
-          {missedWorkoutState === "asking" || missedWorkoutState === "log_missed" ? (
-            <MissedWorkoutCard
-              missedWorkoutState={missedWorkoutState}
-              missedWorkoutInfo={missedWorkoutInfo}
-              setMissedWorkoutState={setMissedWorkoutState}
-              setState={setState}
-            />
-          ) : null}
+          {todayWorkout.isRestDay ? (
+            <section
+              className="card"
+              style={{
+                background: "#111827",
+                borderRadius: 20,
+                padding: 24,
+                textAlign: "center"
+              }}
+            >
+              <div style={{ fontSize: 42 }}>😴</div>
+              <h2 style={{ marginBottom: 8 }}>Rest Day</h2>
+              <p className="small" style={{ lineHeight: 1.7 }}>
+                Recovery is where the gains happen. Sleep well, stay hydrated, hit your steps.
+              </p>
+              <p style={{ marginTop: 16, color: "#2dd4a3", fontWeight: 700 }}>
+                Tomorrow: {splitPlan.weeklySchedule[todayWorkout.weekIndex === 6 ? 0 : todayWorkout.weekIndex + 1]} day
+              </p>
+            </section>
+          ) : (
+            <>
+              <section className="card" style={{ background: "#111827", borderRadius: 20 }}>
+                <div className="small">
+                  {new Date(getLocalDateISO() + "T00:00:00")
+                    .toLocaleDateString("en-IN", {
+                      weekday: "long",
+                      day: "2-digit",
+                      month: "short"
+                    })
+                    .toUpperCase()}
+                </div>
 
-          <div className="card airy-card">
-            <div className="row space-between">
-              <div>
-                <h2 style={{ margin: 0 }}>Training plan</h2>
-                <p className="small" style={{ marginTop: 6 }}>
-                  Tap a workout day, then tap an exercise to log sets.
+                <h2 style={{ marginTop: 8, marginBottom: 6 }}>
+                  {getDayLabel(todayWorkout.dayType)} Day
+                </h2>
+
+                <p className="small" style={{ margin: 0 }}>
+                  {todayWorkout.splitName}
                 </p>
-              </div>
-              <div className="row">
-                <button className="btn" onClick={logWorkout}>Log workout</button>
-                <button className="btn secondary" onClick={() => setState((prev) => ({ ...prev, workoutLogs: seedWorkoutLogs() }))}>Reset</button>
-              </div>
-            </div>
-          </div>
 
-          {getWorkoutDayGroups(state.workoutLogs).map((group) => {
-            const isDayOpen = !!expandedDays[group.day];
-            const loggedExercises = group.exercises.filter((exercise) => calculateExerciseVolume(exercise) > 0).length;
-            const dayVolume = calculateSessionVolume(group.exercises);
+                <div style={{ marginTop: 14, color: "#2dd4a3", fontWeight: 700 }}>
+                  {loggedExerciseCount} / {todaysExercises.length} exercises logged
+                </div>
+              </section>
 
-            return (
-              <div className="workout-day-shell" key={group.day}>
-                <button className={`collapse-pill workout-day-pill ${isDayOpen ? "open" : ""}`} onClick={() => toggleDay(group.day)}>
-                  <div>
-                    <strong>{group.dayLabel}</strong>
-                    <span className="pill-subtext">{group.exercises.length} exercises • {loggedExercises} logged • {dayVolume} volume</span>
-                  </div>
-                  <span className="pill-icon">{isDayOpen ? "−" : "+"}</span>
-                </button>
+              {todaysExercises.length === 0 ? (
+                <section className="card" style={{ background: "#111827", borderRadius: 20 }}>
+                  <h2 style={{ marginTop: 0 }}>No exercises found</h2>
+                  <p className="small" style={{ lineHeight: 1.7 }}>
+                    Apply a workout plan from Settings or adjust your split so today has exercises assigned.
+                  </p>
+                </section>
+              ) : null}
 
-                {isDayOpen ? (
-                  <div className="card workout-day-card compact-expanded">
-                    <div className="row space-between">
-                      <p className="small" style={{ margin: 0 }}>{getDayDescription(group.day)}</p>
-                      {confirmingId === `add-${group.day}` ? (
-                        <div className="row inline-confirm">
-                          <span className="small">
-                            Adding an exercise is not advisable. The current plan's volume ensures maximum recovery, addition of exercises may cause reduced recovery.
-                          </span>
-                          <button className="btn warn" onClick={() => addExerciseToDay(group.day)}>Yes, add</button>
-                          <button className="btn secondary" onClick={() => setConfirmingId(null)}>Cancel</button>
-                        </div>
-                      ) : (
-                        <button className="btn secondary" onClick={() => setConfirmingId(`add-${group.day}`)}>Add exercise</button>
-                      )}
+              {todaysExercises.map((exercise) => {
+                const sets = exerciseLogs[exercise.exercise] || [];
+                const allSetsDone = sets.length > 0 && sets.every((set) => set.done);
+                const alternatesOpen = !!expandedAlternates[exercise.exercise];
+
+                return (
+                  <section
+                    key={exercise.exercise}
+                    className="card"
+                    style={{
+                      background: "#111827",
+                      borderRadius: 16,
+                      padding: 16,
+                      marginBottom: 12,
+                      borderLeft: allSetsDone ? "4px solid #2dd4a3" : "4px solid transparent"
+                    }}
+                  >
+                    <div className="small" style={{ fontSize: 11, textTransform: "uppercase" }}>
+                      {exercise.pattern}
                     </div>
 
-                    <div className="exercise-pill-list">
-                      {group.exercises.map((item) => {
-                        const previous = getPreviousExercise(item.exercise);
-                        const previousVolume = previous ? calculateExerciseVolume(previous) : 0;
-                        const currentVolume = calculateExerciseVolume(item);
-                        const hasCurrentVolume = currentVolume > 0;
-                        const hasProgress = previousVolume > 0 && currentVolume > previousVolume;
-                        const choices = Array.from(new Set([item.exercise, ...item.alternates]));
-                        const isExerciseOpen = !!expandedExercises[item.id];
+                    <h3
+                      style={{
+                        marginTop: 6,
+                        marginBottom: 8,
+                        color: "#ffffff",
+                        fontSize: 16,
+                        fontWeight: 600
+                      }}
+                    >
+                      {exercise.exercise}
+                    </h3>
 
-                        return (
-                          <SwipeToDelete
-                            key={item.id}
-                            className="exercise-swipe"
-                            onDelete={() => deleteExerciseFromWorkout(item.id)}
+                    <div style={{ color: "#2dd4a3", fontWeight: 700, fontSize: 13 }}>
+                      Target: {exercise.sets} sets × {exercise.targetReps} reps
+                    </div>
+
+                    <button
+                      type="button"
+                      className="btn secondary"
+                      style={{ marginTop: 12, width: "100%" }}
+                      onClick={() =>
+                        setExpandedAlternates((prev) => ({
+                          ...prev,
+                          [exercise.exercise]: !prev[exercise.exercise]
+                        }))
+                      }
+                    >
+                      Alternates {alternatesOpen ? "−" : "+"}
+                    </button>
+
+                    {alternatesOpen ? (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
+                        {exercise.alternates.map((alternate) => (
+                          <span
+                            key={alternate}
+                            style={{
+                              background: "#1f2937",
+                              color: "#9ca3af",
+                              borderRadius: 999,
+                              padding: "6px 10px",
+                              fontSize: 12
+                            }}
                           >
-                            <div className={`exercise-pill-card ${isExerciseOpen ? "open" : ""}`}>
-                              <button className="collapse-pill exercise-collapse-pill" onClick={() => toggleExercise(item.id)}>
-                              <div>
-                                <span className="pattern-pill">{item.pattern}</span>
-                                <strong>{item.exercise}</strong>
-                                <span className="pill-subtext">
-                                  {item.workoutSets.length} sets • {currentVolume > 0 ? `${currentVolume} volume` : "Tap to log"}
-                                </span>
-                              </div>
-                              <span className="pill-icon">{isExerciseOpen ? "−" : "+"}</span>
-                            </button>
+                            {alternate}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
 
-                            {isExerciseOpen ? (
-                              <div className="exercise-expanded">
-                                <div className="row space-between">
-                                  <span className="badge">{item.sets} sets • {item.targetReps}</span>
+                    <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
+                      {sets.map((set, setIndex) => (
+                        <div
+                          key={`${exercise.exercise}-${setIndex}`}
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "70px 1fr 1fr 44px",
+                            gap: 8,
+                            alignItems: "center"
+                          }}
+                        >
+                          <span className="small">Set {setIndex + 1}</span>
 
-                                </div>
+                          <input
+                            className="input"
+                            inputMode="decimal"
+                            placeholder="kg"
+                            value={set.weight}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/[^0-9.]/g, "");
 
-                                <Field label="Choose exercise">
-                                  <select className="input" value={item.exercise} onChange={(e) => updateExerciseChoice(item.id, e.target.value)}>
-                                    {choices.map((choice) => (
-                                      <option key={choice} value={choice}>{choice}</option>
-                                    ))}
-                                  </select>
-                                </Field>
+                              setExerciseLogs((prev) => ({
+                                ...prev,
+                                [exercise.exercise]: (prev[exercise.exercise] || []).map((row, index) =>
+                                  index === setIndex ? { ...row, weight: value } : row
+                                )
+                              }));
+                            }}
+                          />
 
-                                <div className="custom-exercise-row">
-                                  <input
-                                    className="input"
-                                    value={customExerciseDrafts[item.id] || ""}
-                                    placeholder="Add custom exercise"
-                                    onChange={(e) => setCustomExerciseDrafts((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                                  />
-                                  <button className="btn secondary" onClick={() => addCustomExerciseChoice(item.id)}>Add option</button>
-                                </div>
+                          <input
+                            className="input"
+                            inputMode="numeric"
+                            placeholder="reps"
+                            value={set.reps}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/[^0-9]/g, "");
 
-                                <div className="small">
-                                  {previous ? `Previous: ${numberOrDefault(previous.weight, 0)} kg x ${numberOrDefault(previous.repsDone, 0)} reps = ${previousVolume}` : "New exercise"}
-                                </div>
-                                <div className="small overload-text">
-                                  {hasCurrentVolume
-                                    ? hasProgress
-                                      ? "Progressive overload achieved"
-                                      : previousVolume > 0
-                                        ? `Beat ${previousVolume} total volume`
-                                        : `Current volume: ${currentVolume}`
-                                    : "Log weight and reps to compare progress."}
-                                </div>
+                              setExerciseLogs((prev) => ({
+                                ...prev,
+                                [exercise.exercise]: (prev[exercise.exercise] || []).map((row, index) =>
+                                  index === setIndex ? { ...row, reps: value } : row
+                                )
+                              }));
+                            }}
+                          />
 
-                                <div className="set-logger">
-                                  <div className="row space-between">
-                                    <strong>Sets</strong>
-                                    <button className="btn secondary compact-exercise-btn" onClick={() => addSetToExercise(item.id)}>Add set</button>
-                                  </div>
-
-                                  {item.workoutSets.map((set, setIndex) => (
-                                    <SwipeToDelete
-                                      key={set.id}
-                                      className="set-swipe"
-                                      disabled={item.workoutSets.length <= 1}
-                                      onDelete={() => deleteSetFromExercise(item.id, set.id)}
-                                    >
-                                      <details className="set-detail-card" open={setIndex === 0}>
-                                        <summary>
-                                        <span>Set {setIndex + 1}</span>
-                                        <span>{numberOrDefault(set.weight, 0)} kg × {numberOrDefault(set.reps, 0)} reps</span>
-                                      </summary>
-                                      <div className="set-row">
-                                        <Field label="Weight">
-                                          <NumericInput value={set.weight} onChange={(v) => updateWorkoutSet(item.id, set.id, "weight", v)} placeholder={previous ? String(numberOrDefault(previous.weight, 0)) : "New"} />
-                                        </Field>
-                                        <Field label="Reps">
-                                          <NumericInput value={set.reps} onChange={(v) => updateWorkoutSet(item.id, set.id, "reps", v)} placeholder={previous ? String(numberOrDefault(previous.repsDone, 0)) : ""} />
-                                        </Field>
-                                        <Field label="RPE">
-                                          <NumericInput value={set.rpe} onChange={(v) => updateWorkoutSet(item.id, set.id, "rpe", v)} />
-                                        </Field>
-                                      </div>
-                                      </details>
-                                    </SwipeToDelete>
-                                  ))}
-                                </div>
-
-                                <Field label="Notes">
-                                  <input className="input" value={item.notes} onChange={(e) => updateWorkout(item.id, "notes", e.target.value)} placeholder="Form cues, pain, tempo, etc." />
-                                </Field>
-                              </div>
-                            ) : null}
-                            </div>
-                          </SwipeToDelete>
-                        );
-                      })}
+                          <button
+                            type="button"
+                            className="btn"
+                            style={{
+                              minHeight: 44,
+                              padding: 0,
+                              background: set.done ? "#2dd4a3" : "#1f2937",
+                              color: set.done ? "#0b1220" : "#ffffff"
+                            }}
+                            onClick={() => {
+                              setExerciseLogs((prev) => ({
+                                ...prev,
+                                [exercise.exercise]: (prev[exercise.exercise] || []).map((row, index) =>
+                                  index === setIndex ? { ...row, done: !row.done } : row
+                                )
+                              }));
+                            }}
+                          >
+                            ✓
+                          </button>
+                        </div>
+                      ))}
                     </div>
-                  </div>
-                ) : null}
-              </div>
-            );
-          })}
+                  </section>
+                );
+              })}
 
-          <div className="card" style={{ background: "#0f172a" }}>
-            <strong>Progression rule:</strong> stay 1-2 reps shy of failure on most sets. When you hit the top of the target rep range with solid form, increase load next week.
-          </div>
+              {hasAnyLoggedSet ? (
+                <button
+                  className="btn"
+                  style={{
+                    width: "100%",
+                    background: "#2dd4a3",
+                    color: "#0b1220",
+                    fontWeight: 700,
+                    borderRadius: 14,
+                    padding: 16
+                  }}
+                  onClick={saveWorkout}
+                >
+                  Complete Workout
+                </button>
+              ) : null}
+
+              {workoutSaveMessage ? (
+                <div className="card" style={{ background: "#0f172a", color: "#2dd4a3" }}>
+                  {workoutSaveMessage}
+                </div>
+              ) : null}
+            </>
+          )}
 
           <div className="card">
             <h2 style={{ marginTop: 0 }}>Workout history</h2>
             {state.workoutHistory.length === 0 ? (
-              <p className="small">No workouts logged yet. Fill today’s workout and press Log workout.</p>
+              <p className="small">No workouts logged yet. Complete today&apos;s workout to save your first session.</p>
             ) : (
               <div className="history-card-list">
                 {state.workoutHistory.map((session) => (
@@ -2129,8 +2287,12 @@ async function addMealDraft() {
                   >
                     <div className="history-card">
                       <div>
-                        <strong>{session.date}</strong>
-                        <div className="small">{session.totalVolume} total volume</div>
+                        <strong>{formatDisplayDate(session.date)}</strong>
+                        <div className="small">
+                          {session.dayType ? `${getDayLabel(session.dayType)} day • ` : ""}
+                          {session.completion ? `${session.completion} • ` : ""}
+                          {session.totalVolume} total volume
+                        </div>
                         <div className="small">
                           {session.exercises
                             .filter((exercise) => calculateExerciseVolume(exercise) > 0)
@@ -2138,7 +2300,9 @@ async function addMealDraft() {
                             .join(", ")}
                         </div>
                       </div>
-                      <button className="btn secondary" onClick={() => loadWorkoutSession(session)}>Load</button>
+                      {session.exercises.length > 0 ? (
+                        <button className="btn secondary" onClick={() => loadWorkoutSession(session)}>Load</button>
+                      ) : null}
                     </div>
                   </SwipeToDelete>
                 ))}
