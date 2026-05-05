@@ -3384,3 +3384,27 @@ function getRecommendation(input: {
 
   return messages.join(" ");
 }
+
+const [foodSearchGrams, setFoodSearchGrams] = useState<number | "">(100);
+
+const [foodSearchResult, setFoodSearchResult] = useState<{
+  source: string;
+  food: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+  grams: number;
+  confidence: "high" | "medium" | "low";
+  note: string;
+  results?: FoodSearchResult[];
+} | null>(null);
+
+const [foodBaseMacros, setFoodBaseMacros] = useState<{
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+} | null>(null);
+
+const foodGramsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
