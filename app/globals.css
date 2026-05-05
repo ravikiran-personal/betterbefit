@@ -2945,3 +2945,176 @@ main,
     grid-template-columns: 1fr;
   }
 }
+
+.today-dashboard {
+  display: grid;
+  gap: 16px;
+}
+
+.today-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.today-header h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.04em;
+}
+
+.today-header p {
+  margin-top: 4px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.today-streak-pill {
+  background: #1f2937;
+  border-radius: 20px;
+  padding: 4px 12px;
+  color: #e5e7eb;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.day-score-card {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 20px;
+  padding: 24px;
+  text-align: center;
+}
+
+.day-score-ring {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  margin: 0 auto;
+}
+
+.day-score-center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+}
+
+.day-score-center strong {
+  font-size: 34px;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1;
+}
+
+.day-score-center span {
+  margin-top: 4px;
+  color: #6b7280;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.day-score-subtext {
+  margin-top: 12px;
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+.today-task-list {
+  display: grid;
+  gap: 8px;
+}
+
+.today-task-card {
+  width: 100%;
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-left: 3px solid #374151;
+  border-radius: 16px;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: 28px 1fr 20px;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.today-task-card.done {
+  border-left-color: #2dd4a3;
+}
+
+.today-task-check {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid #374151;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 800;
+  color: #0b1220;
+}
+
+.today-task-card.done .today-task-check {
+  background: #2dd4a3;
+  border-color: #2dd4a3;
+}
+
+.today-task-label {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.today-task-card.done .today-task-label {
+  color: #6b7280;
+}
+
+.today-task-arrow {
+  color: #6b7280;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.today-xp-card {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.today-xp-label {
+  color: #6b7280;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.today-xp-bar {
+  width: 100%;
+  height: 6px;
+  background: #1f2937;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.today-xp-fill {
+  height: 100%;
+  background: #2dd4a3;
+  border-radius: 3px;
+}
+
+.today-xp-text {
+  margin-top: 8px;
+  color: #6b7280;
+  font-size: 11px;
+}
