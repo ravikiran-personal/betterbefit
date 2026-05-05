@@ -74,3 +74,13 @@ export type TodayWorkout = {
   weekIndex: number;
   splitName: string;
 };
+
+type MealSuggestion = {
+  meal: "Breakfast" | "Lunch" | "Dinner";
+  food: string;
+  grams: number;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+};
