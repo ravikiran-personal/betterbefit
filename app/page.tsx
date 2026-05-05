@@ -426,8 +426,29 @@ export default function Page() {
   const [mealDraftSuggestions, setMealDraftSuggestions] = useState<FoodSearchResult[]>([]);
   const [isSearchingMealDraft, setIsSearchingMealDraft] = useState(false);
   const [foodSearchQuery, setFoodSearchQuery] = useState("");
-  const [foodSearchGrams, setFoodSearchGrams] = useState<number | "">(100);
-  const [foodSearchResult, setFoodSearchResult] = useState<FoodSearchResult | null>(null);
+const [foodSearchGrams, setFoodSearchGrams] = useState<number | "">(100);
+
+const [foodSearchResult, setFoodSearchResult] = useState<{
+  source: string;
+  food: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+  grams: number;
+  confidence: "high" | "medium" | "low";
+  note: string;
+  results?: FoodSearchResult[];
+} | null>(null);
+
+const [foodBaseMacros, setFoodBaseMacros] = useState<{
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+} | null>(null);
+
+const foodGramsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);  const [foodSearchResult, setFoodSearchResult] = useState<FoodSearchResult | null>(null);
   const [isSearchingFood, setIsSearchingFood] = useState(false);
   const [targetReason, setTargetReason] = useState("");
   const [isCalculatingTargets, setIsCalculatingTargets] = useState(false);
@@ -3384,27 +3405,3 @@ function getRecommendation(input: {
 
   return messages.join(" ");
 }
-
-const [foodSearchGrams, setFoodSearchGrams] = useState<number | "">(100);
-
-const [foodSearchResult, setFoodSearchResult] = useState<{
-  source: string;
-  food: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fats: number;
-  grams: number;
-  confidence: "high" | "medium" | "low";
-  note: string;
-  results?: FoodSearchResult[];
-} | null>(null);
-
-const [foodBaseMacros, setFoodBaseMacros] = useState<{
-  calories: number;
-  protein: number;
-  carbs: number;
-  fats: number;
-} | null>(null);
-
-const foodGramsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
