@@ -1140,43 +1140,100 @@ setIsCalculatingTargets(false);
     }, 450);
   }
 
-  async function searchFoodMacros() {
-    const query = foodSearchQuery.trim();
+  async function searchFood(queryValue: string) {
+  const query = queryValue.trim().toLowerCase();
 
-    if (!query) {
-      alert("Enter a food name first.");
-      return;
-    }
+  if (!query) {
+    setFoodSearchResult(null);
+    setFoodBaseMacros(null);
+    return;
+  }
+
+  setIsSearchingFood(true);
+
+  try {
+    const indianMatch = Object.entries(INDIAN_FOODS).find(([key]) => {
+      const normalizedKey = key.toLowerCase().trim();
+      return normalizedKey.includes(query) || query.includes(normalizedKey);
+    });
 
     const grams = foodSearchGrams === "" ? 100 : foodSearchGrams;
 
-    setIsSearchingFood(true);
-    setFoodSearchResult(null);
+    if (indianMatch) {
+      const [foodName, base] = indianMatch;
+      const multiplier = grams / 100;
 
-    try {
-      const response = await fetch("/api/food-search", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json"
-        },
-        body: JSON.stringify({
-          query,
-          grams
-        })
+      setFoodBaseMacros({
+        calories: base.calories,
+        protein: base.protein,
+        carbs: base.carbs,
+        fats: base.fats
       });
 
-      if (!response.ok) {
-        throw new Error("Food search failed.");
-      }
+      setFoodSearchResult({
+        source: "local",
+        food: foodName,
+        grams,
+        calories: Math.round(base.calories * multiplier),
+        protein: Math.round(base.protein * multiplier * 10) / 10,
+        carbs: Math.round(base.carbs * multiplier * 10) / 10,
+        fats: Math.round(base.fats * multiplier * 10) / 10,
+        confidence: "high",
+        note: "Matched from Indian food database."
+      });
 
-      const result = (await response.json()) as FoodSearchResult;
-      setFoodSearchResult(result.results?.[0] || result);
-    } catch {
-      alert("Could not search food. Check API keys and route deployment.");
-    } finally {
-      setIsSearchingFood(false);
+      return;
     }
+
+    const response = await fetch(`/api/food-search?q=${encodeURIComponent(queryValue)}`);
+    if (!response.ok) throw new Error("Food search failed.");
+
+    const data = await response.json();
+
+    setFoodBaseMacros({
+      calories: Number(data.calories) || 0,
+      protein: Number(data.protein) || 0,
+      carbs: Number(data.carbs) || 0,
+      fats: Number(data.fats) || 0
+    });
+
+    setFoodSearchResult({
+      source: data.source || "api",
+      food: data.food || queryValue,
+      grams: Number(data.grams) || grams,
+      calories: Number(data.calories) || 0,
+      protein: Number(data.protein) || 0,
+      carbs: Number(data.carbs) || 0,
+      fats: Number(data.fats) || 0,
+      confidence: data.confidence || "medium",
+      note: data.note || "Matched from external food database.",
+      results: data.results
+    });
+  } catch {
+    setFoodSearchResult(null);
+    setFoodBaseMacros(null);
+  } finally {
+    setIsSearchingFood(false);
   }
+}
+
+  function recalculateMacros(gramsValue: number) {
+  setFoodSearchGrams(gramsValue);
+
+  if (!foodSearchResult || !foodBaseMacros) return;
+
+  const grams = Number.isFinite(gramsValue) && gramsValue > 0 ? gramsValue : 100;
+  const multiplier = grams / 100;
+
+  setFoodSearchResult({
+    ...foodSearchResult,
+    grams,
+    calories: Math.round(foodBaseMacros.calories * multiplier),
+    protein: Math.round(foodBaseMacros.protein * multiplier * 10) / 10,
+    carbs: Math.round(foodBaseMacros.carbs * multiplier * 10) / 10,
+    fats: Math.round(foodBaseMacros.fats * multiplier * 10) / 10
+  });
+}
 
   function addFoodSearchResult() {
     if (!foodSearchResult) return;
@@ -2148,8 +2205,23 @@ async function addMealDraft() {
                 <p className="small">Search standard foods using USDA first. Mixed or Indian-style meals are estimated with Claude.</p>
                 <div className="row">
                   <input className="input" value={foodSearchQuery} placeholder="e.g. chicken biryani, chicken breast, curd rice" onChange={(e) => setFoodSearchQuery(e.target.value)} />
-                  <NumericInput value={foodSearchGrams} onChange={(v) => setFoodSearchGrams(v)} placeholder="grams" />
-                  <button className="btn" onClick={searchFoodMacros} disabled={isSearchingFood}>{isSearchingFood ? "Searching..." : "Search macros"}</button>
+<NumericInput
+  value={foodSearchGrams}
+  onChange={(value) => {
+    const grams = value === "" ? 100 : value;
+
+    setFoodSearchGrams(value);
+
+    if (foodGramsDebounceRef.current) {
+      clearTimeout(foodGramsDebounceRef.current);
+    }
+
+    foodGramsDebounceRef.current = setTimeout(() => {
+      recalculateMacros(grams);
+    }, 300);
+  }}
+  placeholder="grams"
+/>                  <button className="btn" onClick={searchFoodMacros} disabled={isSearchingFood}>{isSearchingFood ? "Searching..." : "Search macros"}</button>
                 </div>
 
                 {foodSearchResult ? (
