@@ -32,6 +32,119 @@ const full: GeneratedExercise[] = [
   { day: "full", dayLabel: "Full Body", pattern: "Core", exercise: "Hanging Knee Raise", alternates: ["Cable Crunch", "Dead Bug", "Reverse Crunch", "Plank"], sets: 3, targetReps: "10-15" }
 ];
 
+export const upper = [
+  {
+    day: "upper",
+    dayLabel: "Upper Body",
+    pattern: "Horizontal Press",
+    exercise: "Barbell Bench Press",
+    alternates: ["DB Bench Press", "Machine Chest Press", "Push-Up", "Cable Chest Press"],
+    sets: 3,
+    targetReps: "6-10"
+  },
+  {
+    day: "upper",
+    dayLabel: "Upper Body",
+    pattern: "Vertical Pull",
+    exercise: "Pull-Ups / Lat Pulldown",
+    alternates: ["Assisted Pull-Up", "Cable Pulldown", "Neutral-Grip Pulldown"],
+    sets: 3,
+    targetReps: "8-12"
+  },
+  {
+    day: "upper",
+    dayLabel: "Upper Body",
+    pattern: "Overhead Press",
+    exercise: "Seated DB Shoulder Press",
+    alternates: ["Machine Press", "Standing Barbell Press", "Arnold Press"],
+    sets: 3,
+    targetReps: "8-10"
+  },
+  {
+    day: "upper",
+    dayLabel: "Upper Body",
+    pattern: "Horizontal Row",
+    exercise: "Barbell Row",
+    alternates: ["Seated Cable Row", "One-Arm DB Row", "Chest-Supported Row"],
+    sets: 3,
+    targetReps: "8-12"
+  },
+  {
+    day: "upper",
+    dayLabel: "Upper Body",
+    pattern: "Triceps",
+    exercise: "Triceps Pushdown",
+    alternates: ["Skull Crusher", "Close-Grip Bench", "Overhead Extension"],
+    sets: 3,
+    targetReps: "10-12"
+  },
+  {
+    day: "upper",
+    dayLabel: "Upper Body",
+    pattern: "Biceps",
+    exercise: "Barbell Curl",
+    alternates: ["DB Curl", "Cable Curl", "Hammer Curl", "Preacher Curl"],
+    sets: 3,
+    targetReps: "10-12"
+  }
+];
+
+export const legs = [
+  {
+    day: "legs",
+    dayLabel: "Legs",
+    pattern: "Squat Pattern",
+    exercise: "Barbell Squat",
+    alternates: ["Hack Squat", "Leg Press", "Goblet Squat", "Smith Squat"],
+    sets: 3,
+    targetReps: "6-10"
+  },
+  {
+    day: "legs",
+    dayLabel: "Legs",
+    pattern: "Hip Hinge",
+    exercise: "Romanian Deadlift",
+    alternates: ["DB RDL", "Hip Thrust", "Good Morning"],
+    sets: 3,
+    targetReps: "8-10"
+  },
+  {
+    day: "legs",
+    dayLabel: "Legs",
+    pattern: "Single Leg",
+    exercise: "Bulgarian Split Squat",
+    alternates: ["Walking Lunge", "Step-Up", "Reverse Lunge", "Single-Leg Press"],
+    sets: 3,
+    targetReps: "10/leg"
+  },
+  {
+    day: "legs",
+    dayLabel: "Legs",
+    pattern: "Hamstring Curl",
+    exercise: "Lying Leg Curl",
+    alternates: ["Seated Leg Curl", "Swiss Ball Curl", "Nordic Curl"],
+    sets: 3,
+    targetReps: "10-12"
+  },
+  {
+    day: "legs",
+    dayLabel: "Legs",
+    pattern: "Quad Extension",
+    exercise: "Leg Extension",
+    alternates: ["Spanish Squat", "Wall Sit", "Terminal Knee Extension"],
+    sets: 3,
+    targetReps: "12-15"
+  },
+  {
+    day: "legs",
+    dayLabel: "Legs",
+    pattern: "Calves",
+    exercise: "Standing Calf Raise",
+    alternates: ["Seated Calf Raise", "Leg Press Calf Raise", "Single-Leg Calf Raise"],
+    sets: 3,
+    targetReps: "15-20"
+  }
+];
 function tuneVolume(exercises: GeneratedExercise[], settings: UserSettings): GeneratedExercise[] {
   const setAdjustment = settings.experienceLevel === "beginner" ? -1 : settings.experienceLevel === "advanced" ? 1 : 0;
   const sessionAdjustment = settings.sessionLength <= 45 ? -1 : settings.sessionLength >= 75 ? 1 : 0;
@@ -103,5 +216,114 @@ export function generateWorkoutPlan(settings: UserSettings): WorkoutPlan {
     exercises,
     confidence: "high",
     reasoning
+  };
+}
+
+export function getSplitPlan(settings: UserSettings): SplitPlan {
+  const workoutsPerWeek = Number(settings.workoutsPerWeek) || 3;
+  const experienceLevel = settings.experienceLevel;
+  const trainingEmphasis = settings.trainingEmphasis;
+  const equipmentAccess = settings.equipmentAccess;
+
+  let splitName = "";
+  let reasoning = "";
+  let weeklySchedule: DayType[] = ["full", "rest", "full", "rest", "full", "rest", "rest"];
+
+  if (experienceLevel === "beginner") {
+    if (workoutsPerWeek <= 2) {
+      splitName = "Beginner Full Body x2";
+      weeklySchedule = ["full", "rest", "full", "rest", "rest", "rest", "rest"];
+    } else if (workoutsPerWeek === 3) {
+      splitName = "Beginner Full Body x3";
+      weeklySchedule = ["full", "rest", "full", "rest", "full", "rest", "rest"];
+    } else {
+      splitName = "Beginner Full Body x4";
+      weeklySchedule = ["full", "rest", "full", "rest", "full", "rest", "full"];
+    }
+
+    reasoning =
+      "Beginner lifters progress best with frequent full-body practice, moderate volume, and repeated exposure to core movement patterns.";
+  } else if (workoutsPerWeek <= 2) {
+    splitName = "Full Body x2";
+    weeklySchedule = ["full", "rest", "rest", "full", "rest", "rest", "rest"];
+    reasoning =
+      "Two training days are best used as full-body sessions to maximize weekly muscle frequency.";
+  } else if (workoutsPerWeek === 3 && trainingEmphasis === "strength") {
+    splitName = "Upper / Lower / Upper";
+    weeklySchedule = ["upper", "rest", "lower", "rest", "upper", "rest", "rest"];
+    reasoning =
+      "Strength-focused 3-day training benefits from repeated upper-body exposure with one dedicated lower-body session.";
+  } else if (workoutsPerWeek === 3) {
+    splitName = "Full Body x3";
+    weeklySchedule = ["full", "rest", "full", "rest", "full", "rest", "rest"];
+    reasoning =
+      "Three full-body sessions provide strong frequency, recovery, and efficient progression for most goals.";
+  } else if (workoutsPerWeek === 4 && trainingEmphasis === "strength") {
+    splitName = "Upper / Lower x2";
+    weeklySchedule = ["upper", "lower", "rest", "upper", "lower", "rest", "rest"];
+    reasoning =
+      "Upper/lower training supports strength progression with balanced weekly volume and recovery.";
+  } else if (
+    workoutsPerWeek === 4 &&
+    (trainingEmphasis === "aesthetic" || trainingEmphasis === "fat_loss_support")
+  ) {
+    splitName = "Push / Pull / Lower / Full";
+    weeklySchedule = ["push", "pull", "lower", "rest", "full", "rest", "rest"];
+    reasoning =
+      "This split balances hypertrophy volume, movement variety, recovery, and one full-body reinforcement day.";
+  } else if (workoutsPerWeek === 4 && trainingEmphasis === "mobility") {
+    splitName = "Full Body x4";
+    weeklySchedule = ["full", "rest", "full", "rest", "full", "rest", "full"];
+    reasoning =
+      "Mobility-focused training benefits from frequent lower-fatigue full-body sessions instead of heavy isolated splits.";
+  } else if (workoutsPerWeek === 5 && experienceLevel === "advanced") {
+    splitName = "Advanced Push / Pull / Legs";
+    weeklySchedule = ["push", "pull", "legs", "rest", "push", "pull", "rest"];
+    reasoning =
+      "Advanced lifters can handle higher weekly volume with repeated push and pull exposure plus a dedicated legs day.";
+  } else if (workoutsPerWeek === 5) {
+    splitName = "Intermediate Upper / Lower / Push / Pull";
+    weeklySchedule = ["upper", "lower", "rest", "push", "pull", "rest", "rest"];
+    reasoning =
+      "Intermediate lifters get balanced frequency without overloading recovery across five available training days.";
+  } else if (workoutsPerWeek >= 6) {
+    splitName = "Push / Pull / Legs x2";
+    weeklySchedule = ["push", "pull", "legs", "push", "pull", "legs", "rest"];
+    reasoning =
+      "Six training days allow a classic twice-weekly push/pull/legs structure with one full rest day.";
+  }
+
+  if (equipmentAccess === "home" || equipmentAccess === "dumbbells") {
+    weeklySchedule = weeklySchedule.map((day) => (day === "legs" ? "lower" : day));
+    reasoning += " Legs days are mapped to lower-body templates because home or dumbbell setups may not support isolation-machine work.";
+  }
+
+  return {
+    splitName,
+    weeklySchedule,
+    reasoning
+  };
+}
+
+export function getTodaysWorkoutType({
+  splitPlan,
+  workoutHistory,
+  todayDate
+}: {
+  splitPlan: SplitPlan;
+  workoutHistory: Array<{ date: string; dayType: string }>;
+  todayDate: string;
+}): TodayWorkout {
+  const date = new Date(todayDate + "T00:00:00");
+  const jsDay = date.getDay();
+  const weekIndex = jsDay === 0 ? 6 : jsDay - 1;
+
+  const dayType = splitPlan.weeklySchedule[weekIndex] || "rest";
+
+  return {
+    dayType,
+    isRestDay: dayType === "rest",
+    weekIndex,
+    splitName: splitPlan.splitName
   };
 }
