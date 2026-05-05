@@ -2221,7 +2221,7 @@ async function addMealDraft() {
     }, 300);
   }}
   placeholder="grams"
-/>                  <button className="btn" onClick={searchFoodMacros} disabled={isSearchingFood}>{isSearchingFood ? "Searching..." : "Search macros"}</button>
+/>                  <button className="btn" onClick={() => searchFood(foodSearchQuery)} disabled={isSearchingFood}>{isSearchingFood ? "Searching..." : "Search macros"}</button>
                 </div>
 
                 {foodSearchResult ? (
