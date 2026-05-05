@@ -219,6 +219,21 @@ export function generateWorkoutPlan(settings: UserSettings): WorkoutPlan {
   };
 }
 
+export type DayType = "push" | "pull" | "lower" | "upper" | "legs" | "full" | "rest";
+
+export type SplitPlan = {
+  splitName: string;
+  weeklySchedule: DayType[];
+  reasoning: string;
+};
+
+export type TodayWorkout = {
+  dayType: DayType;
+  isRestDay: boolean;
+  weekIndex: number;
+  splitName: string;
+};
+
 export function getSplitPlan(settings: UserSettings): SplitPlan {
   const workoutsPerWeek = Number(settings.workoutsPerWeek) || 3;
   const experienceLevel = settings.experienceLevel;
