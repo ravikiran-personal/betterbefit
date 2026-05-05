@@ -8,6 +8,21 @@ import { INDIAN_FOODS } from "../lib/indianFoods";
 
 type Tab = "dashboard" | "workouts" | "nutrition" | "checkin" | "settings";
 
+type DayType = "push" | "pull" | "lower" | "upper" | "legs" | "full" | "rest";
+
+type SplitPlan = {
+  splitName: string;
+  weeklySchedule: DayType[];
+  reasoning: string;
+};
+
+type TodayWorkout = {
+  dayType: DayType;
+  isRestDay: boolean;
+  weekIndex: number;
+  splitName: string;
+};
+
 type DailyLog = {
   date: string;
   weight: number | "";
@@ -101,6 +116,8 @@ type Settings = {
 type WorkoutSession = {
   id: string;
   date: string;
+  dayType?: DayType;
+  completion?: "completed" | "partial" | "skipped";
   totalVolume: number;
   exercises: ExerciseLog[];
 };
@@ -456,6 +473,13 @@ const foodGramsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const mealSearchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestQueryRef = useRef("");
+  const [missedWorkoutState, setMissedWorkoutState] = useState<
+    "idle" | "asking" | "log_missed" | "skip_missed" | "show_today"
+  >("idle");
+  const [missedWorkoutInfo, setMissedWorkoutInfo] = useState<{
+    missedDate: string;
+    missedDayType: DayType;
+  } | null>(null);
 
   useEffect(() => {
     try {
@@ -678,6 +702,21 @@ const foodsForSelectedDate = state.foods.filter((food) => {
   });
 
   const generatedPlan = useMemo(() => generateFitnessPlan(state.settings), [state.settings]);
+  const splitPlan = useMemo(() => getLocalSplitPlan(state.settings), [state.settings]);
+
+  useEffect(() => {
+    if (missedWorkoutState !== "idle") return;
+
+    const missed = detectMissedWorkout(state.workoutHistory, splitPlan);
+
+    if (!missed) return;
+
+    setMissedWorkoutInfo({
+      missedDate: missed.missedDate,
+      missedDayType: missed.missedDayType
+    });
+    setMissedWorkoutState("asking");
+  }, [state.workoutHistory, splitPlan, missedWorkoutState]);
 
   const weeklyNutritionAdjustment = useMemo(() => {
     return getWeeklyNutritionAdjustment({
@@ -1900,6 +1939,15 @@ async function addMealDraft() {
 
       {tab === "workouts" && (
         <div className="grid compact-page">
+          {missedWorkoutState === "asking" || missedWorkoutState === "log_missed" ? (
+            <MissedWorkoutCard
+              missedWorkoutState={missedWorkoutState}
+              missedWorkoutInfo={missedWorkoutInfo}
+              setMissedWorkoutState={setMissedWorkoutState}
+              setState={setState}
+            />
+          ) : null}
+
           <div className="card airy-card">
             <div className="row space-between">
               <div>
@@ -2911,6 +2959,137 @@ function Field({
   );
 }
 
+function MissedWorkoutCard({
+  missedWorkoutState,
+  missedWorkoutInfo,
+  setMissedWorkoutState,
+  setState
+}: {
+  missedWorkoutState: "idle" | "asking" | "log_missed" | "skip_missed" | "show_today";
+  missedWorkoutInfo: { missedDate: string; missedDayType: DayType } | null;
+  setMissedWorkoutState: React.Dispatch<
+    React.SetStateAction<"idle" | "asking" | "log_missed" | "skip_missed" | "show_today">
+  >;
+  setState: React.Dispatch<React.SetStateAction<AppState>>;
+}) {
+  if (!missedWorkoutInfo) return null;
+
+  function addMissedWorkoutEntry(completion: "skipped" | "completed" | "partial") {
+    if (!missedWorkoutInfo) return;
+
+    setState((prev) => ({
+      ...prev,
+      workoutHistory: [
+        {
+          id: cryptoSafeId(),
+          date: missedWorkoutInfo.missedDate,
+          dayType: missedWorkoutInfo.missedDayType,
+          completion,
+          totalVolume: completion === "completed" ? 1 : 0,
+          exercises: []
+        },
+        ...prev.workoutHistory
+      ]
+    }));
+
+    setMissedWorkoutState("show_today");
+  }
+
+  const cardStyle: React.CSSProperties = {
+    width: "100%",
+    background: "#111827",
+    borderRadius: 20,
+    padding: 24,
+    marginBottom: 16,
+    border: "1px solid #1f2937"
+  };
+
+  const actionGridStyle: React.CSSProperties = {
+    display: "grid",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gap: 12,
+    marginTop: 18
+  };
+
+  const darkButtonStyle: React.CSSProperties = {
+    background: "#1f2937",
+    color: "#ffffff",
+    border: 0,
+    borderRadius: 14,
+    minHeight: 52,
+    fontWeight: 700,
+    cursor: "pointer"
+  };
+
+  const greenButtonStyle: React.CSSProperties = {
+    background: "#2dd4a3",
+    color: "#0b1220",
+    border: 0,
+    borderRadius: 14,
+    minHeight: 52,
+    fontWeight: 700,
+    cursor: "pointer"
+  };
+
+  if (missedWorkoutState === "asking") {
+    return (
+      <section className="missed-workout-card" style={cardStyle}>
+        <h2 style={{ margin: 0 }}>We noticed you didn&apos;t log yesterday</h2>
+        <p style={{ marginTop: 10, color: "#9ca3af", lineHeight: 1.6 }}>
+          Did you skip {missedWorkoutInfo.missedDayType} day or forget to log it?
+        </p>
+
+        <div style={actionGridStyle}>
+          <button style={darkButtonStyle} onClick={() => addMissedWorkoutEntry("skipped")}>
+            I skipped it
+          </button>
+          <button style={greenButtonStyle} onClick={() => setMissedWorkoutState("log_missed")}>
+            I forgot to log
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  if (missedWorkoutState === "log_missed") {
+    return (
+      <section className="missed-workout-card" style={cardStyle}>
+        <h2 style={{ margin: 0 }}>Log yesterday&apos;s {missedWorkoutInfo.missedDayType} session</h2>
+        <p style={{ marginTop: 10, color: "#9ca3af", lineHeight: 1.6 }}>Did you complete it?</p>
+
+        <div style={{ ...actionGridStyle, gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
+          <button style={greenButtonStyle} onClick={() => addMissedWorkoutEntry("completed")}>
+            Yes
+          </button>
+          <button style={darkButtonStyle} onClick={() => addMissedWorkoutEntry("partial")}>
+            Partial
+          </button>
+          <button style={darkButtonStyle} onClick={() => addMissedWorkoutEntry("skipped")}>
+            No
+          </button>
+        </div>
+
+        <button
+          style={{
+            marginTop: 14,
+            background: "transparent",
+            border: 0,
+            color: "#6b7280",
+            fontSize: 13,
+            textDecoration: "underline",
+            cursor: "pointer"
+          }}
+          onClick={() => setMissedWorkoutState("show_today")}
+        >
+          Skip logging, show today&apos;s workout
+        </button>
+      </section>
+    );
+  }
+
+  return null;
+}
+
 function MetricCard({
   title,
   value,
@@ -3008,6 +3187,116 @@ type Achievement = {
   detail: string;
   unlocked: boolean;
 };
+
+function getLocalSplitPlan(settings: Settings): SplitPlan {
+  const workoutsPerWeek = Number(settings.workoutsPerWeek) || 3;
+  const experienceLevel = settings.experienceLevel;
+  const trainingEmphasis = settings.trainingEmphasis;
+  const equipmentAccess = settings.equipmentAccess;
+
+  let splitName = "Full Body x3";
+  let reasoning = "Default full-body training balances frequency and recovery.";
+  let weeklySchedule: DayType[] = ["full", "rest", "full", "rest", "full", "rest", "rest"];
+
+  if (experienceLevel === "beginner") {
+    if (workoutsPerWeek <= 2) {
+      splitName = "Beginner Full Body x2";
+      weeklySchedule = ["full", "rest", "full", "rest", "rest", "rest", "rest"];
+    } else if (workoutsPerWeek === 3) {
+      splitName = "Beginner Full Body x3";
+      weeklySchedule = ["full", "rest", "full", "rest", "full", "rest", "rest"];
+    } else {
+      splitName = "Beginner Full Body x4";
+      weeklySchedule = ["full", "rest", "full", "rest", "full", "rest", "full"];
+    }
+    reasoning = "Beginner lifters progress best with frequent full-body practice and moderate volume.";
+  } else if (workoutsPerWeek <= 2) {
+    splitName = "Full Body x2";
+    weeklySchedule = ["full", "rest", "rest", "full", "rest", "rest", "rest"];
+    reasoning = "Two days are best used as full-body sessions.";
+  } else if (workoutsPerWeek === 3 && trainingEmphasis === "strength") {
+    splitName = "Upper / Lower / Upper";
+    weeklySchedule = ["upper", "rest", "lower", "rest", "upper", "rest", "rest"];
+    reasoning = "Strength-focused 3-day training benefits from repeated upper exposure and one lower day.";
+  } else if (workoutsPerWeek === 3) {
+    splitName = "Full Body x3";
+    weeklySchedule = ["full", "rest", "full", "rest", "full", "rest", "rest"];
+    reasoning = "Three full-body sessions provide strong frequency and recovery.";
+  } else if (workoutsPerWeek === 4 && trainingEmphasis === "strength") {
+    splitName = "Upper / Lower x2";
+    weeklySchedule = ["upper", "lower", "rest", "upper", "lower", "rest", "rest"];
+    reasoning = "Upper/lower training supports strength progression and recovery.";
+  } else if (workoutsPerWeek === 4 && (trainingEmphasis === "aesthetic" || trainingEmphasis === "fat_loss_support")) {
+    splitName = "Push / Pull / Lower / Full";
+    weeklySchedule = ["push", "pull", "lower", "rest", "full", "rest", "rest"];
+    reasoning = "This split balances hypertrophy volume, variety, and recovery.";
+  } else if (workoutsPerWeek === 4 && trainingEmphasis === "mobility") {
+    splitName = "Full Body x4";
+    weeklySchedule = ["full", "rest", "full", "rest", "full", "rest", "full"];
+    reasoning = "Mobility-focused training benefits from frequent lower-fatigue full-body sessions.";
+  } else if (workoutsPerWeek === 5 && experienceLevel === "advanced") {
+    splitName = "Advanced Push / Pull / Legs";
+    weeklySchedule = ["push", "pull", "legs", "rest", "push", "pull", "rest"];
+    reasoning = "Advanced lifters can handle higher weekly volume.";
+  } else if (workoutsPerWeek === 5) {
+    splitName = "Intermediate Upper / Lower / Push / Pull";
+    weeklySchedule = ["upper", "lower", "rest", "push", "pull", "rest", "rest"];
+    reasoning = "Intermediate lifters get balanced frequency without overloading recovery.";
+  } else if (workoutsPerWeek >= 6) {
+    splitName = "Push / Pull / Legs x2";
+    weeklySchedule = ["push", "pull", "legs", "push", "pull", "legs", "rest"];
+    reasoning = "Six days allow a twice-weekly push/pull/legs structure.";
+  }
+
+  if (equipmentAccess === "home" || equipmentAccess === "dumbbells") {
+    weeklySchedule = weeklySchedule.map((day) => (day === "legs" ? "lower" : day));
+    reasoning += " Legs days are mapped to lower-body templates for home or dumbbell setups.";
+  }
+
+  return { splitName, weeklySchedule, reasoning };
+}
+
+function detectMissedWorkout(
+  workoutHistory: WorkoutSession[],
+  splitPlan: SplitPlan
+): { hasMissed: boolean; missedDate: string; missedDayType: DayType } | null {
+  const today = new Date(getLocalDateISO() + "T00:00:00");
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+
+  const missedDate = yesterday.toISOString().slice(0, 10);
+  const jsDay = yesterday.getDay();
+  const weekIndex = jsDay === 0 ? 6 : jsDay - 1;
+  const missedDayType = splitPlan.weeklySchedule[weekIndex];
+
+  if (!missedDayType || missedDayType === "rest") return null;
+
+  const alreadyLogged = workoutHistory.some((session) => session.date === missedDate);
+  if (alreadyLogged) return null;
+
+  return { hasMissed: true, missedDate, missedDayType };
+}
+
+function getTodaysWorkoutType({
+  splitPlan,
+  todayDate
+}: {
+  splitPlan: SplitPlan;
+  workoutHistory: Array<{ date: string; dayType?: string }>;
+  todayDate: string;
+}): TodayWorkout {
+  const date = new Date(todayDate + "T00:00:00");
+  const jsDay = date.getDay();
+  const weekIndex = jsDay === 0 ? 6 : jsDay - 1;
+  const dayType = splitPlan.weeklySchedule[weekIndex] || "rest";
+
+  return {
+    dayType,
+    isRestDay: dayType === "rest",
+    weekIndex,
+    splitName: splitPlan.splitName
+  };
+}
 
 
 function getReadinessScore(input: {
@@ -3319,6 +3608,9 @@ function getDayLabel(day: string) {
     lower: "Lower",
     pull: "Pull",
     full: "Full Body",
+    upper: "Upper Body",
+    legs: "Legs",
+    rest: "Rest",
     "Day 1 - Push": "Push",
     "Day 2 - Lower": "Lower",
     "Day 3 - Pull": "Pull",
@@ -3333,7 +3625,10 @@ function getDayDescription(day: string) {
     push: "Chest, shoulders, triceps, and pressing strength.",
     lower: "Quads, hamstrings, glutes, calves, and lower-body function.",
     pull: "Back width, back thickness, rear delts, and biceps.",
-    full: "Balanced full-body work, carries, and core."
+    full: "Balanced full-body work, carries, and core.",
+    upper: "Upper-body strength and hypertrophy work.",
+    legs: "Dedicated lower-body strength and hypertrophy work.",
+    rest: "Recovery day."
   };
 
   return descriptions[day] || "Custom training day.";
