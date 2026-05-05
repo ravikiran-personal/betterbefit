@@ -1545,8 +1545,8 @@ async function addMealDraft() {
           rpe: "",
           notes: ""
         };
-      })
-      .filter((exercise): exercise is ExerciseLog => exercise !== null);
+     })
+    .filter((exercise): exercise is ExerciseLog => exercise !== null);
 
     if (loggedExercises.length === 0) return;
 
