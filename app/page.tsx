@@ -2163,6 +2163,16 @@ async function addMealDraft() {
 
       {tab === "workouts" && (
         <div className="grid compact-page">
+          {(missedWorkoutState === "asking" || missedWorkoutState === "log_missed") && missedWorkoutInfo && (
+  <MissedWorkoutCard
+    info={missedWorkoutInfo}
+    onSkipped={() => {
+      setMissedWorkoutState("show_today");
+      setMissedWorkoutInfo(null);
+    }}
+    onLogMissed={() => setMissedWorkoutState("log_missed")}
+  />
+)}
           {todayWorkout.isRestDay ? (
             <section
               className="card"
