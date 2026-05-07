@@ -123,17 +123,19 @@ Return this exact JSON shape:
       return NextResponse.json({
         source: "fallback",
         error: "Claude response did not contain text.",
-        claudeResponse: data,
         ...fallback
       });
     }
 
-    const cleanedText = text
-      .replace(/```json/g, "")
-      .replace(/```/g, "")
-      .trim();
+    const parsed = extractJSON(text);
 
-    const parsed = JSON.parse(cleanedText);
+    if (!parsed) {
+      return NextResponse.json({
+        source: "fallback",
+        error: "Claude response did not contain valid JSON.",
+        ...fallback
+      });
+    }
 
     const result: TargetResult = {
       calories: safeNumber(parsed.calories, fallback.calories),
@@ -218,4 +220,14 @@ function safeNumber(value: unknown, fallback: number) {
   return typeof value === "number" && Number.isFinite(value)
     ? Math.round(value)
     : fallback;
+}
+
+function extractJSON(text: string): Record<string, unknown> | null {
+  const match = text.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  try {
+    return JSON.parse(match[0]) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
 }

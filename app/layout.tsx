@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import PWARegister from "../components/pwa-register";
+import { ErrorBoundary } from "../components/error-boundary";
+
 export const metadata: Metadata = {
   title: "Recomp Tracker",
   description: "Private recomposition tracker for training, meals, steps, cardio, and weekly adjustments.",
@@ -18,7 +20,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <PWARegister />
-        {children}
+        <ErrorBoundary>{children}</ErrorBoundary>
       </body>
     </html>
   );

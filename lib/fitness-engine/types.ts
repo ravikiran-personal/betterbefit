@@ -19,6 +19,11 @@ export type UserSettings = {
   trainingEmphasis: "aesthetic" | "strength" | "mobility" | "fat_loss_support";
 };
 
+export type Settings = UserSettings;
+export type Sex = UserSettings["sex"];
+export type Lifestyle = UserSettings["lifestyle"];
+export type Goal = UserSettings["goal"];
+
 export type Confidence = "high" | "medium" | "low";
 
 export type NutritionPlan = {

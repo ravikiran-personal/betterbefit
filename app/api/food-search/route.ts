@@ -243,8 +243,9 @@ Output JSON shape:
     if (!res.ok) return fallback;
 
     const data = (await res.json()) as AnthropicResponse;
-    const text = data.content?.[0]?.text || "{}";
-    const parsed = JSON.parse(text.replace(/```json|```/g, "").trim()) as Partial<MacroResult>;
+    const text = data.content?.[0]?.text || "";
+    const parsed = extractJSON<Partial<MacroResult>>(text);
+    if (!parsed) return fallback;
 
     return {
       source: "claude",
@@ -447,4 +448,14 @@ function toTitleCase(value: string): string {
     .split(" ")
     .map((word) => (word ? word[0].toUpperCase() + word.slice(1) : word))
     .join(" ");
+}
+
+function extractJSON<T>(text: string): T | null {
+  const match = text.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  try {
+    return JSON.parse(match[0]) as T;
+  } catch {
+    return null;
+  }
 }
