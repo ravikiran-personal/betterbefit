@@ -2240,15 +2240,15 @@ async function addMealDraft() {
                         {isExpanded ? (
                           <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
                             {session.exercises.map((ex) => {
-                              const doneSets = ex.sets.filter((s) => s.done);
-                              if (doneSets.length === 0) return null;
+                              const loggedSets = (ex.workoutSets || []).filter((s) => s.weight !== "" || s.reps !== "");
+                              if (loggedSets.length === 0) return null;
                               return (
                                 <div key={ex.exercise} style={{ background: "#F9FAFB", borderRadius: 10, padding: "10px 12px" }}>
                                   <div style={{ fontWeight: 600, fontSize: 14, color: "#111827", marginBottom: 6 }}>{ex.exercise}</div>
                                   <div style={{ display: "grid", gap: 4 }}>
-                                    {doneSets.map((s, i) => (
+                                    {loggedSets.map((s, i) => (
                                       <div key={i} className="small" style={{ color: "#6B7280" }}>
-                                        Set {i + 1}: {s.weight ? `${s.weight} kg` : "—"} × {s.reps ? `${s.reps} reps` : "—"}
+                                        Set {i + 1}: {s.weight !== "" ? `${s.weight} kg` : "—"} × {s.reps !== "" ? `${s.reps} reps` : "—"}
                                       </div>
                                     ))}
                                   </div>
