@@ -384,6 +384,16 @@ const foodsForSelectedDate = state.foods.filter((food) => {
     );
 }, [foodsForSelectedDate]);
 
+  const todayStr = getLocalDateISO();
+  const todayFoodCalories = useMemo(() =>
+    state.foods.filter(f => (f.date || todayStr) === todayStr)
+      .reduce((acc, f) => acc + f.calories, 0),
+    [state.foods, todayStr]);
+  const todayFoodProtein = useMemo(() =>
+    state.foods.filter(f => (f.date || todayStr) === todayStr)
+      .reduce((acc, f) => acc + f.protein, 0),
+    [state.foods, todayStr]);
+
   const nutritionHistory = useMemo(() => {
     return getNutritionHistoryGroups(state.foods);
   }, [state.foods]);
@@ -490,6 +500,10 @@ const foodsForSelectedDate = state.foods.filter((food) => {
   const currentStreak = streakDays;
   const totalXp = weeklyXp.xp;
 
+  const todayDailyLog = state.dailyLogs.find(d => d.date === todayStr);
+  const effectiveCalories = numberOrNull(todayDailyLog?.calories) ?? (todayFoodCalories > 0 ? todayFoodCalories : null);
+  const effectiveProtein = numberOrNull(todayDailyLog?.protein) ?? (todayFoodProtein > 0 ? todayFoodProtein : null);
+
   const dailyTasks = [
     {
       id: "workout",
@@ -499,14 +513,14 @@ const foodsForSelectedDate = state.foods.filter((food) => {
     },
     {
       id: "protein",
-      done: (displayProtein ?? 0) >= state.settings.proteinTarget * 0.9,
-      label: `Protein: ${displayProtein ?? 0}g / ${state.settings.proteinTarget}g`,
+      done: (effectiveProtein ?? 0) >= state.settings.proteinTarget * 0.9,
+      label: `Protein: ${effectiveProtein ?? 0}g / ${state.settings.proteinTarget}g`,
       tab: "nutrition" as const
     },
     {
       id: "calories",
-      done: Math.abs((displayCalories ?? 0) - state.settings.targetCalories) < 150,
-      label: `Calories: ${displayCalories ?? 0} / ${state.settings.targetCalories}`,
+      done: Math.abs((effectiveCalories ?? 0) - state.settings.targetCalories) < 150,
+      label: `Calories: ${effectiveCalories ?? 0} / ${state.settings.targetCalories}`,
       tab: "nutrition" as const
     },
     {
@@ -534,7 +548,7 @@ const foodsForSelectedDate = state.foods.filter((food) => {
     month: "short"
   });
 
-  const dayScoreColor = dayScore >= 75 ? "#2dd4a3" : dayScore >= 50 ? "#f59e0b" : "#ef4444";
+  const dayScoreColor = dayScore >= 75 ? "#059669" : dayScore >= 50 ? "#D97706" : "#ef4444";
   const dayScoreCircumference = 339;
   const dayScoreOffset = dayScoreCircumference - (dayScore / 100) * dayScoreCircumference;
   const weeklyXpProgress = Math.min(100, Math.round((totalXp / 700) * 100));
@@ -559,6 +573,7 @@ const foodsForSelectedDate = state.foods.filter((food) => {
 
   useEffect(() => {
     if (missedWorkoutState !== "idle") return;
+    if (todayWorkout.isRestDay) return;
 
     const missed = detectMissedWorkout(state.workoutHistory, splitPlan);
 
@@ -569,7 +584,7 @@ const foodsForSelectedDate = state.foods.filter((food) => {
       missedDayType: missed.missedDayType
     });
     setMissedWorkoutState("asking");
-  }, [state.workoutHistory, splitPlan, missedWorkoutState]);
+  }, [state.workoutHistory, splitPlan, missedWorkoutState, todayWorkout.isRestDay]);
 
   useEffect(() => {
     const today = getLocalDateISO();
@@ -979,6 +994,47 @@ setIsCalculatingTargets(false);
       ...prev,
       foods: prev.foods.filter((food) => (food.date || getLocalDateISO()) !== date)
     }));
+  }
+
+  function submitTodayNutrition() {
+    const tStr = getLocalDateISO();
+    const totals = state.foods
+      .filter(f => (f.date || tStr) === tStr)
+      .reduce((acc, f) => {
+        acc.calories += f.calories;
+        acc.protein += f.protein;
+        acc.carbs += f.carbs;
+        acc.fats += f.fats;
+        return acc;
+      }, { calories: 0, protein: 0, carbs: 0, fats: 0 });
+
+    setState(prev => {
+      const existing = prev.dailyLogs.find(d => d.date === tStr);
+      if (existing) {
+        return {
+          ...prev,
+          dailyLogs: prev.dailyLogs.map(d => d.date === tStr
+            ? { ...d, calories: totals.calories, protein: totals.protein }
+            : d
+          )
+        };
+      }
+      return {
+        ...prev,
+        dailyLogs: [
+          ...prev.dailyLogs,
+          {
+            date: tStr,
+            weight: "",
+            steps: "",
+            calories: totals.calories,
+            protein: totals.protein,
+            cardioMinutes: "",
+            waist: ""
+          }
+        ]
+      };
+    });
   }
 
   function applyFoodResultToMealDraft(result: FoodSearchResult) {
@@ -1679,30 +1735,8 @@ async function addMealDraft() {
   return (
     <main className="container game-shell">
       <div className="game-header">
-        <div>
-          <p className="brand-title">BetterBeFit</p>
-          <p className="subtitle">Recomp, gamified without the noise.</p>
-        </div>
-
-        <div className="game-header-actions">
-          <div className="streak-badge">🔥 {streakDays} day streak</div>
-          <button className="btn secondary small-btn" onClick={exportBackup}>
-            Export
-          </button>
-          <button className="btn secondary small-btn" onClick={() => fileInputRef.current?.click()}>
-            Import
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="application/json"
-            hidden
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) importBackup(file);
-            }}
-          />
-        </div>
+        <p className="brand-title">BetterBeFit</p>
+        <div className="streak-badge">🔥 {streakDays} day streak</div>
       </div>
 
       <div className="bottom-nav">
@@ -1766,7 +1800,7 @@ async function addMealDraft() {
                   cy="70"
                   r="54"
                   fill="none"
-                  stroke="#1f2937"
+                  stroke="#E5E7EB"
                   strokeWidth="10"
                 />
                 <circle
@@ -1820,16 +1854,16 @@ async function addMealDraft() {
             className="priority-card"
             style={{
               borderLeftColor:
-                (displayProtein ?? 0) < state.settings.proteinTarget - 20 ||
+                (effectiveProtein ?? 0) < state.settings.proteinTarget - 20 ||
                 (displaySteps ?? 0) < state.settings.stepTarget - 2000 ||
                 workoutCompletion < 50 ||
-                (displayCalories !== null && displayCalories > state.settings.targetCalories + 150)
-                  ? "#f59e0b"
-                  : "#2dd4a3"
+                (effectiveCalories !== null && effectiveCalories > state.settings.targetCalories + 150)
+                  ? "#D97706"
+                  : "#059669"
             }}
           >
             {(() => {
-              const proteinGap = Math.round(state.settings.proteinTarget - (displayProtein ?? 0));
+              const proteinGap = Math.round(state.settings.proteinTarget - (effectiveProtein ?? 0));
               const stepGap = Math.round(state.settings.stepTarget - (displaySteps ?? 0)).toLocaleString();
 
               if (proteinGap > 20) {
@@ -1874,7 +1908,7 @@ async function addMealDraft() {
                 );
               }
 
-              if (displayCalories !== null && displayCalories > state.settings.targetCalories + 150) {
+              if (effectiveCalories !== null && effectiveCalories > state.settings.targetCalories + 150) {
                 return (
                   <>
                     <div className="priority-top">
@@ -1920,7 +1954,7 @@ async function addMealDraft() {
             <section
               className="card"
               style={{
-                background: "#111827",
+                background: "#FFFFFF",
                 borderRadius: 20,
                 padding: 24,
                 textAlign: "center"
@@ -1931,13 +1965,13 @@ async function addMealDraft() {
               <p className="small" style={{ lineHeight: 1.7 }}>
                 Recovery is where the gains happen. Sleep well, stay hydrated, hit your steps.
               </p>
-              <p style={{ marginTop: 16, color: "#2dd4a3", fontWeight: 700 }}>
+              <p style={{ marginTop: 16, color: "#059669", fontWeight: 700 }}>
                 Tomorrow: {splitPlan.weeklySchedule[todayWorkout.weekIndex === 6 ? 0 : todayWorkout.weekIndex + 1]} day
               </p>
             </section>
           ) : (
             <>
-              <section className="card" style={{ background: "#111827", borderRadius: 20 }}>
+              <section className="card" style={{ background: "#FFFFFF", borderRadius: 20 }}>
                 <div className="small">
                   {new Date(getLocalDateISO() + "T00:00:00")
                     .toLocaleDateString("en-IN", {
@@ -1953,16 +1987,24 @@ async function addMealDraft() {
                 </h2>
 
                 <p className="small" style={{ margin: 0 }}>
-                  {todayWorkout.splitName}
+                  {({
+                    push: "Chest, shoulders, triceps",
+                    pull: "Back, rear delts, biceps",
+                    lower: "Quads, hamstrings, glutes, calves",
+                    full: "Full body — push, pull, squat, carry",
+                    upper: "Upper body strength and hypertrophy",
+                    legs: "Dedicated lower body",
+                    rest: "Recovery day"
+                  } as Record<string, string>)[todayWorkout.dayType] || todayWorkout.splitName}
                 </p>
 
-                <div style={{ marginTop: 14, color: "#2dd4a3", fontWeight: 700 }}>
+                <div style={{ marginTop: 14, color: "#059669", fontWeight: 700 }}>
                   {loggedExerciseCount} / {todaysExercises.length} exercises logged
                 </div>
               </section>
 
               {todaysExercises.length === 0 ? (
-                <section className="card" style={{ background: "#111827", borderRadius: 20 }}>
+                <section className="card" style={{ background: "#FFFFFF", borderRadius: 20 }}>
                   <h2 style={{ marginTop: 0 }}>No exercises found</h2>
                   <p className="small" style={{ lineHeight: 1.7 }}>
                     Apply a workout plan from Settings or adjust your split so today has exercises assigned.
@@ -1980,11 +2022,11 @@ async function addMealDraft() {
                     key={exercise.exercise}
                     className="card"
                     style={{
-                      background: "#111827",
+                      background: "#FFFFFF",
                       borderRadius: 16,
                       padding: 16,
                       marginBottom: 12,
-                      borderLeft: allSetsDone ? "4px solid #2dd4a3" : "4px solid transparent"
+                      borderLeft: allSetsDone ? "4px solid #059669" : "4px solid transparent"
                     }}
                   >
                     <div className="small" style={{ fontSize: 11, textTransform: "uppercase" }}>
@@ -1995,7 +2037,7 @@ async function addMealDraft() {
                       style={{
                         marginTop: 6,
                         marginBottom: 8,
-                        color: "#ffffff",
+                        color: "#111827",
                         fontSize: 16,
                         fontWeight: 600
                       }}
@@ -2003,14 +2045,14 @@ async function addMealDraft() {
                       {exercise.exercise}
                     </h3>
 
-                    <div style={{ color: "#2dd4a3", fontWeight: 700, fontSize: 13 }}>
+                    <div style={{ color: "#059669", fontWeight: 700, fontSize: 13 }}>
                       Target: {exercise.sets} sets × {exercise.targetReps} reps
                     </div>
 
                     <button
                       type="button"
                       className="btn secondary"
-                      style={{ marginTop: 12, width: "100%" }}
+                      style={{ marginTop: 8, padding: '4px 10px', fontSize: 12, minHeight: 'auto', width: 'auto' }}
                       onClick={() =>
                         setExpandedAlternates((prev) => ({
                           ...prev,
@@ -2024,18 +2066,39 @@ async function addMealDraft() {
                     {alternatesOpen ? (
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
                         {exercise.alternates.map((alternate) => (
-                          <span
+                          <button
                             key={alternate}
+                            type="button"
+                            onClick={() => {
+                              setState(prev => ({
+                                ...prev,
+                                workoutLogs: prev.workoutLogs.map(log =>
+                                  log.exercise === exercise.exercise
+                                    ? { ...log, exercise: alternate }
+                                    : log
+                                )
+                              }));
+                              setExerciseLogs(prev => {
+                                const old = prev[exercise.exercise] || [];
+                                const next = { ...prev };
+                                delete next[exercise.exercise];
+                                next[alternate] = old;
+                                return next;
+                              });
+                              setExpandedAlternates(prev => ({ ...prev, [exercise.exercise]: false }));
+                            }}
                             style={{
-                              background: "#1f2937",
-                              color: "#9ca3af",
+                              background: "#F3F4F6",
+                              color: "#374151",
                               borderRadius: 999,
                               padding: "6px 10px",
-                              fontSize: 12
+                              fontSize: 12,
+                              border: "none",
+                              cursor: "pointer"
                             }}
                           >
                             {alternate}
-                          </span>
+                          </button>
                         ))}
                       </div>
                     ) : null}
@@ -2094,8 +2157,8 @@ async function addMealDraft() {
                             style={{
                               minHeight: 44,
                               padding: 0,
-                              background: set.done ? "#2dd4a3" : "#1f2937",
-                              color: set.done ? "#0b1220" : "#ffffff"
+                              background: set.done ? "#059669" : "#F3F4F6",
+                              color: set.done ? "#FFFFFF" : "#111827"
                             }}
                             onClick={() => {
                               setExerciseLogs((prev) => ({
@@ -2120,8 +2183,8 @@ async function addMealDraft() {
                   className="btn"
                   style={{
                     width: "100%",
-                    background: "#2dd4a3",
-                    color: "#0b1220",
+                    background: "#059669",
+                    color: "#FFFFFF",
                     fontWeight: 700,
                     borderRadius: 14,
                     padding: 16
@@ -2133,7 +2196,7 @@ async function addMealDraft() {
               ) : null}
 
               {workoutSaveMessage ? (
-                <div className="card" style={{ background: "#0f172a", color: "#2dd4a3" }}>
+                <div className="card" style={{ background: "#F0FDF4", color: "#059669" }}>
                   {workoutSaveMessage}
                 </div>
               ) : null}
@@ -2286,7 +2349,7 @@ async function addMealDraft() {
             </button>
 
             {expandedNutritionSections.smartSearch ? (
-              <div className="card compact-expanded" style={{ background: "#0f172a" }}>
+              <div className="card compact-expanded" style={{ background: "#F9FAFB" }}>
                 <p className="small">Search standard foods using USDA first. Mixed or Indian-style meals are estimated with Claude.</p>
                 <div className="row">
                   <input className="input" value={foodSearchQuery} placeholder="e.g. chicken biryani, chicken breast, curd rice" onChange={(e) => setFoodSearchQuery(e.target.value)} />
@@ -2522,6 +2585,23 @@ async function addMealDraft() {
             ) : null}
           </section>
 
+          {todayFoodCalories > 0 && selectedNutritionDate === getLocalDateISO() ? (
+            <button
+              className="btn"
+              style={{
+                width: "100%",
+                background: "#059669",
+                color: "#FFFFFF",
+                fontWeight: 700,
+                borderRadius: 14,
+                padding: 16
+              }}
+              onClick={submitTodayNutrition}
+            >
+              Submit today&apos;s nutrition to check-in
+            </button>
+          ) : null}
+
           <section className="compact-section">
             <button
               className={`collapse-pill section-pill ${expandedNutritionSections.nutritionHistory ? "open" : ""}`}
@@ -2611,7 +2691,7 @@ async function addMealDraft() {
                             className="preset-swipe"
                             onDelete={() => deleteMealPreset(preset.id)}
                           >
-                            <div className="card" style={{ background: "#0f172a" }}>
+                            <div className="card" style={{ background: "#F9FAFB" }}>
                               <div className="row space-between">
                               <div>
                                 <strong>{preset.name}</strong>
@@ -2652,6 +2732,14 @@ async function addMealDraft() {
             <div className="checkin-list">
               {state.dailyLogs.map((row, index) => {
                 const isOpen = !!expandedDays[`checkin-${row.date}-${index}`];
+                const hasWeight = !!row.weight && row.weight !== "";
+                const hasSteps = !!row.steps && row.steps !== "";
+                const hasCalories = !!row.calories && row.calories !== "";
+                const hasProtein = !!row.protein && row.protein !== "";
+                const hasAnyMetric = hasWeight || hasSteps || hasCalories || hasProtein;
+                const isGreen = hasWeight && (hasSteps || hasCalories || hasProtein);
+                const statusColor = isGreen ? "#059669" : hasAnyMetric ? "#D97706" : "#9CA3AF";
+                const statusLabel = isGreen ? "●" : hasAnyMetric ? "●" : "○";
 
                 return (
                   <div className="checkin-day" key={row.date + index}>
@@ -2664,11 +2752,14 @@ async function addMealDraft() {
                         }))
                       }
                     >
-                      <div>
-                        <strong>{formatDisplayDate(row.date || todayISO())}</strong>
-                        <span className="pill-subtext">
-                          Weight: {row.weight || "-"} kg - Steps: {row.steps || "-"} - Protein: {row.protein || "-"}g
-                        </span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{ color: statusColor, fontSize: 14, lineHeight: 1 }}>{statusLabel}</span>
+                        <div>
+                          <strong>{formatDisplayDate(row.date || todayISO())}</strong>
+                          <span className="pill-subtext">
+                            Weight: {row.weight || "-"} kg - Steps: {row.steps || "-"} - Protein: {row.protein || "-"}g
+                          </span>
+                        </div>
                       </div>
                       <span className="pill-icon">{isOpen ? "-" : "+"}</span>
                     </button>
@@ -2790,7 +2881,9 @@ async function addMealDraft() {
       {tab === "settings" && (
         <div className="grid grid-2">
           <div className="card">
-            <h2 style={{ marginTop: 0 }}>Body and targets</h2>
+            <div style={{ borderBottom: "1px solid #E5E7EB", marginBottom: 16, paddingBottom: 8 }}>
+              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#6B7280" }}>Profile</p>
+            </div>
             <Field label="Current weight (kg)">
               <NumericInput value={state.settings.weightKg} onChange={(v) => updateSettings("weightKg", v === "" ? 0 : v)} />
             </Field>
@@ -2822,6 +2915,10 @@ async function addMealDraft() {
                 <option value="active">Active</option>
               </select>
             </Field>
+
+            <div style={{ borderBottom: "1px solid #E5E7EB", margin: "20px 0 16px", paddingBottom: 8 }}>
+              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#6B7280" }}>Fitness Goals</p>
+            </div>
             <Field label="Goal">
               <select
                 className="input"
@@ -2834,53 +2931,69 @@ async function addMealDraft() {
                 <option value="be_more_active">Be more active</option>
               </select>
             </Field>
-            <div className="card" style={{ marginTop: 14, background: "#0f172a" }}>
-              <h3 style={{ marginTop: 0 }}>Workout generation inputs</h3>
-              <p className="small" style={{ lineHeight: 1.6 }}>
-                These inputs will power the AI workout generator next. Generated plans should be cached by these values.
-              </p>
-              <Field label="Workouts per week">
-                <select className="input" value={state.settings.workoutsPerWeek} onChange={(e) => updateSettings("workoutsPerWeek", Number(e.target.value))}>
-                  <option value={3}>3 days</option>
-                  <option value={4}>4 days</option>
-                </select>
-              </Field>
-              <Field label="Experience level">
-                <select className="input" value={state.settings.experienceLevel} onChange={(e) => updateSettings("experienceLevel", e.target.value as Settings["experienceLevel"])}>
-                  <option value="beginner">Beginner</option>
-                  <option value="intermediate">Intermediate</option>
-                  <option value="advanced">Advanced</option>
-                </select>
-              </Field>
-              <Field label="Session length">
-                <select className="input" value={state.settings.sessionLength} onChange={(e) => updateSettings("sessionLength", Number(e.target.value))}>
-                  <option value={45}>45 minutes</option>
-                  <option value={60}>60 minutes</option>
-                  <option value={75}>75 minutes</option>
-                </select>
-              </Field>
-              <Field label="Equipment access">
-                <select className="input" value={state.settings.equipmentAccess} onChange={(e) => updateSettings("equipmentAccess", e.target.value as Settings["equipmentAccess"])}>
-                  <option value="full_gym">Full gym</option>
-                  <option value="machines">Machines mostly</option>
-                  <option value="dumbbells">Dumbbells only</option>
-                  <option value="home">Home setup</option>
-                </select>
-              </Field>
-              <Field label="Training emphasis">
-                <select className="input" value={state.settings.trainingEmphasis} onChange={(e) => updateSettings("trainingEmphasis", e.target.value as Settings["trainingEmphasis"])}>
-                  <option value="aesthetic">Aesthetic</option>
-                  <option value="strength">Strength</option>
-                  <option value="mobility">Mobility</option>
-                  <option value="fat_loss_support">Fat-loss support</option>
-                </select>
-              </Field>
-              <Field label="Injuries / limitations">
-                <input className="input" value={state.settings.limitations} onChange={(e) => updateSettings("limitations", e.target.value)} placeholder="e.g. knee pain, shoulder discomfort, none" />
-              </Field>
-            </div>
+            <Field label="Calorie target">
+              <NumericInput value={state.settings.targetCalories} onChange={(v) => updateSettings("targetCalories", v === "" ? 0 : v)} />
+            </Field>
+            <Field label="Protein target (g)">
+              <NumericInput value={state.settings.proteinTarget} onChange={(v) => updateSettings("proteinTarget", v === "" ? 0 : v)} />
+            </Field>
+            <Field label="Carb target (g)">
+              <NumericInput value={state.settings.carbTarget} onChange={(v) => updateSettings("carbTarget", v === "" ? 0 : v)} />
+            </Field>
+            <Field label="Fat target (g)">
+              <NumericInput value={state.settings.fatTarget} onChange={(v) => updateSettings("fatTarget", v === "" ? 0 : v)} />
+            </Field>
+            <Field label="Step target">
+              <NumericInput value={state.settings.stepTarget} onChange={(v) => updateSettings("stepTarget", v === "" ? 0 : v)} />
+            </Field>
+            <Field label="Current step baseline">
+              <NumericInput value={state.settings.currentStepBaseline} onChange={(v) => updateSettings("currentStepBaseline", v === "" ? 0 : v)} />
+            </Field>
 
-            <div className="card research-plan-card" style={{ marginTop: 14, background: "#0f172a" }}>
+            <div style={{ borderBottom: "1px solid #E5E7EB", margin: "20px 0 16px", paddingBottom: 8 }}>
+              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#6B7280" }}>Training Preferences</p>
+            </div>
+            <Field label="Workouts per week">
+              <select className="input" value={state.settings.workoutsPerWeek} onChange={(e) => updateSettings("workoutsPerWeek", Number(e.target.value))}>
+                <option value={3}>3 days</option>
+                <option value={4}>4 days</option>
+              </select>
+            </Field>
+            <Field label="Experience level">
+              <select className="input" value={state.settings.experienceLevel} onChange={(e) => updateSettings("experienceLevel", e.target.value as Settings["experienceLevel"])}>
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
+              </select>
+            </Field>
+            <Field label="Session length">
+              <select className="input" value={state.settings.sessionLength} onChange={(e) => updateSettings("sessionLength", Number(e.target.value))}>
+                <option value={45}>45 minutes</option>
+                <option value={60}>60 minutes</option>
+                <option value={75}>75 minutes</option>
+              </select>
+            </Field>
+            <Field label="Equipment access">
+              <select className="input" value={state.settings.equipmentAccess} onChange={(e) => updateSettings("equipmentAccess", e.target.value as Settings["equipmentAccess"])}>
+                <option value="full_gym">Full gym</option>
+                <option value="machines">Machines mostly</option>
+                <option value="dumbbells">Dumbbells only</option>
+                <option value="home">Home setup</option>
+              </select>
+            </Field>
+            <Field label="Training emphasis">
+              <select className="input" value={state.settings.trainingEmphasis} onChange={(e) => updateSettings("trainingEmphasis", e.target.value as Settings["trainingEmphasis"])}>
+                <option value="aesthetic">Aesthetic</option>
+                <option value="strength">Strength</option>
+                <option value="mobility">Mobility</option>
+                <option value="fat_loss_support">Fat-loss support</option>
+              </select>
+            </Field>
+            <Field label="Injuries / limitations">
+              <input className="input" value={state.settings.limitations} onChange={(e) => updateSettings("limitations", e.target.value)} placeholder="e.g. knee pain, shoulder discomfort, none" />
+            </Field>
+
+            <div className="card research-plan-card" style={{ marginTop: 14, background: "#F9FAFB" }}>
               <div className="row space-between">
                 <div>
                   <h3 style={{ marginTop: 0 }}>Research-backed plan preview</h3>
@@ -2927,24 +3040,11 @@ async function addMealDraft() {
             </button>
 
             {targetReason ? (
-              <div className="card" style={{ marginTop: 14, background: "#0f172a" }}>
+              <div className="card" style={{ marginTop: 14, background: "#F9FAFB" }}>
                 <strong>AI reason:</strong>
                 <p className="small" style={{ lineHeight: 1.6 }}>{targetReason}</p>
               </div>
             ) : null}
-
-            <div className="card" style={{ marginTop: 14, background: "#0f172a" }}>
-              <h3 style={{ marginTop: 0 }}>Current targets</h3>
-              <p>Calories: <strong>{state.settings.targetCalories}</strong></p>
-              <p>Protein: <strong>{state.settings.proteinTarget} g</strong></p>
-              <p>Carbs: <strong>{state.settings.carbTarget} g</strong></p>
-              <p>Fats: <strong>{state.settings.fatTarget} g</strong></p>
-              <p>Steps: <strong>{state.settings.stepTarget}</strong></p>
-            </div>
-
-            <Field label="Current step baseline">
-              <NumericInput value={state.settings.currentStepBaseline} onChange={(v) => updateSettings("currentStepBaseline", v === "" ? 0 : v)} />
-            </Field>
 
             <SwipeToDelete
               className="settings-reset-swipe"
@@ -2963,6 +3063,25 @@ async function addMealDraft() {
                 <p className="small">Swipe left on this card to clear check-ins, workouts, workout history and nutrition logs.</p>
               </div>
             </SwipeToDelete>
+          </div>
+
+          <div className="card">
+            <h2 style={{ marginTop: 0 }}>Export &amp; Import</h2>
+            <p className="small" style={{ marginBottom: 14 }}>Back up your data or restore from a previous export.</p>
+            <div className="row">
+              <button className="btn secondary" onClick={exportBackup}>Export backup</button>
+              <button className="btn secondary" onClick={() => fileInputRef.current?.click()}>Import backup</button>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/json"
+              hidden
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) importBackup(file);
+              }}
+            />
           </div>
 
           <div className="card">
@@ -3034,11 +3153,11 @@ function MissedWorkoutCard({
 
   const cardStyle: React.CSSProperties = {
     width: "100%",
-    background: "#111827",
+    background: "#FFFFFF",
     borderRadius: 20,
     padding: 24,
     marginBottom: 16,
-    border: "1px solid #1f2937"
+    border: "1px solid #E5E7EB"
   };
 
   const actionGridStyle: React.CSSProperties = {
@@ -3049,8 +3168,8 @@ function MissedWorkoutCard({
   };
 
   const darkButtonStyle: React.CSSProperties = {
-    background: "#1f2937",
-    color: "#ffffff",
+    background: "#F3F4F6",
+    color: "#111827",
     border: 0,
     borderRadius: 14,
     minHeight: 52,
@@ -3059,8 +3178,8 @@ function MissedWorkoutCard({
   };
 
   const greenButtonStyle: React.CSSProperties = {
-    background: "#2dd4a3",
-    color: "#0b1220",
+    background: "#059669",
+    color: "#FFFFFF",
     border: 0,
     borderRadius: 14,
     minHeight: 52,
@@ -3072,7 +3191,7 @@ function MissedWorkoutCard({
     return (
       <section className="missed-workout-card" style={cardStyle}>
         <h2 style={{ margin: 0 }}>We noticed you didn&apos;t log yesterday</h2>
-        <p style={{ marginTop: 10, color: "#9ca3af", lineHeight: 1.6 }}>
+        <p style={{ marginTop: 10, color: "#6B7280", lineHeight: 1.6 }}>
           Did you skip {missedWorkoutInfo.missedDayType} day or forget to log it?
         </p>
 
@@ -3092,7 +3211,7 @@ function MissedWorkoutCard({
     return (
       <section className="missed-workout-card" style={cardStyle}>
         <h2 style={{ margin: 0 }}>Log yesterday&apos;s {missedWorkoutInfo.missedDayType} session</h2>
-        <p style={{ marginTop: 10, color: "#9ca3af", lineHeight: 1.6 }}>Did you complete it?</p>
+        <p style={{ marginTop: 10, color: "#6B7280", lineHeight: 1.6 }}>Did you complete it?</p>
 
         <div style={{ ...actionGridStyle, gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
           <button style={greenButtonStyle} onClick={() => addMissedWorkoutEntry("completed")}>
@@ -3141,7 +3260,7 @@ function MealSuggestionsSection({
   return (
     <section className="compact-section">
       <div style={{ marginBottom: 12 }}>
-        <h2 style={{ margin: 0, color: "#ffffff", fontSize: 16, fontWeight: 600 }}>
+        <h2 style={{ margin: 0, color: "#111827", fontSize: 16, fontWeight: 600 }}>
           Today&apos;s Meal Ideas
         </h2>
         <p className="small" style={{ marginTop: 4 }}>
@@ -3167,15 +3286,17 @@ function MealSuggestionsSection({
               style={{
                 width: 200,
                 flexShrink: 0,
-                background: "#111827",
+                display: "flex",
+                flexDirection: "column",
+                background: "#FFFFFF",
                 borderRadius: 16,
                 padding: 16,
-                border: added ? "1px solid #2dd4a3" : "1px solid #1f2937"
+                border: added ? "1px solid #059669" : "1px solid #E5E7EB"
               }}
             >
               <div
                 style={{
-                  color: "#6b7280",
+                  color: "#9CA3AF",
                   fontSize: 10,
                   textTransform: "uppercase",
                   letterSpacing: 1,
@@ -3187,7 +3308,7 @@ function MealSuggestionsSection({
 
               <div
                 style={{
-                  color: "#ffffff",
+                  color: "#111827",
                   fontSize: 14,
                   fontWeight: 600,
                   margin: "4px 0",
@@ -3197,7 +3318,7 @@ function MealSuggestionsSection({
                 {suggestion.food}
               </div>
 
-              <div style={{ color: "#9ca3af", fontSize: 12 }}>
+              <div style={{ color: "#6B7280", fontSize: 12 }}>
                 {suggestion.grams}g
               </div>
 
@@ -3212,8 +3333,8 @@ function MealSuggestionsSection({
               >
                 <span
                   style={{
-                    background: "#1f2937",
-                    color: "#e5e7eb",
+                    background: "#F3F4F6",
+                    color: "#111827",
                     borderRadius: 999,
                     padding: "5px 8px",
                     fontSize: 11
@@ -3224,8 +3345,8 @@ function MealSuggestionsSection({
 
                 <span
                   style={{
-                    background: "#1f2937",
-                    color: "#e5e7eb",
+                    background: "#F3F4F6",
+                    color: "#111827",
                     borderRadius: 999,
                     padding: "5px 8px",
                     fontSize: 11
@@ -3240,14 +3361,15 @@ function MealSuggestionsSection({
                 disabled={added}
                 onClick={() => onAddSuggestion(suggestion)}
                 style={{
-                  background: added ? "#1f2937" : "#2dd4a3",
-                  color: added ? "#9ca3af" : "#0b1220",
+                  background: added ? "#F3F4F6" : "#059669",
+                  color: added ? "#9CA3AF" : "#FFFFFF",
                   borderRadius: 8,
                   padding: 8,
                   width: "100%",
                   fontSize: 13,
                   fontWeight: 600,
-                  minHeight: 38
+                  minHeight: 38,
+                  marginTop: "auto"
                 }}
               >
                 {added ? "✓ Added" : "Add to log"}
