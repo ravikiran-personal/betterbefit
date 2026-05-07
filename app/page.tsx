@@ -2732,10 +2732,10 @@ async function addMealDraft() {
             <div className="checkin-list">
               {state.dailyLogs.map((row, index) => {
                 const isOpen = !!expandedDays[`checkin-${row.date}-${index}`];
-                const hasWeight = !!row.weight && row.weight !== "";
-                const hasSteps = !!row.steps && row.steps !== "";
-                const hasCalories = !!row.calories && row.calories !== "";
-                const hasProtein = !!row.protein && row.protein !== "";
+                const hasWeight = numberOrNull(row.weight) !== null;
+                const hasSteps = numberOrNull(row.steps) !== null;
+                const hasCalories = numberOrNull(row.calories) !== null;
+                const hasProtein = numberOrNull(row.protein) !== null;
                 const hasAnyMetric = hasWeight || hasSteps || hasCalories || hasProtein;
                 const isGreen = hasWeight && (hasSteps || hasCalories || hasProtein);
                 const statusColor = isGreen ? "#059669" : hasAnyMetric ? "#D97706" : "#9CA3AF";
