@@ -25,16 +25,11 @@ import {
   getLocalSplitPlan,
   detectMissedWorkout,
   getTodaysWorkoutType,
-  getReadinessScore,
   getBaseSetup,
   getCardioRoutine,
   getLocalFoodCache,
-  getWeekStatus,
   getCurrentStreak,
-  getWeeklyXp,
-  getBadges,
   getDayLabel,
-  getXpRules,
   getNutritionHistoryGroups,
   getRecommendation
 } from "../lib/page-helpers";
@@ -238,6 +233,8 @@ const foodGramsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   >({});
   const [workoutSaveMessage, setWorkoutSaveMessage] = useState("");
   const [expandedAlternates, setExpandedAlternates] = useState<Record<string, boolean>>({});
+  const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
+  const [settingsStep, setSettingsStep] = useState<"profile" | "plan">("profile");
   const [mealSuggestions, setMealSuggestions] = useState<MealSuggestion[]>([]);
   const [suggestionsGenerated, setSuggestionsGenerated] = useState(false);
   const [addedMealSuggestions, setAddedMealSuggestions] = useState<Record<string, boolean>>({});
@@ -446,35 +443,7 @@ const foodsForSelectedDate = state.foods.filter((food) => {
     workoutCompletion
   });
 
-  const readinessScore = getReadinessScore({
-  avgProtein,
-  avgSteps,
-  workoutCompletion,
-  settings: state.settings
-});
-
-  const weekStatus = getWeekStatus(state.dailyLogs);
   const streakDays = getCurrentStreak(state.dailyLogs);
-  const weeklyXp = getWeeklyXp({
-    readinessScore,
-    weekStatus,
-    workoutCompletion
-  });
-  const badges = getBadges({
-    streakDays,
-    avgProtein,
-    avgSteps,
-    workoutCompletion,
-    settings: state.settings
-  });
-
-  const xpRules = getXpRules({
-    avgProtein,
-    avgSteps,
-    avgCalories,
-    workoutCompletion,
-    settings: state.settings
-  });
 
   const generatedPlan = useMemo(() => generateFitnessPlan(state.settings), [state.settings]);
   const splitPlan = useMemo(() => getLocalSplitPlan(state.settings), [state.settings]);
@@ -499,7 +468,6 @@ const foodsForSelectedDate = state.foods.filter((food) => {
   const hasAnyLoggedSet = Object.values(exerciseLogs).some((sets) => sets.some((set) => set.done));
 
   const currentStreak = streakDays;
-  const totalXp = weeklyXp.xp;
 
   const todayDailyLog = state.dailyLogs.find(d => d.date === todayStr);
   const effectiveCalories = numberOrNull(todayDailyLog?.calories) ?? (todayFoodCalories > 0 ? todayFoodCalories : null);
@@ -552,7 +520,6 @@ const foodsForSelectedDate = state.foods.filter((food) => {
   const dayScoreColor = dayScore >= 75 ? "#059669" : dayScore >= 50 ? "#D97706" : "#ef4444";
   const dayScoreCircumference = 339;
   const dayScoreOffset = dayScoreCircumference - (dayScore / 100) * dayScoreCircumference;
-  const weeklyXpProgress = Math.min(100, Math.round((totalXp / 700) * 100));
 
   useEffect(() => {
     setExerciseLogs((prev) => {
@@ -1741,11 +1708,28 @@ async function addMealDraft() {
     return trend;
   }
 
+  function getConsistencyMessage(streak: number, done: number, total: number): { text: string; color: string } {
+    if (done === total) {
+      return { text: "You crushed it today — rest up and show up again tomorrow.", color: "#059669" };
+    }
+    if (streak === 0) {
+      return { text: "Small misses don't define you. Get back on track — consistency over time is what counts.", color: "#D97706" };
+    }
+    if (done >= Math.ceil(total * 0.75)) {
+      return { text: "Almost there! Close out your remaining tasks and end the day strong.", color: "#059669" };
+    }
+    if (done >= Math.ceil(total * 0.5)) {
+      return { text: "Good progress. Every step forward compounds — keep pushing today.", color: "#D97706" };
+    }
+    return { text: "Your goals are waiting. Small actions today build the version of you you're aiming for.", color: "#6B7280" };
+  }
+
+  const consistencyMsg = getConsistencyMessage(currentStreak, completedTasks, dailyTasks.length);
+
   return (
     <main className="container game-shell">
       <div className="game-header">
         <p className="brand-title">BetterBeFit</p>
-        <div className="streak-badge">🔥 {streakDays} day streak</div>
       </div>
 
       <div className="bottom-nav">
@@ -1798,7 +1782,9 @@ async function addMealDraft() {
               <p>{todayDisplayDate}</p>
             </div>
 
-            <div className="today-streak-pill">🔥 {currentStreak} day streak</div>
+            <div className="today-streak-pill" style={{ color: currentStreak > 0 ? "#059669" : "#9CA3AF" }}>
+              {currentStreak > 0 ? `${currentStreak} day streak` : "Start your streak"}
+            </div>
           </section>
 
           <section className="day-score-card">
@@ -1851,12 +1837,8 @@ async function addMealDraft() {
             ))}
           </section>
 
-          <section className="today-xp-card">
-            <div className="today-xp-label">XP THIS WEEK</div>
-            <div className="today-xp-bar">
-              <div className="today-xp-fill" style={{ width: `${weeklyXpProgress}%` }} />
-            </div>
-            <div className="today-xp-text">{totalXp} / 700 XP</div>
+          <section className="consistency-card" style={{ borderLeftColor: consistencyMsg.color }}>
+            <p className="consistency-text" style={{ color: consistencyMsg.color }}>{consistencyMsg.text}</p>
           </section>
 
           <section
@@ -2218,33 +2200,67 @@ async function addMealDraft() {
               <p className="small">No workouts logged yet. Complete today&apos;s workout to save your first session.</p>
             ) : (
               <div className="history-card-list">
-                {state.workoutHistory.map((session) => (
-                  <SwipeToDelete
-                    key={session.id}
-                    className="history-swipe"
-                    onDelete={() => deleteWorkoutSession(session.id)}
-                  >
-                    <div className="history-card">
-                      <div>
-                        <strong>{formatDisplayDate(session.date)}</strong>
-                        <div className="small">
-                          {session.dayType ? `${getDayLabel(session.dayType)} day • ` : ""}
-                          {session.completion ? `${session.completion} • ` : ""}
-                          {session.totalVolume} total volume
+                {state.workoutHistory.map((session) => {
+                  const isExpanded = expandedHistoryId === session.id;
+                  return (
+                    <SwipeToDelete
+                      key={session.id}
+                      className="history-swipe"
+                      onDelete={() => deleteWorkoutSession(session.id)}
+                    >
+                      <div className="history-card" style={{ flexDirection: "column", alignItems: "stretch", gap: 0 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                          <div>
+                            <strong>{formatDisplayDate(session.date)}</strong>
+                            <div className="small">
+                              {session.dayType ? `${getDayLabel(session.dayType)} day • ` : ""}
+                              {session.completion ? `${session.completion} • ` : ""}
+                              {session.totalVolume} total volume
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <button
+                              className="btn secondary"
+                              style={{ padding: "4px 10px", fontSize: 12, minHeight: "auto" }}
+                              onClick={() => setExpandedHistoryId(isExpanded ? null : session.id)}
+                            >
+                              {isExpanded ? "Hide" : "View"}
+                            </button>
+                            {!todayWorkout.isRestDay && session.exercises.length > 0 ? (
+                              <button
+                                className="btn secondary"
+                                style={{ padding: "4px 10px", fontSize: 12, minHeight: "auto" }}
+                                onClick={() => loadWorkoutSession(session)}
+                              >
+                                Load
+                              </button>
+                            ) : null}
+                          </div>
                         </div>
-                        <div className="small">
-                          {session.exercises
-                            .filter((exercise) => calculateExerciseVolume(exercise) > 0)
-                            .map((exercise) => `${exercise.exercise}: ${calculateExerciseVolume(exercise)} volume`)
-                            .join(", ")}
-                        </div>
+                        {isExpanded ? (
+                          <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+                            {session.exercises.map((ex) => {
+                              const doneSets = ex.sets.filter((s) => s.done);
+                              if (doneSets.length === 0) return null;
+                              return (
+                                <div key={ex.exercise} style={{ background: "#F9FAFB", borderRadius: 10, padding: "10px 12px" }}>
+                                  <div style={{ fontWeight: 600, fontSize: 14, color: "#111827", marginBottom: 6 }}>{ex.exercise}</div>
+                                  <div style={{ display: "grid", gap: 4 }}>
+                                    {doneSets.map((s, i) => (
+                                      <div key={i} className="small" style={{ color: "#6B7280" }}>
+                                        Set {i + 1}: {s.weight ? `${s.weight} kg` : "—"} × {s.reps ? `${s.reps} reps` : "—"}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : null}
                       </div>
-                      {session.exercises.length > 0 ? (
-                        <button className="btn secondary" onClick={() => loadWorkoutSession(session)}>Load</button>
-                      ) : null}
-                    </div>
-                  </SwipeToDelete>
-                ))}
+                    </SwipeToDelete>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -2646,20 +2662,33 @@ async function addMealDraft() {
 
       {tab === "checkin" && (
         <div className="grid compact-page">
-          <div className="card">
-            <div className="row space-between">
-              <div>
-                <h2 style={{ margin: 0 }}>7-day check-in</h2>
-                <p className="small" style={{ marginTop: 6 }}>
-                  Tap a date to expand and log weight, waist, steps, calories, protein and cardio.
-                </p>
-              </div>
-              <button className="btn secondary" onClick={resetWeek}>
-                Reset week
+
+          {/* Weekly metrics summary */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+            <div className="checkin-metric-pill">
+              <span className="checkin-metric-label">Avg Weight</span>
+              <span className="checkin-metric-value">{formatNumber(avgWeight, "kg")}</span>
+            </div>
+            <div className="checkin-metric-pill">
+              <span className="checkin-metric-label">Avg Waist</span>
+              <span className="checkin-metric-value">{formatNumber(avgWaist, "cm")}</span>
+            </div>
+            <div className="checkin-metric-pill">
+              <span className="checkin-metric-label">Avg Steps</span>
+              <span className="checkin-metric-value">{formatNumber(displaySteps)}</span>
+            </div>
+          </div>
+
+          {/* 7-day log */}
+          <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", borderBottom: "1px solid #F3F4F6" }}>
+              <h2 style={{ margin: 0, fontSize: 16 }}>Daily Log</h2>
+              <button className="btn secondary" style={{ padding: "4px 12px", fontSize: 12, minHeight: "auto" }} onClick={resetWeek}>
+                Reset
               </button>
             </div>
 
-            <div className="checkin-list">
+            <div className="checkin-list" style={{ padding: "8px 0" }}>
               {state.dailyLogs.map((row, index) => {
                 const isOpen = !!expandedDays[`checkin-${row.date}-${index}`];
                 const hasWeight = numberOrNull(row.weight) !== null;
@@ -2667,14 +2696,24 @@ async function addMealDraft() {
                 const hasCalories = numberOrNull(row.calories) !== null;
                 const hasProtein = numberOrNull(row.protein) !== null;
                 const hasAnyMetric = hasWeight || hasSteps || hasCalories || hasProtein;
-                const isGreen = hasWeight && (hasSteps || hasCalories || hasProtein);
-                const statusColor = isGreen ? "#059669" : hasAnyMetric ? "#D97706" : "#9CA3AF";
-                const statusLabel = isGreen ? "●" : hasAnyMetric ? "●" : "○";
+                const isComplete = hasWeight && (hasSteps || hasCalories || hasProtein);
+                const statusColor = isComplete ? "#059669" : hasAnyMetric ? "#D97706" : "#D1D5DB";
+                const isToday = row.date === todayStr;
 
                 return (
-                  <div className="checkin-day" key={row.date + index}>
+                  <div key={row.date + index} style={{ borderBottom: "1px solid #F9FAFB" }}>
                     <button
-                      className={`collapse-pill checkin-day-pill ${isOpen ? "open" : ""}`}
+                      style={{
+                        width: "100%",
+                        background: "none",
+                        border: "none",
+                        padding: "14px 20px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 14,
+                        cursor: "pointer",
+                        textAlign: "left"
+                      }}
                       onClick={() =>
                         setExpandedDays((prev) => ({
                           ...prev,
@@ -2682,47 +2721,55 @@ async function addMealDraft() {
                         }))
                       }
                     >
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <span style={{ color: statusColor, fontSize: 14, lineHeight: 1 }}>{statusLabel}</span>
-                        <div>
-                          <strong>{formatDisplayDate(row.date || todayISO())}</strong>
-                          <span className="pill-subtext">
-                            Weight: {row.weight || "-"} kg - Steps: {row.steps || "-"} - Protein: {row.protein || "-"}g
-                          </span>
+                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: statusColor, flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <strong style={{ fontSize: 14, color: "#111827" }}>{formatDisplayDate(row.date || todayISO())}</strong>
+                          {isToday && <span style={{ fontSize: 11, fontWeight: 700, color: "#059669", background: "#F0FDF4", padding: "1px 7px", borderRadius: 999 }}>Today</span>}
+                        </div>
+                        <div className="small" style={{ marginTop: 2, color: "#9CA3AF" }}>
+                          {hasAnyMetric
+                            ? [
+                                hasWeight ? `${row.weight} kg` : null,
+                                hasSteps ? `${row.steps} steps` : null,
+                                hasProtein ? `${row.protein}g protein` : null
+                              ].filter(Boolean).join(" · ")
+                            : "No data logged"}
                         </div>
                       </div>
-                      <span className="pill-icon">{isOpen ? "-" : "+"}</span>
+                      <span style={{ color: "#9CA3AF", fontSize: 16 }}>{isOpen ? "−" : "+"}</span>
                     </button>
 
                     {isOpen ? (
-                      <div className="card compact-expanded checkin-expanded-card">
-                        <Field label="Date">
-                          <input
-                            className="input"
-                            type="date"
-                            value={row.date || todayISO()}
-                            onChange={(e) => updateDaily(index, "date", e.target.value)}
-                          />
-                        </Field>
-
-                        <div className="checkin-input-grid">
-                          <Field label="Weight">
+                      <div style={{ padding: "0 20px 20px" }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                          <Field label="Weight (kg)">
                             <NumericInput value={row.weight} onChange={(v) => updateDaily(index, "weight", v)} />
                           </Field>
-                          <Field label="Waist">
+                          <Field label="Waist (cm)">
                             <NumericInput value={row.waist} onChange={(v) => updateDaily(index, "waist", v)} />
                           </Field>
                           <Field label="Steps">
                             <NumericInput value={row.steps} onChange={(v) => updateDaily(index, "steps", v)} />
                           </Field>
+                          <Field label="Cardio (min)">
+                            <NumericInput value={row.cardioMinutes} onChange={(v) => updateDaily(index, "cardioMinutes", v)} />
+                          </Field>
                           <Field label="Calories">
                             <NumericInput value={row.calories} onChange={(v) => updateDaily(index, "calories", v)} />
                           </Field>
-                          <Field label="Protein">
+                          <Field label="Protein (g)">
                             <NumericInput value={row.protein} onChange={(v) => updateDaily(index, "protein", v)} />
                           </Field>
-                          <Field label="Cardio min">
-                            <NumericInput value={row.cardioMinutes} onChange={(v) => updateDaily(index, "cardioMinutes", v)} />
+                        </div>
+                        <div style={{ marginTop: 10 }}>
+                          <Field label="Date">
+                            <input
+                              className="input"
+                              type="date"
+                              value={row.date || todayISO()}
+                              onChange={(e) => updateDaily(index, "date", e.target.value)}
+                            />
                           </Field>
                         </div>
                       </div>
@@ -2733,249 +2780,286 @@ async function addMealDraft() {
             </div>
           </div>
 
-          <div className="grid grid-3">
-            <MetricCard title="Avg Weight" value={formatNumber(avgWeight, "kg")} hint="Use average, not daily spikes" />
-            <MetricCard title="Avg Waist" value={formatNumber(avgWaist, "cm")} hint="Best fat-loss signal" />
-            <MetricCard title="Avg Steps" value={formatNumber(displaySteps)} hint="NEAT target" />
-          </div>
-
+          {/* Nutrition intelligence */}
           <div className="card">
-            <h2 style={{ marginTop: 0 }}>Check-in logs</h2>
-            <div className="checkin-history">
-  {state.dailyLogs.map((row, index) => {
-    const weightTrend = getDailyTrend(index, "weight");
-    const stepsTrend = getDailyTrend(index, "steps");
-    const caloriesTrend = getDailyTrend(index, "calories");
-    const proteinTrend = getDailyTrend(index, "protein");
-
-    return (
-      <div className="history-card" key={`history-${row.date}-${index}`}>
-        <div className="history-date">
-          {formatDisplayDate(row.date || todayISO())}
-        </div>
-
-        <div className="history-metrics">
-          <div className={`history-metric trend-${getTrendTone("weight", weightTrend)}`}>
-            <span className="label">Weight</span>
-            <span className="value">{row.weight || "-"} {getTrendArrow(weightTrend)}</span>
-          </div>
-
-          <div className={`history-metric trend-${getTrendTone("steps", stepsTrend)}`}>
-            <span className="label">Steps</span>
-            <span className="value">{row.steps || "-"} {getTrendArrow(stepsTrend)}</span>
-          </div>
-
-          <div className={`history-metric trend-${getTrendTone("calories", caloriesTrend)}`}>
-            <span className="label">Calories</span>
-            <span className="value">{row.calories || "-"} {getTrendArrow(caloriesTrend)}</span>
-          </div>
-
-          <div className={`history-metric trend-${getTrendTone("protein", proteinTrend)}`}>
-            <span className="label">Protein</span>
-            <span className="value">{row.protein || "-"} {getTrendArrow(proteinTrend)}</span>
-          </div>
-        </div>
-      </div>
-    );
-  })}
-</div>
-          </div>
-
-          <div className="card">
-            <div className="row space-between">
-              <h2 style={{ marginTop: 0 }}>Weekly nutrition intelligence</h2>
-              <span className="badge">{weeklyNutritionAdjustment.confidence}</span>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+              <h2 style={{ margin: 0, fontSize: 16 }}>Weekly insight</h2>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", background: "#F3F4F6", padding: "2px 8px", borderRadius: 999, textTransform: "uppercase" }}>
+                {weeklyNutritionAdjustment.confidence}
+              </span>
             </div>
-            <p style={{ lineHeight: 1.7 }}>
+            <p style={{ margin: "0 0 12px", lineHeight: 1.7, color: "#374151" }}>
               <strong>{weeklyNutritionAdjustment.title}</strong>: {weeklyNutritionAdjustment.summary}
             </p>
-            <div className="signal-stack">
-              {weeklyNutritionAdjustment.reasons.map((reason) => (
-                <div className="mini-signal" key={reason}>{reason}</div>
-              ))}
-            </div>
             {weeklyNutritionAdjustment.calorieDelta !== 0 ? (
-              <button className="btn" style={{ marginTop: 14 }} onClick={applyWeeklyNutritionAdjustment}>
-                Apply {weeklyNutritionAdjustment.calorieDelta > 0 ? "+" : ""}{weeklyNutritionAdjustment.calorieDelta} kcal
+              <button className="btn" onClick={applyWeeklyNutritionAdjustment}>
+                Apply {weeklyNutritionAdjustment.calorieDelta > 0 ? "+" : ""}{weeklyNutritionAdjustment.calorieDelta} kcal adjustment
               </button>
             ) : null}
           </div>
 
-          <div className="card">
-            <h2 style={{ marginTop: 0 }}>Decision rule</h2>
-            <p style={{ lineHeight: 1.7 }}>{recommendation}</p>
+          {/* Decision rule */}
+          <div className="card" style={{ borderLeft: "3px solid #059669" }}>
+            <p className="small" style={{ margin: 0, fontWeight: 600, color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>This week&apos;s call</p>
+            <p style={{ margin: 0, lineHeight: 1.7, color: "#111827" }}>{recommendation}</p>
           </div>
         </div>
       )}
 
       {tab === "settings" && (
-        <div className="grid grid-2">
-          <div className="card">
-            <div style={{ borderBottom: "1px solid #E5E7EB", marginBottom: 16, paddingBottom: 8 }}>
-              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#6B7280" }}>Profile</p>
-            </div>
-            <Field label="Current weight (kg)">
-              <NumericInput value={state.settings.weightKg} onChange={(v) => updateSettings("weightKg", v === "" ? 0 : v)} />
-            </Field>
-            <Field label="Height (cm)">
-              <NumericInput value={state.settings.heightCm} onChange={(v) => updateSettings("heightCm", v === "" ? 0 : v)} />
-            </Field>
-            <Field label="Age">
-              <NumericInput value={state.settings.age} onChange={(v) => updateSettings("age", v === "" ? 0 : v)} />
-            </Field>
-            <Field label="Sex">
-              <select
-                className="input"
-                value={state.settings.sex}
-                onChange={(e) => updateSettings("sex", e.target.value as Sex)}
-              >
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-              </select>
-            </Field>
-            <Field label="Lifestyle">
-              <select
-                className="input"
-                value={state.settings.lifestyle}
-                onChange={(e) => updateSettings("lifestyle", e.target.value as Lifestyle)}
-              >
-                <option value="sedentary">Sedentary</option>
-                <option value="light">Light activity</option>
-                <option value="moderate">Moderate activity</option>
-                <option value="active">Active</option>
-              </select>
-            </Field>
+        <div className="grid compact-page">
 
-            <div style={{ borderBottom: "1px solid #E5E7EB", margin: "20px 0 16px", paddingBottom: 8 }}>
-              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#6B7280" }}>Fitness Goals</p>
-            </div>
-            <Field label="Goal">
-              <select
-                className="input"
-                value={state.settings.goal}
-                onChange={(e) => updateSettings("goal", e.target.value as Goal)}
-              >
-                <option value="recomp">Recomp: build muscle + lose fat</option>
-                <option value="maintain">Maintain physique</option>
-                <option value="lose_weight">Lose weight</option>
-                <option value="be_more_active">Be more active</option>
-              </select>
-            </Field>
-            <Field label="Calorie target">
-              <NumericInput value={state.settings.targetCalories} onChange={(v) => updateSettings("targetCalories", v === "" ? 0 : v)} />
-            </Field>
-            <Field label="Protein target (g)">
-              <NumericInput value={state.settings.proteinTarget} onChange={(v) => updateSettings("proteinTarget", v === "" ? 0 : v)} />
-            </Field>
-            <Field label="Carb target (g)">
-              <NumericInput value={state.settings.carbTarget} onChange={(v) => updateSettings("carbTarget", v === "" ? 0 : v)} />
-            </Field>
-            <Field label="Fat target (g)">
-              <NumericInput value={state.settings.fatTarget} onChange={(v) => updateSettings("fatTarget", v === "" ? 0 : v)} />
-            </Field>
-            <Field label="Step target">
-              <NumericInput value={state.settings.stepTarget} onChange={(v) => updateSettings("stepTarget", v === "" ? 0 : v)} />
-            </Field>
-            <Field label="Current step baseline">
-              <NumericInput value={state.settings.currentStepBaseline} onChange={(v) => updateSettings("currentStepBaseline", v === "" ? 0 : v)} />
-            </Field>
-
-            <div style={{ borderBottom: "1px solid #E5E7EB", margin: "20px 0 16px", paddingBottom: 8 }}>
-              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#6B7280" }}>Training Preferences</p>
-            </div>
-            <Field label="Workouts per week">
-              <select className="input" value={state.settings.workoutsPerWeek} onChange={(e) => updateSettings("workoutsPerWeek", Number(e.target.value))}>
-                <option value={3}>3 days</option>
-                <option value={4}>4 days</option>
-              </select>
-            </Field>
-            <Field label="Experience level">
-              <select className="input" value={state.settings.experienceLevel} onChange={(e) => updateSettings("experienceLevel", e.target.value as Settings["experienceLevel"])}>
-                <option value="beginner">Beginner</option>
-                <option value="intermediate">Intermediate</option>
-                <option value="advanced">Advanced</option>
-              </select>
-            </Field>
-            <Field label="Session length">
-              <select className="input" value={state.settings.sessionLength} onChange={(e) => updateSettings("sessionLength", Number(e.target.value))}>
-                <option value={45}>45 minutes</option>
-                <option value={60}>60 minutes</option>
-                <option value={75}>75 minutes</option>
-              </select>
-            </Field>
-            <Field label="Equipment access">
-              <select className="input" value={state.settings.equipmentAccess} onChange={(e) => updateSettings("equipmentAccess", e.target.value as Settings["equipmentAccess"])}>
-                <option value="full_gym">Full gym</option>
-                <option value="machines">Machines mostly</option>
-                <option value="dumbbells">Dumbbells only</option>
-                <option value="home">Home setup</option>
-              </select>
-            </Field>
-            <Field label="Training emphasis">
-              <select className="input" value={state.settings.trainingEmphasis} onChange={(e) => updateSettings("trainingEmphasis", e.target.value as Settings["trainingEmphasis"])}>
-                <option value="aesthetic">Aesthetic</option>
-                <option value="strength">Strength</option>
-                <option value="mobility">Mobility</option>
-                <option value="fat_loss_support">Fat-loss support</option>
-              </select>
-            </Field>
-            <Field label="Injuries / limitations">
-              <input className="input" value={state.settings.limitations} onChange={(e) => updateSettings("limitations", e.target.value)} placeholder="e.g. knee pain, shoulder discomfort, none" />
-            </Field>
-
-            <div className="card research-plan-card" style={{ marginTop: 14, background: "#F9FAFB" }}>
-              <div className="row space-between">
-                <div>
-                  <h3 style={{ marginTop: 0 }}>Research-backed plan preview</h3>
-                  <p className="small" style={{ lineHeight: 1.6 }}>
-                    Generated from your body metrics, goal, lifestyle, training experience, equipment and session length. Nothing changes unless you tap Apply.
-                  </p>
-                </div>
-                <span className="badge">Confidence: {generatedPlan.nutrition.confidence}</span>
-              </div>
-
-              <div className="research-plan-grid">
-                <div className="mini-signal">
-                  <strong>Nutrition</strong>
-                  <span>{generatedPlan.nutrition.calories} kcal • P {generatedPlan.nutrition.protein}g • C {generatedPlan.nutrition.carbs}g • F {generatedPlan.nutrition.fats}g</span>
-                </div>
-                <div className="mini-signal">
-                  <strong>Workout</strong>
-                  <span>{generatedPlan.workout.split} • {generatedPlan.workout.exercises.length} exercises</span>
-                </div>
-                <div className="mini-signal">
-                  <strong>Cardio</strong>
-                  <span>{generatedPlan.cardio.weeklyMinutes} min/week • {generatedPlan.cardio.confidence} confidence</span>
-                </div>
-              </div>
-
-              <div className="research-reason-list">
-                {[...generatedPlan.nutrition.reasoning, ...generatedPlan.workout.reasoning, ...generatedPlan.cardio.reasoning].slice(0, 6).map((reason) => (
-                  <div className="game-signal" key={reason}>
-                    <span className="signal-dot" />
-                    <p>{reason}</p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="row">
-                <button className="btn" onClick={applyGeneratedNutritionPlan}>Apply nutrition targets</button>
-                <button className="btn secondary" onClick={applyGeneratedWorkoutPlan}>Apply workout plan</button>
-                <button className="btn secondary" onClick={applyGeneratedFullPlan}>Apply full plan</button>
-              </div>
-            </div>
-
-            <button className="btn" onClick={calculateTargetsWithAI} disabled={isCalculatingTargets}>
-              {isCalculatingTargets ? "Calculating..." : "Calculate targets with AI"}
+          {/* Step indicator */}
+          <div style={{ display: "flex", gap: 0, borderRadius: 12, overflow: "hidden", background: "#F3F4F6" }}>
+            <button
+              style={{
+                flex: 1,
+                padding: "12px 0",
+                border: "none",
+                background: settingsStep === "profile" ? "#111827" : "transparent",
+                color: settingsStep === "profile" ? "#FFFFFF" : "#6B7280",
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: "pointer",
+                transition: "all 0.15s"
+              }}
+              onClick={() => setSettingsStep("profile")}
+            >
+              1 · About you
             </button>
+            <button
+              style={{
+                flex: 1,
+                padding: "12px 0",
+                border: "none",
+                background: settingsStep === "plan" ? "#111827" : "transparent",
+                color: settingsStep === "plan" ? "#FFFFFF" : "#6B7280",
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: "pointer",
+                transition: "all 0.15s"
+              }}
+              onClick={() => setSettingsStep("plan")}
+            >
+              2 · Your plan
+            </button>
+          </div>
 
-            {targetReason ? (
-              <div className="card" style={{ marginTop: 14, background: "#F9FAFB" }}>
-                <strong>AI reason:</strong>
-                <p className="small" style={{ lineHeight: 1.6 }}>{targetReason}</p>
+          {settingsStep === "profile" ? (
+            <>
+              {/* Profile & goal */}
+              <div className="card">
+                <p className="settings-section-label">Who you are</p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <Field label="Weight (kg)">
+                    <NumericInput value={state.settings.weightKg} onChange={(v) => updateSettings("weightKg", v === "" ? 0 : v)} />
+                  </Field>
+                  <Field label="Height (cm)">
+                    <NumericInput value={state.settings.heightCm} onChange={(v) => updateSettings("heightCm", v === "" ? 0 : v)} />
+                  </Field>
+                  <Field label="Age">
+                    <NumericInput value={state.settings.age} onChange={(v) => updateSettings("age", v === "" ? 0 : v)} />
+                  </Field>
+                  <Field label="Sex">
+                    <select className="input" value={state.settings.sex} onChange={(e) => updateSettings("sex", e.target.value as Sex)}>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                    </select>
+                  </Field>
+                </div>
+                <div style={{ marginTop: 12 }}>
+                  <Field label="Daily activity level">
+                    <select className="input" value={state.settings.lifestyle} onChange={(e) => updateSettings("lifestyle", e.target.value as Lifestyle)}>
+                      <option value="sedentary">Sedentary — mostly sitting</option>
+                      <option value="light">Light — occasional walks</option>
+                      <option value="moderate">Moderate — on feet most of the day</option>
+                      <option value="active">Active — physical job or sport</option>
+                    </select>
+                  </Field>
+                </div>
               </div>
-            ) : null}
 
+              {/* Goal */}
+              <div className="card">
+                <p className="settings-section-label">What you&apos;re working toward</p>
+                <Field label="Primary goal">
+                  <select className="input" value={state.settings.goal} onChange={(e) => updateSettings("goal", e.target.value as Goal)}>
+                    <option value="recomp">Build muscle + lose fat (recomp)</option>
+                    <option value="maintain">Maintain my current physique</option>
+                    <option value="lose_weight">Lose weight</option>
+                    <option value="be_more_active">Just be more active</option>
+                  </select>
+                </Field>
+              </div>
+
+              {/* Training */}
+              <div className="card">
+                <p className="settings-section-label">Training preferences</p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <Field label="Days / week">
+                    <select className="input" value={state.settings.workoutsPerWeek} onChange={(e) => updateSettings("workoutsPerWeek", Number(e.target.value))}>
+                      <option value={2}>2 days</option>
+                      <option value={3}>3 days</option>
+                      <option value={4}>4 days</option>
+                      <option value={5}>5 days</option>
+                    </select>
+                  </Field>
+                  <Field label="Experience">
+                    <select className="input" value={state.settings.experienceLevel} onChange={(e) => updateSettings("experienceLevel", e.target.value as Settings["experienceLevel"])}>
+                      <option value="beginner">Beginner</option>
+                      <option value="intermediate">Intermediate</option>
+                      <option value="advanced">Advanced</option>
+                    </select>
+                  </Field>
+                  <Field label="Session length">
+                    <select className="input" value={state.settings.sessionLength} onChange={(e) => updateSettings("sessionLength", Number(e.target.value))}>
+                      <option value={45}>45 min</option>
+                      <option value={60}>60 min</option>
+                      <option value={75}>75 min</option>
+                    </select>
+                  </Field>
+                  <Field label="Equipment">
+                    <select className="input" value={state.settings.equipmentAccess} onChange={(e) => updateSettings("equipmentAccess", e.target.value as Settings["equipmentAccess"])}>
+                      <option value="full_gym">Full gym</option>
+                      <option value="machines">Machines only</option>
+                      <option value="dumbbells">Dumbbells</option>
+                      <option value="home">Home setup</option>
+                    </select>
+                  </Field>
+                </div>
+                <div style={{ marginTop: 12 }}>
+                  <Field label="Training focus">
+                    <select className="input" value={state.settings.trainingEmphasis} onChange={(e) => updateSettings("trainingEmphasis", e.target.value as Settings["trainingEmphasis"])}>
+                      <option value="aesthetic">Aesthetic — look better</option>
+                      <option value="strength">Strength — lift more</option>
+                      <option value="mobility">Mobility — move better</option>
+                      <option value="fat_loss_support">Fat-loss support</option>
+                    </select>
+                  </Field>
+                  <Field label="Injuries / limitations">
+                    <input className="input" value={state.settings.limitations} onChange={(e) => updateSettings("limitations", e.target.value)} placeholder="e.g. knee pain, none" />
+                  </Field>
+                </div>
+              </div>
+
+              <button
+                className="btn"
+                style={{ background: "#111827", color: "#FFFFFF", borderRadius: 14, padding: 16, fontWeight: 700, fontSize: 15 }}
+                onClick={() => setSettingsStep("plan")}
+              >
+                See what&apos;s best for me →
+              </button>
+            </>
+          ) : (
+            <>
+              {/* Plan preview */}
+              <div className="card">
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                  <h2 style={{ margin: 0, fontSize: 18 }}>Your personalised plan</h2>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#059669", background: "#F0FDF4", padding: "3px 10px", borderRadius: 999, textTransform: "uppercase" }}>
+                    {generatedPlan.nutrition.confidence} confidence
+                  </span>
+                </div>
+
+                <div style={{ display: "grid", gap: 10 }}>
+                  <div style={{ background: "#F9FAFB", borderRadius: 12, padding: "14px 16px" }}>
+                    <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.06em" }}>Nutrition</p>
+                    <p style={{ margin: 0, fontWeight: 600, color: "#111827" }}>{generatedPlan.nutrition.calories} kcal · P {generatedPlan.nutrition.protein}g · C {generatedPlan.nutrition.carbs}g · F {generatedPlan.nutrition.fats}g</p>
+                  </div>
+                  <div style={{ background: "#F9FAFB", borderRadius: 12, padding: "14px 16px" }}>
+                    <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.06em" }}>Workout</p>
+                    <p style={{ margin: 0, fontWeight: 600, color: "#111827" }}>{generatedPlan.workout.split} · {generatedPlan.workout.exercises.length} exercises</p>
+                  </div>
+                  <div style={{ background: "#F9FAFB", borderRadius: 12, padding: "14px 16px" }}>
+                    <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.06em" }}>Cardio</p>
+                    <p style={{ margin: 0, fontWeight: 600, color: "#111827" }}>{generatedPlan.cardio.weeklyMinutes} min / week</p>
+                  </div>
+                </div>
+
+                <div style={{ margin: "16px 0", borderTop: "1px solid #F3F4F6", paddingTop: 16 }}>
+                  {[...generatedPlan.nutrition.reasoning, ...generatedPlan.workout.reasoning].slice(0, 4).map((reason) => (
+                    <div key={reason} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 8 }}>
+                      <span style={{ color: "#059669", fontSize: 14, marginTop: 1 }}>✓</span>
+                      <p style={{ margin: 0, fontSize: 13, color: "#374151", lineHeight: 1.5 }}>{reason}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  className="btn"
+                  style={{ width: "100%", background: "#059669", color: "#FFFFFF", borderRadius: 14, padding: 16, fontWeight: 700, fontSize: 15, marginBottom: 10 }}
+                  onClick={() => { applyGeneratedFullPlan(); setSettingsStep("profile"); }}
+                >
+                  Apply full plan — let&apos;s go
+                </button>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <button className="btn secondary" onClick={applyGeneratedNutritionPlan}>Nutrition only</button>
+                  <button className="btn secondary" onClick={applyGeneratedWorkoutPlan}>Workout only</button>
+                </div>
+              </div>
+
+              {/* Manual override for targets */}
+              <div className="card">
+                <p className="settings-section-label">Override targets manually</p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <Field label="Calories">
+                    <NumericInput value={state.settings.targetCalories} onChange={(v) => updateSettings("targetCalories", v === "" ? 0 : v)} />
+                  </Field>
+                  <Field label="Protein (g)">
+                    <NumericInput value={state.settings.proteinTarget} onChange={(v) => updateSettings("proteinTarget", v === "" ? 0 : v)} />
+                  </Field>
+                  <Field label="Carbs (g)">
+                    <NumericInput value={state.settings.carbTarget} onChange={(v) => updateSettings("carbTarget", v === "" ? 0 : v)} />
+                  </Field>
+                  <Field label="Fat (g)">
+                    <NumericInput value={state.settings.fatTarget} onChange={(v) => updateSettings("fatTarget", v === "" ? 0 : v)} />
+                  </Field>
+                  <Field label="Step target">
+                    <NumericInput value={state.settings.stepTarget} onChange={(v) => updateSettings("stepTarget", v === "" ? 0 : v)} />
+                  </Field>
+                  <Field label="Step baseline">
+                    <NumericInput value={state.settings.currentStepBaseline} onChange={(v) => updateSettings("currentStepBaseline", v === "" ? 0 : v)} />
+                  </Field>
+                </div>
+              </div>
+
+              {targetReason ? (
+                <div className="card" style={{ background: "#F9FAFB" }}>
+                  <p className="settings-section-label">AI reason</p>
+                  <p className="small" style={{ lineHeight: 1.6, margin: 0 }}>{targetReason}</p>
+                </div>
+              ) : null}
+
+              <button className="btn secondary" onClick={calculateTargetsWithAI} disabled={isCalculatingTargets}>
+                {isCalculatingTargets ? "Calculating..." : "Recalculate with AI"}
+              </button>
+
+              <button
+                style={{ background: "none", border: "none", color: "#9CA3AF", fontSize: 13, padding: "8px 0", cursor: "pointer", textAlign: "left" }}
+                onClick={() => setSettingsStep("profile")}
+              >
+                ← Back to profile
+              </button>
+            </>
+          )}
+
+          {/* Always-visible bottom section */}
+          <div className="card">
+            <p className="settings-section-label">Data</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
+              <button className="btn secondary" onClick={exportBackup}>Export backup</button>
+              <button className="btn secondary" onClick={() => fileInputRef.current?.click()}>Import backup</button>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/json"
+              hidden
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) importBackup(file);
+              }}
+            />
             <SwipeToDelete
               className="settings-reset-swipe"
               onDelete={() => {
@@ -2990,39 +3074,9 @@ async function addMealDraft() {
             >
               <div className="card settings-reset-card">
                 <strong>Reset all logs</strong>
-                <p className="small">Swipe left on this card to clear check-ins, workouts, workout history and nutrition logs.</p>
+                <p className="small">Swipe left to clear check-ins, workouts and nutrition logs.</p>
               </div>
             </SwipeToDelete>
-          </div>
-
-          <div className="card">
-            <h2 style={{ marginTop: 0 }}>Export &amp; Import</h2>
-            <p className="small" style={{ marginBottom: 14 }}>Back up your data or restore from a previous export.</p>
-            <div className="row">
-              <button className="btn secondary" onClick={exportBackup}>Export backup</button>
-              <button className="btn secondary" onClick={() => fileInputRef.current?.click()}>Import backup</button>
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="application/json"
-              hidden
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) importBackup(file);
-              }}
-            />
-          </div>
-
-          <div className="card">
-            <h2 style={{ marginTop: 0 }}>How this app is meant to be used</h2>
-            <ul style={{ lineHeight: 1.8 }}>
-              <li>Log bodyweight daily, then judge progress from the 7-day average</li>
-              <li>Track waist 2-3 times per week if possible</li>
-              <li>Use workout logs to confirm strength is stable or rising</li>
-              <li>Keep calories roughly consistent for at least 2 weeks before making big changes</li>
-              <li>Adjust steps upward in waves, not overnight</li>
-            </ul>
           </div>
         </div>
       )}

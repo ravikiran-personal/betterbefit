@@ -168,24 +168,6 @@ a {
   font-weight: 700;
 }
 
-/* ===== XP ===== */
-.level-card {
-  background: linear-gradient(135deg, #F9FAFB, #F3F4F6);
-  border-radius: 20px;
-  padding: 16px;
-}
-
-.xp-track {
-  height: 10px;
-  background: #E5E7EB;
-  border-radius: 999px;
-  margin: 10px 0;
-}
-
-.xp-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #059669, #60a5fa);
-}
 
 /* ===== WEEK ===== */
 .week-row {
@@ -3088,38 +3070,50 @@ main,
   line-height: 1;
 }
 
-.today-xp-card {
+.consistency-card {
   background: #FFFFFF;
   border: 1px solid #E5E7EB;
+  border-left: 3px solid #059669;
   border-radius: 16px;
-  padding: 16px;
+  padding: 14px 16px;
 }
 
-.today-xp-label {
-  color: #9CA3AF;
+.consistency-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  font-weight: 500;
+}
+
+.checkin-metric-pill {
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 14px;
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.checkin-metric-label {
   font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
   font-weight: 700;
-  margin-bottom: 10px;
-}
-
-.today-xp-bar {
-  width: 100%;
-  height: 6px;
-  background: #E5E7EB;
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.today-xp-fill {
-  height: 100%;
-  background: #059669;
-  border-radius: 3px;
-}
-
-.today-xp-text {
-  margin-top: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
   color: #9CA3AF;
+}
+
+.checkin-metric-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.settings-section-label {
+  margin: 0 0 12px;
   font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #9CA3AF;
 }
