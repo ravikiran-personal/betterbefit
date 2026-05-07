@@ -195,6 +195,7 @@ export default function Page() {
   const [mealDraftUnit, setMealDraftUnit] = useState<"g" | "ml" | "oz">("g");
   const [mealDraftSuggestions, setMealDraftSuggestions] = useState<FoodSearchResult[]>([]);
   const [isSearchingMealDraft, setIsSearchingMealDraft] = useState(false);
+  const [mealDraftBasePer100g, setMealDraftBasePer100g] = useState<{ calories: number; protein: number; carbs: number; fats: number } | null>(null);
   const [foodSearchQuery, setFoodSearchQuery] = useState("");
 const [foodSearchGrams, setFoodSearchGrams] = useState<number | "">(100);
 
@@ -1047,6 +1048,13 @@ setIsCalculatingTargets(false);
       carbs: result.carbs,
       fats: result.fats
     }));
+    const g = result.grams || 100;
+    setMealDraftBasePer100g({
+      calories: (result.calories / g) * 100,
+      protein: (result.protein / g) * 100,
+      carbs: (result.carbs / g) * 100,
+      fats: (result.fats / g) * 100
+    });
     setMealDraftUnit("g");
     setMealDraftSuggestions([]);
   }
@@ -1067,6 +1075,7 @@ setIsCalculatingTargets(false);
     if (query.length < 3) {
       setMealDraftSuggestions([]);
       setIsSearchingMealDraft(false);
+      setMealDraftBasePer100g(null);
       return;
     }
 
@@ -2244,6 +2253,40 @@ async function addMealDraft() {
 
       {tab === "nutrition" && (
         <div className="nutrition-page compact-page">
+          {/* Macro summary pills */}
+          <section style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 4 }}>
+            {([
+              { label: "Calories", value: Math.round(foodTotals.calories), target: state.settings.targetCalories, unit: "kcal" },
+              { label: "Protein", value: Math.round(foodTotals.protein), target: state.settings.proteinTarget, unit: "g" },
+              { label: "Carbs", value: Math.round(foodTotals.carbs), target: state.settings.carbTarget, unit: "g" },
+              { label: "Fat", value: Math.round(foodTotals.fats), target: state.settings.fatTarget, unit: "g" }
+            ] as const).map(({ label, value, target, unit }) => {
+              const pct = Math.min(100, target > 0 ? Math.round((value / target) * 100) : 0);
+              const over = value > target && target > 0;
+              return (
+                <div key={label} style={{ background: "#FFFFFF", borderRadius: 12, padding: "10px 10px 8px", border: `1px solid ${over ? "#FDE68A" : "#E5E7EB"}`, textAlign: "center" }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: over ? "#D97706" : "#111827", margin: "3px 0 1px" }}>{value}</div>
+                  <div style={{ fontSize: 10, color: "#9CA3AF" }}>/ {target} {unit}</div>
+                  <div style={{ height: 3, background: "#E5E7EB", borderRadius: 999, marginTop: 6 }}>
+                    <div style={{ height: "100%", width: `${pct}%`, background: over ? "#D97706" : "#059669", borderRadius: 999, transition: "width 300ms ease" }} />
+                  </div>
+                </div>
+              );
+            })}
+          </section>
+
+          {/* Submit Food Log */}
+          {todayFoodCalories > 0 && selectedNutritionDate === getLocalDateISO() ? (
+            <button
+              className="btn"
+              style={{ width: "100%", background: "#059669", color: "#FFFFFF", fontWeight: 700, borderRadius: 12, padding: "12px 16px", marginBottom: 4 }}
+              onClick={submitTodayNutrition}
+            >
+              Submit Food Log
+            </button>
+          ) : null}
+
           <MealSuggestionsSection
             mealSuggestions={mealSuggestions}
             addedMealSuggestions={addedMealSuggestions}
@@ -2316,7 +2359,22 @@ async function addMealDraft() {
 
                   <Field label="Amount">
                     <div className="unit-row">
-                      <NumericInput value={mealDraft.grams} onChange={(v) => updateMealDraft("grams", v === "" ? 0 : v)} />
+                      <NumericInput value={mealDraft.grams} onChange={(v) => {
+                        const newGrams = v === "" ? 0 : v;
+                        if (mealDraftBasePer100g && newGrams > 0) {
+                          const f = newGrams / 100;
+                          setMealDraft(prev => ({
+                            ...prev,
+                            grams: newGrams,
+                            calories: Math.round(mealDraftBasePer100g.calories * f),
+                            protein: Math.round(mealDraftBasePer100g.protein * f * 10) / 10,
+                            carbs: Math.round(mealDraftBasePer100g.carbs * f * 10) / 10,
+                            fats: Math.round(mealDraftBasePer100g.fats * f * 10) / 10
+                          }));
+                        } else {
+                          updateMealDraft("grams", newGrams);
+                        }
+                      }} />
                       <select className="input unit-select" value={mealDraftUnit} onChange={(e) => setMealDraftUnit(e.target.value as "g" | "ml" | "oz")}>
                         <option value="g">g</option>
                         <option value="ml">ml</option>
@@ -2332,119 +2390,8 @@ async function addMealDraft() {
 
                   <div className="meal-action-cell">
                     <button className="btn" onClick={addMealDraft}>Add</button>
-                    <button className="btn secondary" onClick={() => setMealDraft({ id: "draft", date: getLocalDateISO(), meal: mealDraft.meal, food: "", grams: 100, calories: 0, protein: 0, carbs: 0, fats: 0 })}>Clear</button>
+                    <button className="btn secondary" onClick={() => { setMealDraft({ id: "draft", date: getLocalDateISO(), meal: mealDraft.meal, food: "", grams: 100, calories: 0, protein: 0, carbs: 0, fats: 0 }); setMealDraftBasePer100g(null); }}>Clear</button>
                   </div>
-                </div>
-              </div>
-            ) : null}
-          </section>
-
-          <section className="compact-section">
-            <button className={`collapse-pill section-pill ${expandedNutritionSections.smartSearch ? "open" : ""}`} onClick={() => toggleNutritionSection("smartSearch")}>
-              <div>
-                <strong>Smart food search</strong>
-                <span className="pill-subtext">Use USDA or AI-estimated macros</span>
-              </div>
-              <span className="pill-icon">{expandedNutritionSections.smartSearch ? "−" : "+"}</span>
-            </button>
-
-            {expandedNutritionSections.smartSearch ? (
-              <div className="card compact-expanded" style={{ background: "#F9FAFB" }}>
-                <p className="small">Search standard foods using USDA first. Mixed or Indian-style meals are estimated with Claude.</p>
-                <div className="row">
-                  <input className="input" value={foodSearchQuery} placeholder="e.g. chicken biryani, chicken breast, curd rice" onChange={(e) => setFoodSearchQuery(e.target.value)} />
-<NumericInput
-  value={foodSearchGrams}
-  onChange={(value) => {
-    const grams = value === "" ? 100 : value;
-
-    setFoodSearchGrams(value);
-
-    if (foodGramsDebounceRef.current) {
-      clearTimeout(foodGramsDebounceRef.current);
-    }
-
-    foodGramsDebounceRef.current = setTimeout(() => {
-      recalculateMacros(grams);
-    }, 300);
-  }}
-  placeholder="grams"
-/>                  <button className="btn" onClick={() => searchFood(foodSearchQuery)} disabled={isSearchingFood}>{isSearchingFood ? "Searching..." : "Search macros"}</button>
-                </div>
-
-                {foodSearchResult ? (
-                  <div className="card" style={{ marginTop: 14 }}>
-                    <div className="row space-between">
-                      <div>
-                        <strong>{foodSearchResult.food}</strong>
-                        <div className="small">{foodSearchResult.grams}g | {foodSearchResult.calories} cal | P {foodSearchResult.protein}g | C {foodSearchResult.carbs}g | F {foodSearchResult.fats}g</div>
-                        <div className="small">{foodSearchResult.source === "usda" ? "Verified data" : foodSearchResult.source === "claude" ? "Estimated (AI)" : "Saved result"} | Confidence: {foodSearchResult.confidence}</div>
-                        <div className="small">{foodSearchResult.note}</div>
-                      </div>
-                    <button className="btn" onClick={() => {
-  const selectedFoodSearchResult = foodSearchResult;
-
-  if (!selectedFoodSearchResult) return;
-
-  setMealDraft({
-    id: "draft",
-    date: getLocalDateISO(),
-    meal: "Search",
-    food: selectedFoodSearchResult.food,
-    grams: selectedFoodSearchResult.grams,
-    calories: selectedFoodSearchResult.calories,
-    protein: selectedFoodSearchResult.protein,
-    carbs: selectedFoodSearchResult.carbs,
-    fats: selectedFoodSearchResult.fats
-  });
-
-  setMealDraftUnit("g");
-  setFoodSearchQuery("");
-  setFoodSearchGrams(100);
-  setFoodSearchResult(null);
-  setExpandedNutritionSections((prev) => ({ ...prev, logMeal: true }));
-}}>
-  Use in log form
-</button>
-                      <button className="btn secondary" onClick={addFoodSearchResult}>
-  Add directly
-</button>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-          </section>
-
-          <section className="compact-section">
-            <button className={`collapse-pill section-pill ${expandedNutritionSections.totals ? "open" : ""}`} onClick={() => toggleNutritionSection("totals")}>
-              <div>
-                <strong>Nutrition totals</strong>
-<span className="pill-subtext">
-  {foodsForSelectedDate.length} meals • 
-  {Math.round(foodTotals.calories)} cal • 
-  P {Math.round(foodTotals.protein)} • 
-  C {Math.round(foodTotals.carbs)} • 
-  F {Math.round(foodTotals.fats)}
-</span>              </div>
-              <span className="pill-icon">{expandedNutritionSections.totals ? "−" : "+"}</span>
-            </button>
-
-            {expandedNutritionSections.totals ? (
-              <div className="grid grid-2 compact-expanded">
-                <div className="card">
-                  <h2 style={{ marginTop: 0 }}>Planned totals</h2>
-                  <p>Calories: <strong>{Math.round(foodTotals.calories)}</strong></p>
-                  <p>Protein: <strong>{foodTotals.protein.toFixed(1)} g</strong></p>
-                  <p>Carbs: <strong>{foodTotals.carbs.toFixed(1)} g</strong></p>
-                  <p>Fats: <strong>{foodTotals.fats.toFixed(1)} g</strong></p>
-                </div>
-                <div className="card">
-                  <h2 style={{ marginTop: 0 }}>Recomp target</h2>
-                  <p>Calories target: <strong>{state.settings.targetCalories}</strong></p>
-                  <p>Protein target: <strong>{state.settings.proteinTarget} g</strong></p>
-                  <p>Carb target: <strong>{state.settings.carbTarget} g</strong></p>
-                  <p>Fat target: <strong>{state.settings.fatTarget} g</strong></p>
                 </div>
               </div>
             ) : null}
@@ -2584,23 +2531,6 @@ async function addMealDraft() {
               </div>
             ) : null}
           </section>
-
-          {todayFoodCalories > 0 && selectedNutritionDate === getLocalDateISO() ? (
-            <button
-              className="btn"
-              style={{
-                width: "100%",
-                background: "#059669",
-                color: "#FFFFFF",
-                fontWeight: 700,
-                borderRadius: 14,
-                padding: 16
-              }}
-              onClick={submitTodayNutrition}
-            >
-              Submit today&apos;s nutrition to check-in
-            </button>
-          ) : null}
 
           <section className="compact-section">
             <button
