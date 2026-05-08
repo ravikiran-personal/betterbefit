@@ -404,22 +404,32 @@ export function WorkoutsTab({
             );
           })}
 
-          {hasAnyLoggedSet ? (
-            <button
-              className="btn"
-              style={{
-                width: "100%",
-                background: "#059669",
-                color: "#FFFFFF",
-                fontWeight: 700,
-                borderRadius: 14,
-                padding: 16
-              }}
-              onClick={saveWorkout}
-            >
-              Complete Workout
-            </button>
-          ) : null}
+          {(() => {
+            const allSets = Object.values(exerciseLogs).flat();
+            const doneSets = allSets.filter((s) => s.done).length;
+            const totalSets = allSets.length;
+            return (
+              <button
+                className="btn"
+                style={{
+                  width: "100%",
+                  background: "#059669",
+                  color: "#FFFFFF",
+                  fontWeight: 700,
+                  borderRadius: 14,
+                  padding: 16
+                }}
+                disabled={!hasAnyLoggedSet}
+                onClick={saveWorkout}
+              >
+                {hasAnyLoggedSet
+                  ? "Complete Workout"
+                  : totalSets > 0
+                  ? `${doneSets} / ${totalSets} sets done`
+                  : "Complete Workout"}
+              </button>
+            );
+          })()}
 
           {workoutSaveMessage ? (
             <div className="card" style={{ background: "#F0FDF4", color: "#059669" }}>

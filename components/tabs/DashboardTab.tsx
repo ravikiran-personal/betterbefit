@@ -186,7 +186,17 @@ export function DashboardTab({
           );
         })()}
 
-        <div className="priority-footer">Tap check-in to log today&apos;s data</div>
+        <div className="priority-footer">
+          {(proteinTarget - (effectiveProtein ?? 0)) > 20
+            ? "Open Nutrition to log a meal"
+            : (stepTarget - (displaySteps ?? 0)) > 2000
+            ? "Open Check-in to log steps"
+            : workoutCompletion < 50
+            ? "Open Train to log your session"
+            : (effectiveCalories !== null && effectiveCalories > targetCalories + 150)
+            ? "Open Nutrition to trim a meal"
+            : null}
+        </div>
       </section>
     </div>
   );

@@ -67,10 +67,8 @@ export function CheckInTab({
             const isOpen = !!expandedDays[`checkin-${row.date}-${index}`];
             const hasWeight = numberOrNull(row.weight) !== null;
             const hasSteps = numberOrNull(row.steps) !== null;
-            const hasCalories = numberOrNull(row.calories) !== null;
-            const hasProtein = numberOrNull(row.protein) !== null;
-            const hasAnyMetric = hasWeight || hasSteps || hasCalories || hasProtein;
-            const isComplete = hasWeight && (hasSteps || hasCalories || hasProtein);
+            const hasAnyMetric = hasWeight || hasSteps;
+            const isComplete = hasWeight && hasSteps;
             const statusColor = isComplete ? "#059669" : hasAnyMetric ? "#D97706" : "#D1D5DB";
             const isToday = row.date === todayStr;
 
@@ -105,8 +103,7 @@ export function CheckInTab({
                       {hasAnyMetric
                         ? [
                             hasWeight ? `${row.weight} kg` : null,
-                            hasSteps ? `${row.steps} steps` : null,
-                            hasProtein ? `${row.protein}g protein` : null
+                            hasSteps ? `${row.steps} steps` : null
                           ].filter(Boolean).join(" · ")
                         : "No data logged"}
                     </div>
@@ -129,12 +126,7 @@ export function CheckInTab({
                       <Field label="Cardio (min)">
                         <NumericInput value={row.cardioMinutes} onChange={(v) => updateDaily(index, "cardioMinutes", v)} />
                       </Field>
-                      <Field label="Calories">
-                        <NumericInput value={row.calories} onChange={(v) => updateDaily(index, "calories", v)} />
-                      </Field>
-                      <Field label="Protein (g)">
-                        <NumericInput value={row.protein} onChange={(v) => updateDaily(index, "protein", v)} />
-                      </Field>
+
                     </div>
                     <div style={{ marginTop: 10 }}>
                       <Field label="Date">
