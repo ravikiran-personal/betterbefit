@@ -233,6 +233,7 @@ const foodGramsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   >({});
   const [workoutSaveMessage, setWorkoutSaveMessage] = useState("");
   const [expandedAlternates, setExpandedAlternates] = useState<Record<string, boolean>>({});
+  const [exerciseNameOverrides, setExerciseNameOverrides] = useState<Record<string, string>>({});
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
   const [settingsStep, setSettingsStep] = useState<"profile" | "plan">("profile");
   const [mealSuggestions, setMealSuggestions] = useState<MealSuggestion[]>([]);
@@ -404,17 +405,44 @@ const foodsForSelectedDate = state.foods.filter((food) => {
     }));
   }, [nutritionHistory]);
   
+  const todaySavedWorkout = state.workoutHistory.find(
+    (s) => s.date === todayStr && (s.completion === "completed" || s.completion === "partial")
+  );
+
+  const streakDays = getCurrentStreak(state.dailyLogs);
+
+  const generatedPlan = useMemo(() => generateFitnessPlan(state.settings), [state.settings]);
+  const splitPlan = useMemo(() => getLocalSplitPlan(state.settings), [state.settings]);
+  const todayWorkout = useMemo(
+    () =>
+      getTodaysWorkoutType({
+        splitPlan,
+        workoutHistory: state.workoutHistory,
+        todayDate: getLocalDateISO()
+      }),
+    [splitPlan, state.workoutHistory]
+  );
+  const fullPlan = generatedPlan.workout;
+  const todaysExercises = useMemo(
+    () => fullPlan.exercises.filter((exercise) => exercise.day === todayWorkout.dayType),
+    [fullPlan.exercises, todayWorkout.dayType]
+  );
+  const loggedExerciseCount = todaysExercises.filter((exercise) => {
+    const currentName = exerciseNameOverrides[exercise.exercise] || exercise.exercise;
+    const logs = exerciseLogs[currentName] || [];
+    return logs.some((set) => set.done);
+  }).length;
+  const hasAnyLoggedSet = Object.values(exerciseLogs).some((sets) => sets.some((set) => set.done));
+
   const workoutCompletion = useMemo(() => {
-    const filled = state.workoutLogs.filter(
-      (x) =>
-        x.notes.trim() !== "" ||
-        x.workoutSets?.some((set) => set.weight !== "" || set.reps !== "" || set.rpe !== "") ||
-        x.weight !== "" ||
-        x.repsDone !== "" ||
-        x.rpe !== ""
-    ).length;
-    return Math.round((filled / state.workoutLogs.length) * 100);
-  }, [state.workoutLogs]);
+    if (todaysExercises.length === 0) return 0;
+    const doneSets = Object.values(exerciseLogs).reduce(
+      (sum, sets) => sum + sets.filter((s) => s.done).length,
+      0
+    );
+    const totalSets = Object.values(exerciseLogs).reduce((sum, sets) => sum + sets.length, 0);
+    return totalSets > 0 ? Math.round((doneSets / totalSets) * 100) : 0;
+  }, [exerciseLogs, todaysExercises.length]);
 
   const recommendation = getRecommendation({
     avgCalories,
@@ -443,30 +471,6 @@ const foodsForSelectedDate = state.foods.filter((food) => {
     workoutCompletion
   });
 
-  const streakDays = getCurrentStreak(state.dailyLogs);
-
-  const generatedPlan = useMemo(() => generateFitnessPlan(state.settings), [state.settings]);
-  const splitPlan = useMemo(() => getLocalSplitPlan(state.settings), [state.settings]);
-  const todayWorkout = useMemo(
-    () =>
-      getTodaysWorkoutType({
-        splitPlan,
-        workoutHistory: state.workoutHistory,
-        todayDate: getLocalDateISO()
-      }),
-    [splitPlan, state.workoutHistory]
-  );
-  const fullPlan = generatedPlan.workout;
-  const todaysExercises = useMemo(
-    () => fullPlan.exercises.filter((exercise) => exercise.day === todayWorkout.dayType),
-    [fullPlan.exercises, todayWorkout.dayType]
-  );
-  const loggedExerciseCount = todaysExercises.filter((exercise) => {
-    const logs = exerciseLogs[exercise.exercise] || [];
-    return logs.some((set) => set.done);
-  }).length;
-  const hasAnyLoggedSet = Object.values(exerciseLogs).some((sets) => sets.some((set) => set.done));
-
   const currentStreak = streakDays;
 
   const todayDailyLog = state.dailyLogs.find(d => d.date === todayStr);
@@ -476,8 +480,8 @@ const foodsForSelectedDate = state.foods.filter((food) => {
   const dailyTasks = [
     {
       id: "workout",
-      done: todayWorkout.isRestDay || workoutCompletion >= 80,
-      label: todayWorkout.isRestDay ? "Rest Day ✓" : `${todayWorkout.dayType} workout`,
+      done: todayWorkout.isRestDay || !!todaySavedWorkout || workoutCompletion >= 80,
+      label: todayWorkout.isRestDay ? "Rest day" : `${todayWorkout.dayType} workout`,
       tab: "workouts" as const
     },
     {
@@ -526,8 +530,9 @@ const foodsForSelectedDate = state.foods.filter((food) => {
       const nextLogs: Record<string, Array<{ weight: string; reps: string; done: boolean }>> = {};
 
       todaysExercises.forEach((exercise) => {
-        nextLogs[exercise.exercise] =
-          prev[exercise.exercise] ||
+        const currentName = exerciseNameOverrides[exercise.exercise] || exercise.exercise;
+        nextLogs[currentName] =
+          prev[currentName] ||
           Array.from({ length: exercise.sets }).map(() => ({
             weight: "",
             reps: "",
@@ -537,7 +542,7 @@ const foodsForSelectedDate = state.foods.filter((food) => {
 
       return nextLogs;
     });
-  }, [todaysExercises]);
+  }, [todaysExercises, exerciseNameOverrides]);
 
   useEffect(() => {
     if (missedWorkoutState !== "idle") return;
@@ -1526,7 +1531,8 @@ async function addMealDraft() {
 
   function saveWorkout() {
     const loggedExercises = todaysExercises.reduce<ExerciseLog[]>((acc, exercise) => {
-      const loggedSets: WorkoutSet[] = (exerciseLogs[exercise.exercise] || [])
+      const currentName = exerciseNameOverrides[exercise.exercise] || exercise.exercise;
+      const loggedSets: WorkoutSet[] = (exerciseLogs[currentName] || [])
         .filter((set) => set.done)
         .map((set) => ({
           id: cryptoSafeId(),
@@ -1544,7 +1550,7 @@ async function addMealDraft() {
         day: exercise.day,
         dayLabel: exercise.dayLabel,
         pattern: exercise.pattern,
-        exercise: exercise.exercise,
+        exercise: currentName,
         alternates: exercise.alternates,
         sets: loggedSets.length,
         targetReps: exercise.targetReps,
@@ -1578,7 +1584,7 @@ async function addMealDraft() {
     }));
 
     setWorkoutSaveMessage("Session saved. 🔥");
-
+    setExerciseNameOverrides({});
     setExerciseLogs(
       Object.fromEntries(
         todaysExercises.map((exercise) => [
@@ -1782,9 +1788,9 @@ async function addMealDraft() {
               <p>{todayDisplayDate}</p>
             </div>
 
-            <div className="today-streak-pill" style={{ color: currentStreak > 0 ? "#059669" : "#9CA3AF" }}>
-              {currentStreak > 0 ? `${currentStreak} day streak` : "Start your streak"}
-            </div>
+            {currentStreak > 0 ? (
+              <div className="today-streak-pill">{currentStreak} day streak</div>
+            ) : null}
           </section>
 
           <section className="day-score-card">
@@ -2004,7 +2010,8 @@ async function addMealDraft() {
               ) : null}
 
               {todaysExercises.map((exercise) => {
-                const sets = exerciseLogs[exercise.exercise] || [];
+                const currentName = exerciseNameOverrides[exercise.exercise] || exercise.exercise;
+                const sets = exerciseLogs[currentName] || [];
                 const allSetsDone = sets.length > 0 && sets.every((set) => set.done);
                 const alternatesOpen = !!expandedAlternates[exercise.exercise];
 
@@ -2033,7 +2040,7 @@ async function addMealDraft() {
                         fontWeight: 600
                       }}
                     >
-                      {exercise.exercise}
+                      {currentName}
                     </h3>
 
                     <div style={{ color: "#059669", fontWeight: 700, fontSize: 13 }}>
@@ -2056,23 +2063,18 @@ async function addMealDraft() {
 
                     {alternatesOpen ? (
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
-                        {exercise.alternates.map((alternate) => (
+                        {[exercise.exercise, ...exercise.alternates]
+                          .filter((name) => name !== currentName)
+                          .map((alternate) => (
                           <button
                             key={alternate}
                             type="button"
                             onClick={() => {
-                              setState(prev => ({
-                                ...prev,
-                                workoutLogs: prev.workoutLogs.map(log =>
-                                  log.exercise === exercise.exercise
-                                    ? { ...log, exercise: alternate }
-                                    : log
-                                )
-                              }));
+                              setExerciseNameOverrides(prev => ({ ...prev, [exercise.exercise]: alternate }));
                               setExerciseLogs(prev => {
-                                const old = prev[exercise.exercise] || [];
+                                const old = prev[currentName] || [];
                                 const next = { ...prev };
-                                delete next[exercise.exercise];
+                                delete next[currentName];
                                 next[alternate] = old;
                                 return next;
                               });
@@ -2097,7 +2099,7 @@ async function addMealDraft() {
                     <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
                       {sets.map((set, setIndex) => (
                         <div
-                          key={`${exercise.exercise}-${setIndex}`}
+                          key={`${currentName}-${setIndex}`}
                           style={{
                             display: "grid",
                             gridTemplateColumns: "70px 1fr 1fr 44px",
@@ -2114,10 +2116,9 @@ async function addMealDraft() {
                             value={set.weight}
                             onChange={(e) => {
                               const value = e.target.value.replace(/[^0-9.]/g, "");
-
                               setExerciseLogs((prev) => ({
                                 ...prev,
-                                [exercise.exercise]: (prev[exercise.exercise] || []).map((row, index) =>
+                                [currentName]: (prev[currentName] || []).map((row, index) =>
                                   index === setIndex ? { ...row, weight: value } : row
                                 )
                               }));
@@ -2131,10 +2132,9 @@ async function addMealDraft() {
                             value={set.reps}
                             onChange={(e) => {
                               const value = e.target.value.replace(/[^0-9]/g, "");
-
                               setExerciseLogs((prev) => ({
                                 ...prev,
-                                [exercise.exercise]: (prev[exercise.exercise] || []).map((row, index) =>
+                                [currentName]: (prev[currentName] || []).map((row, index) =>
                                   index === setIndex ? { ...row, reps: value } : row
                                 )
                               }));
@@ -2154,7 +2154,7 @@ async function addMealDraft() {
                             onClick={() => {
                               setExerciseLogs((prev) => ({
                                 ...prev,
-                                [exercise.exercise]: (prev[exercise.exercise] || []).map((row, index) =>
+                                [currentName]: (prev[currentName] || []).map((row, index) =>
                                   index === setIndex ? { ...row, done: !row.done } : row
                                 )
                               }));
@@ -2218,10 +2218,10 @@ async function addMealDraft() {
                               {session.totalVolume} total volume
                             </div>
                           </div>
-                          <div style={{ display: "flex", gap: 8 }}>
+                          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
                             <button
                               className="btn secondary"
-                              style={{ padding: "4px 10px", fontSize: 12, minHeight: "auto" }}
+                              style={{ width: 52, padding: 0, fontSize: 12, minHeight: 32, height: 32 }}
                               onClick={() => setExpandedHistoryId(isExpanded ? null : session.id)}
                             >
                               {isExpanded ? "Hide" : "View"}
@@ -2229,7 +2229,7 @@ async function addMealDraft() {
                             {!todayWorkout.isRestDay && session.exercises.length > 0 ? (
                               <button
                                 className="btn secondary"
-                                style={{ padding: "4px 10px", fontSize: 12, minHeight: "auto" }}
+                                style={{ width: 52, padding: 0, fontSize: 12, minHeight: 32, height: 32 }}
                                 onClick={() => loadWorkoutSession(session)}
                               >
                                 Load
