@@ -20,9 +20,9 @@ interface DashboardTabProps {
   proteinTarget: number;
   stepTarget: number;
   targetCalories: number;
-  todayWeight: string | number | "";
-  todaySteps: string | number | "";
-  updateTodayMetric: (key: "weight" | "steps", value: string | number | "") => void;
+  todayWeight: number | "";
+  todaySteps: number | "";
+  updateTodayMetric: (key: "weight" | "steps", value: number | "") => void;
   setTab: (tab: Tab) => void;
 }
 

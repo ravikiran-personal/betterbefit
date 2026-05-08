@@ -764,7 +764,7 @@ setIsCalculatingTargets(false);
     });
   }
 
-  function updateTodayMetric(key: "weight" | "steps", value: string | number | "") {
+  function updateTodayMetric(key: "weight" | "steps", value: number | "") {
     const todayIndex = state.dailyLogs.findIndex(d => d.date === todayStr);
     if (todayIndex >= 0) {
       updateDaily(todayIndex, key, value);
