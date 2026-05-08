@@ -1,0 +1,1342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BetterBeFit — Interaction Prototype</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #F8F9FA;
+      --white: #FFFFFF;
+      --green: #059669;
+      --amber: #D97706;
+      --text: #111827;
+      --text-light: #6B7280;
+      --text-muted: #9CA3AF;
+      --border: #E5E7EB;
+      --border-input: #D1D5DB;
+      --bg-subtle: #F3F4F6;
+      --bg-faint: #F9FAFB;
+      --radius-card: 22px;
+      --radius-btn: 12px;
+      --radius-pill: 999px;
+      --shadow-card: 0 1px 3px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
+    }
+
+    html, body {
+      font-family: 'Lexend', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ===== PROTO NAV ===== */
+    .proto-nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      background: rgba(255,255,255,0.96);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+      z-index: 1000;
+      padding: 12px 16px 10px;
+    }
+
+    .proto-nav-title {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .proto-tabs {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .proto-tabs::-webkit-scrollbar { display: none; }
+
+    .proto-tab {
+      flex: 0 0 auto;
+      padding: 7px 14px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 150ms ease;
+      white-space: nowrap;
+    }
+
+    .proto-tab.active {
+      background: var(--text);
+      color: white;
+      border-color: var(--text);
+    }
+
+    .demo-wrapper {
+      padding-top: 88px;
+      min-height: 100vh;
+    }
+
+    .demo-section {
+      display: none;
+      max-width: 420px;
+      margin: 0 auto;
+      padding: 20px 16px 100px;
+    }
+
+    .demo-section.active { display: block; }
+
+    .demo-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--green);
+      margin-bottom: 6px;
+    }
+
+    .demo-title {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .demo-desc {
+      font-size: 13px;
+      color: var(--text-light);
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+
+    /* ===== SHARED ===== */
+    .card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      padding: 20px;
+      box-shadow: var(--shadow-card);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 13px 20px;
+      border-radius: var(--radius-btn);
+      border: 0;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      min-height: 48px;
+      transition: opacity 120ms ease, transform 80ms ease;
+    }
+
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: var(--green); color: white; }
+    .btn-secondary { background: var(--bg-subtle); color: var(--text); border: 1px solid var(--border-input); }
+    .btn-full { width: 100%; }
+
+    .input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--border-input);
+      border-radius: var(--radius-btn);
+      background: var(--white);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 15px;
+      min-height: 48px;
+      transition: border-color 120ms ease, box-shadow 120ms ease;
+    }
+
+    .input:focus {
+      outline: none;
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(5,150,105,0.12);
+    }
+
+    .label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .field { display: grid; gap: 6px; }
+
+    /* ================================================
+       DEMO A — BOTTOM SHEET
+    ================================================ */
+
+    .nutrition-pill {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      padding: 18px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: var(--shadow-card);
+    }
+
+    .nutrition-pill strong {
+      display: block;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .nutrition-pill span {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 3px;
+      display: block;
+    }
+
+    .log-meal-btn {
+      padding: 10px 16px;
+      border-radius: var(--radius-pill);
+      background: var(--green);
+      color: white;
+      border: 0;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* Backdrop */
+    .sheet-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0);
+      backdrop-filter: blur(0px);
+      -webkit-backdrop-filter: blur(0px);
+      z-index: 100;
+      pointer-events: none;
+      transition: background 300ms ease, backdrop-filter 300ms ease;
+    }
+
+    .sheet-backdrop.open {
+      background: rgba(0,0,0,0.42);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      pointer-events: auto;
+    }
+
+    /* Sheet */
+    .bottom-sheet {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      max-height: 88vh;
+      background: white;
+      border-radius: 24px 24px 0 0;
+      z-index: 101;
+      transform: translateY(100%);
+      transition: transform 300ms cubic-bezier(0.32, 0.72, 0, 1);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+
+    .bottom-sheet.open {
+      transform: translateY(0);
+    }
+
+    .sheet-handle-row {
+      display: flex;
+      justify-content: center;
+      padding: 12px 0 4px;
+      cursor: grab;
+    }
+
+    .sheet-handle {
+      width: 36px;
+      height: 4px;
+      border-radius: 999px;
+      background: #D1D5DB;
+    }
+
+    .sheet-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 20px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sheet-header h2 {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .sheet-close {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      background: var(--bg-subtle);
+      border: 0;
+      font-size: 16px;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      color: var(--text-light);
+      font-family: inherit;
+    }
+
+    .sheet-body {
+      padding: 20px;
+      display: grid;
+      gap: 16px;
+      padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .meal-chip-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .meal-chip {
+      padding: 6px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--border-input);
+      background: white;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-light);
+      cursor: pointer;
+      transition: all 120ms ease;
+    }
+
+    .meal-chip.selected {
+      background: var(--text);
+      color: white;
+      border-color: var(--text);
+    }
+
+    .macro-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .macro-cell {
+      background: var(--bg-faint);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 6px;
+      text-align: center;
+    }
+
+    .macro-val {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      display: block;
+    }
+
+    .macro-lbl {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 2px;
+      display: block;
+    }
+
+    /* ================================================
+       DEMO B — TASK CARD COMPLETION
+    ================================================ */
+
+    .task-list { display: grid; gap: 10px; }
+
+    .task-card {
+      width: 100%;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--border-input);
+      border-radius: 16px;
+      padding: 16px;
+      display: grid;
+      grid-template-columns: 26px 1fr 20px;
+      align-items: center;
+      gap: 12px;
+      text-align: left;
+      cursor: pointer;
+      font-family: inherit;
+      transition: border-left-color 280ms ease, background 280ms ease;
+    }
+
+    .task-card.done {
+      border-left-color: var(--green);
+    }
+
+    .task-card.completing {
+      animation: taskPulse 420ms ease forwards;
+    }
+
+    @keyframes taskPulse {
+      0%   { box-shadow: 0 0 0 0 rgba(5,150,105,0.4); }
+      45%  { box-shadow: 0 0 0 7px rgba(5,150,105,0.1); }
+      100% { box-shadow: 0 0 0 0 rgba(5,150,105,0); }
+    }
+
+    .task-check {
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      border: 1.5px solid var(--border-input);
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      font-weight: 800;
+      color: transparent;
+      background: transparent;
+      transition: background 280ms ease, border-color 280ms ease, color 200ms ease;
+      flex-shrink: 0;
+    }
+
+    .task-card.done .task-check {
+      background: var(--green);
+      border-color: var(--green);
+      color: white;
+    }
+
+    .task-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      transition: color 280ms ease;
+    }
+
+    .task-card.done .task-label {
+      color: var(--text-muted);
+    }
+
+    .task-arrow {
+      font-size: 20px;
+      color: var(--text-muted);
+      line-height: 1;
+    }
+
+    .reset-btn {
+      margin-top: 16px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: white;
+      font-family: inherit;
+      font-size: 12px;
+      color: var(--text-light);
+      cursor: pointer;
+    }
+
+    /* ================================================
+       DEMO C — TAB TRANSITION
+    ================================================ */
+
+    .app-shell {
+      position: relative;
+      background: var(--bg);
+      border-radius: 28px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-card);
+      overflow: hidden;
+      min-height: 460px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .app-screen-wrap {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .app-screen {
+      position: absolute;
+      inset: 0;
+      padding: 20px;
+      display: none;
+      flex-direction: column;
+      gap: 14px;
+      overflow-y: auto;
+    }
+
+    .app-screen.current { display: flex; }
+
+    .app-screen.slide-out-left  { display: flex; animation: slideOutLeft  150ms ease forwards; }
+    .app-screen.slide-in-right  { display: flex; animation: slideInRight  150ms ease forwards; }
+    .app-screen.slide-out-right { display: flex; animation: slideOutRight 150ms ease forwards; }
+    .app-screen.slide-in-left   { display: flex; animation: slideInLeft   150ms ease forwards; }
+
+    @keyframes slideOutLeft  { from { transform: translateX(0);    opacity: 1; } to { transform: translateX(-24%); opacity: 0; } }
+    @keyframes slideInRight  { from { transform: translateX(24%);  opacity: 0; } to { transform: translateX(0);    opacity: 1; } }
+    @keyframes slideOutRight { from { transform: translateX(0);    opacity: 1; } to { transform: translateX(24%);  opacity: 0; } }
+    @keyframes slideInLeft   { from { transform: translateX(-24%); opacity: 0; } to { transform: translateX(0);    opacity: 1; } }
+
+    .screen-h1 {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .screen-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .ex-pill {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 13px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .ex-pill-name { font-size: 14px; font-weight: 600; }
+    .ex-pill-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+    .ex-pill-badge {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+      background: var(--bg-subtle);
+      padding: 4px 10px;
+      border-radius: 999px;
+      flex-shrink: 0;
+    }
+
+    .app-tab-bar {
+      display: flex;
+      background: white;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .app-tab-btn {
+      flex: 1;
+      padding: 10px 0 12px;
+      border: none;
+      background: transparent;
+      font-family: inherit;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      transition: color 120ms ease;
+    }
+
+    .app-tab-btn.active { color: var(--green); }
+    .app-tab-btn .ico { font-size: 18px; line-height: 1; }
+
+    /* ================================================
+       DEMO D — STREAK CELEBRATION
+    ================================================ */
+
+    .checkin-mock {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      padding: 20px;
+      margin-bottom: 12px;
+    }
+
+    .checkin-mock-title {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 14px;
+    }
+
+    .mock-metric-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .mock-metric {
+      flex: 1;
+      background: var(--bg-faint);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 8px;
+      text-align: center;
+    }
+
+    .mock-metric .val {
+      font-size: 18px;
+      font-weight: 700;
+      display: block;
+    }
+
+    .mock-metric .lbl {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 2px;
+    }
+
+    .streak-control {
+      margin-top: 16px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .streak-control .ico { font-size: 24px; line-height: 1; flex-shrink: 0; }
+
+    .streak-control-body { flex: 1; }
+
+    .streak-control-body strong {
+      font-size: 14px;
+      font-weight: 700;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .streak-control-body small {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    input[type="range"] {
+      display: block;
+      margin-top: 8px;
+      width: 100%;
+      accent-color: var(--green);
+    }
+
+    /* Streak overlay */
+    .streak-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 500;
+      background: rgba(0,0,0,0);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      pointer-events: none;
+      opacity: 0;
+    }
+
+    .streak-overlay.fire {
+      animation: streakFade 1.2s ease forwards;
+      pointer-events: auto;
+    }
+
+    @keyframes streakFade {
+      0%   { opacity: 0; background: rgba(0,0,0,0); }
+      12%  { opacity: 1; background: rgba(0,0,0,0.68); }
+      72%  { opacity: 1; background: rgba(0,0,0,0.68); }
+      100% { opacity: 0; background: rgba(0,0,0,0); }
+    }
+
+    .streak-emoji {
+      font-size: 88px;
+      line-height: 1;
+      animation: popIn 0.38s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.08s both;
+    }
+
+    .streak-headline {
+      font-size: 34px;
+      font-weight: 800;
+      color: white;
+      letter-spacing: -0.03em;
+      text-shadow: 0 2px 16px rgba(0,0,0,0.25);
+      animation: slideUp 0.3s ease 0.28s both;
+    }
+
+    .streak-tagline {
+      font-size: 15px;
+      color: rgba(255,255,255,0.72);
+      font-weight: 500;
+      animation: slideUp 0.3s ease 0.4s both;
+    }
+
+    @keyframes popIn {
+      from { transform: scale(0.15); opacity: 0; }
+      to   { transform: scale(1);    opacity: 1; }
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(14px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+
+    /* ================================================
+       DEMO E — SET COMPLETION
+    ================================================ */
+
+    .workout-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      overflow: hidden;
+      box-shadow: var(--shadow-card);
+    }
+
+    .workout-card-head {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .workout-card-head .ex-name {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .workout-card-head .ex-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    .set-list { display: grid; }
+
+    .set-row {
+      display: grid;
+      grid-template-columns: 44px 1fr 1fr 48px;
+      gap: 10px;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--bg-faint);
+      transition: background 220ms ease;
+    }
+
+    .set-row.done-row { background: rgba(5,150,105,0.05); }
+
+    .set-row.completing-row { animation: rowFlash 340ms ease forwards; }
+
+    @keyframes rowFlash {
+      0%   { background: rgba(5,150,105,0); }
+      35%  { background: rgba(5,150,105,0.14); }
+      100% { background: rgba(5,150,105,0.05); }
+    }
+
+    .set-num {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      text-align: center;
+    }
+
+    .set-input {
+      padding: 8px 10px;
+      border: 1px solid var(--border-input);
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 14px;
+      text-align: center;
+      background: white;
+      color: var(--text);
+      transition: border-color 180ms ease, background 180ms ease, color 180ms ease;
+      min-height: 40px;
+    }
+
+    .set-input:focus {
+      outline: none;
+      border-color: var(--green);
+      box-shadow: 0 0 0 2px rgba(5,150,105,0.1);
+    }
+
+    .set-input.locked {
+      background: var(--bg-faint);
+      color: var(--text-muted);
+      border-color: transparent;
+      pointer-events: none;
+    }
+
+    .set-check-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      border: 2px solid var(--border-input);
+      background: white;
+      color: transparent;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: background 200ms ease, border-color 200ms ease, color 160ms ease;
+      font-family: inherit;
+      flex-shrink: 0;
+    }
+
+    .set-check-btn:active { transform: scale(0.88); }
+
+    .set-check-btn.done {
+      background: var(--green);
+      border-color: var(--green);
+      color: white;
+      animation: checkPop 220ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes checkPop {
+      0%   { transform: scale(0.65); }
+      55%  { transform: scale(1.18); }
+      100% { transform: scale(1); }
+    }
+
+    .save-row {
+      padding: 16px;
+    }
+
+    .save-row .btn:disabled {
+      opacity: 0.38;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .save-message {
+      margin-top: 10px;
+      font-size: 13px;
+      color: var(--green);
+      font-weight: 600;
+      text-align: center;
+      min-height: 20px;
+      opacity: 0;
+      transition: opacity 200ms ease;
+    }
+
+    .save-message.visible { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<!-- ===== PROTO NAV ===== -->
+<nav class="proto-nav">
+  <p class="proto-nav-title">BetterBeFit · Interaction Prototype</p>
+  <div class="proto-tabs" role="tablist">
+    <button class="proto-tab active" data-demo="a" role="tab">A · Bottom sheet</button>
+    <button class="proto-tab" data-demo="b" role="tab">B · Task card</button>
+    <button class="proto-tab" data-demo="c" role="tab">C · Tab transition</button>
+    <button class="proto-tab" data-demo="d" role="tab">D · Streak</button>
+    <button class="proto-tab" data-demo="e" role="tab">E · Set done</button>
+  </div>
+</nav>
+
+<div class="demo-wrapper">
+
+  <!-- ================================================
+       DEMO A — BOTTOM SHEET
+  ================================================ -->
+  <div id="demo-a" class="demo-section active">
+    <p class="demo-label">Demo A</p>
+    <h2 class="demo-title">Bottom sheet</h2>
+    <p class="demo-desc">Tap "Log meal" to open the sheet. Swipe down or tap the backdrop to dismiss. The backdrop blurs the content behind it.</p>
+
+    <div class="nutrition-pill">
+      <div>
+        <strong>Today&apos;s nutrition</strong>
+        <span>0 / 2,000 kcal logged</span>
+      </div>
+      <button class="log-meal-btn" id="openSheetBtn">+ Log meal</button>
+    </div>
+  </div>
+
+  <!-- Sheet backdrop (global) -->
+  <div class="sheet-backdrop" id="sheetBackdrop"></div>
+
+  <!-- Bottom sheet (global) -->
+  <div class="bottom-sheet" id="bottomSheet" role="dialog" aria-modal="true" aria-label="Log meal">
+    <div class="sheet-handle-row" id="sheetHandleRow">
+      <div class="sheet-handle"></div>
+    </div>
+    <div class="sheet-header">
+      <h2>Log meal</h2>
+      <button class="sheet-close" id="closeSheetBtn" aria-label="Close sheet">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div class="field">
+        <span class="label">Meal</span>
+        <div class="meal-chip-row" id="mealChips">
+          <button class="meal-chip selected">Breakfast</button>
+          <button class="meal-chip">Lunch</button>
+          <button class="meal-chip">Snack</button>
+          <button class="meal-chip">Dinner</button>
+          <button class="meal-chip">Any</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="label" for="foodName">Food name</label>
+        <input id="foodName" class="input" type="text" placeholder="e.g. Chicken breast" />
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label class="label" for="foodGrams">Amount</label>
+          <input id="foodGrams" class="input" type="number" value="100" min="0" />
+        </div>
+        <div class="field">
+          <label class="label" for="foodUnit">Unit</label>
+          <select id="foodUnit" class="input" style="appearance:auto;">
+            <option value="g">g</option>
+            <option value="ml">ml</option>
+            <option value="oz">oz</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <span class="label" style="margin-bottom:10px;">Macros (per serving)</span>
+        <div class="macro-row">
+          <div class="macro-cell"><span class="macro-val">—</span><span class="macro-lbl">kcal</span></div>
+          <div class="macro-cell"><span class="macro-val">—</span><span class="macro-lbl">Protein</span></div>
+          <div class="macro-cell"><span class="macro-val">—</span><span class="macro-lbl">Carbs</span></div>
+          <div class="macro-cell"><span class="macro-val">—</span><span class="macro-lbl">Fat</span></div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-full">Add to log</button>
+    </div>
+  </div>
+
+  <!-- ================================================
+       DEMO B — TASK CARD COMPLETION
+  ================================================ -->
+  <div id="demo-b" class="demo-section">
+    <p class="demo-label">Demo B</p>
+    <h2 class="demo-title">Task card completion</h2>
+    <p class="demo-desc">Tap any card to mark it done. The left border pulses green, the checkmark fills, and the label fades to grey.</p>
+
+    <div class="task-list" id="taskList">
+      <button class="task-card" data-task="workout">
+        <span class="task-check"></span>
+        <span class="task-label">Push workout</span>
+        <span class="task-arrow">›</span>
+      </button>
+      <button class="task-card" data-task="protein">
+        <span class="task-check"></span>
+        <span class="task-label">Protein: 0g / 160g</span>
+        <span class="task-arrow">›</span>
+      </button>
+      <button class="task-card" data-task="calories">
+        <span class="task-check"></span>
+        <span class="task-label">Calories: 0 / 2,000</span>
+        <span class="task-arrow">›</span>
+      </button>
+      <button class="task-card" data-task="steps">
+        <span class="task-check"></span>
+        <span class="task-label">Steps: 0 / 10,000</span>
+        <span class="task-arrow">›</span>
+      </button>
+    </div>
+
+    <button class="reset-btn" id="resetTasksBtn">↺ Reset all</button>
+  </div>
+
+  <!-- ================================================
+       DEMO C — TAB TRANSITION
+  ================================================ -->
+  <div id="demo-c" class="demo-section">
+    <p class="demo-label">Demo C</p>
+    <h2 class="demo-title">Tab transition</h2>
+    <p class="demo-desc">Tap the bottom nav tabs. Going right slides in from the right; going left slides in from the left. 150ms ease.</p>
+
+    <div class="app-shell">
+      <div class="app-screen-wrap">
+
+        <!-- Dashboard -->
+        <div class="app-screen current" id="screen-dashboard">
+          <div>
+            <div class="screen-h1">Good morning 👋</div>
+            <div class="screen-sub">Thursday, 08 May</div>
+          </div>
+          <div class="card" style="text-align:center; padding:28px 20px;">
+            <div style="font-size:52px; font-weight:800; color:var(--green); letter-spacing:-0.04em;">75%</div>
+            <div style="font-size:13px; color:var(--text-muted); margin-top:4px;">3 of 4 tasks done today</div>
+          </div>
+          <div style="background:white; border:1px solid var(--border); border-left:3px solid var(--green); border-radius:16px; padding:14px 16px; font-size:14px; font-weight:600; color:var(--green);">
+            You&apos;re on track. Keep it up.
+          </div>
+        </div>
+
+        <!-- Workouts -->
+        <div class="app-screen" id="screen-workouts">
+          <div>
+            <div class="screen-h1">Push day 💪</div>
+            <div class="screen-sub">5 exercises · 60 min</div>
+          </div>
+          <div style="display:grid; gap:10px;">
+            <div class="ex-pill"><div><div class="ex-pill-name">Incline DB Press</div><div class="ex-pill-meta">3 sets · 6–10 reps</div></div><span class="ex-pill-badge">0/3</span></div>
+            <div class="ex-pill"><div><div class="ex-pill-name">Lateral Raise</div><div class="ex-pill-meta">3 sets · 12–15 reps</div></div><span class="ex-pill-badge">0/3</span></div>
+            <div class="ex-pill"><div><div class="ex-pill-name">Triceps Pushdown</div><div class="ex-pill-meta">3 sets · 10–12 reps</div></div><span class="ex-pill-badge">0/3</span></div>
+          </div>
+        </div>
+
+        <!-- Nutrition -->
+        <div class="app-screen" id="screen-nutrition">
+          <div>
+            <div class="screen-h1">Nutrition 🥗</div>
+            <div class="screen-sub">0 / 2,000 kcal today</div>
+          </div>
+          <div class="card">
+            <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.07em; margin-bottom:14px;">Today&apos;s macros</div>
+            <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px; text-align:center;">
+              <div><div style="font-size:24px;font-weight:800;color:var(--text);">0g</div><div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;">Protein</div></div>
+              <div><div style="font-size:24px;font-weight:800;color:var(--text);">0g</div><div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;">Carbs</div></div>
+              <div><div style="font-size:24px;font-weight:800;color:var(--text);">0g</div><div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;">Fat</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Check-in -->
+        <div class="app-screen" id="screen-checkin">
+          <div>
+            <div class="screen-h1">Check-in 📋</div>
+            <div class="screen-sub">This week</div>
+          </div>
+          <div class="card" style="display:grid; gap:10px;">
+            <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.07em;">Weekly averages</div>
+            <div style="display:flex;justify-content:space-between;font-size:14px;border-bottom:1px solid var(--border);padding-bottom:10px;"><span>Avg weight</span><span style="font-weight:700;color:var(--text-muted);">—</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:14px;border-bottom:1px solid var(--border);padding-bottom:10px;"><span>Avg waist</span><span style="font-weight:700;color:var(--text-muted);">—</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:14px;"><span>Avg steps</span><span style="font-weight:700;color:var(--text-muted);">—</span></div>
+          </div>
+        </div>
+
+        <!-- Settings -->
+        <div class="app-screen" id="screen-settings">
+          <div>
+            <div class="screen-h1">Settings ⚙️</div>
+            <div class="screen-sub">Profile &amp; plan</div>
+          </div>
+          <div class="card" style="display:grid; gap:10px;">
+            <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.07em;">Your profile</div>
+            <div style="display:flex;justify-content:space-between;font-size:14px;border-bottom:1px solid var(--border);padding-bottom:10px;"><span>Goal</span><span style="font-weight:600;">Recomp</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:14px;border-bottom:1px solid var(--border);padding-bottom:10px;"><span>Workouts / week</span><span style="font-weight:600;">4 days</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:14px;"><span>Equipment</span><span style="font-weight:600;">Full gym</span></div>
+          </div>
+        </div>
+
+      </div><!-- /app-screen-wrap -->
+
+      <!-- Fixed tab bar inside app shell -->
+      <div class="app-tab-bar" id="appTabBar">
+        <button class="app-tab-btn active" data-screen="dashboard"><span class="ico">🏠</span><span>Home</span></button>
+        <button class="app-tab-btn" data-screen="workouts"><span class="ico">💪</span><span>Train</span></button>
+        <button class="app-tab-btn" data-screen="nutrition"><span class="ico">🥗</span><span>Eat</span></button>
+        <button class="app-tab-btn" data-screen="checkin"><span class="ico">📋</span><span>Log</span></button>
+        <button class="app-tab-btn" data-screen="settings"><span class="ico">⚙️</span><span>You</span></button>
+      </div>
+    </div>
+
+    <p style="font-size:12px; color:var(--text-muted); margin-top:14px; line-height:1.6; text-align:center;">Going right → slides in from right &nbsp;·&nbsp; Going left ← slides in from left</p>
+  </div>
+
+  <!-- ================================================
+       DEMO D — STREAK CELEBRATION
+  ================================================ -->
+  <div id="demo-d" class="demo-section">
+    <p class="demo-label">Demo D</p>
+    <h2 class="demo-title">Streak celebration</h2>
+    <p class="demo-desc">Tap "Save check-in" to trigger the streak animation. Full-screen overlay, auto-dismisses at 1.2s.</p>
+
+    <div class="checkin-mock">
+      <p class="checkin-mock-title">Today&apos;s check-in</p>
+      <div class="mock-metric-row">
+        <div class="mock-metric"><span class="val">72.4</span><span class="lbl">kg</span></div>
+        <div class="mock-metric"><span class="val">8,200</span><span class="lbl">steps</span></div>
+        <div class="mock-metric"><span class="val">1,840</span><span class="lbl">kcal</span></div>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-full" id="triggerStreakBtn">Save check-in</button>
+
+    <div class="streak-control">
+      <div class="ico">🔥</div>
+      <div class="streak-control-body">
+        <strong>Streak: <span id="streakCount">5</span> days</strong>
+        <small>Adjust for demo</small>
+        <input type="range" min="1" max="30" value="5" id="streakSlider">
+      </div>
+    </div>
+  </div>
+
+  <!-- Streak overlay (global, outside demo section so it covers full viewport) -->
+  <div class="streak-overlay" id="streakOverlay" aria-live="assertive">
+    <div class="streak-emoji">🔥</div>
+    <div class="streak-headline" id="streakHeadline">5 day streak!</div>
+    <div class="streak-tagline">Keep showing up.</div>
+  </div>
+
+  <!-- ================================================
+       DEMO E — SET COMPLETION
+  ================================================ -->
+  <div id="demo-e" class="demo-section">
+    <p class="demo-label">Demo E</p>
+    <h2 class="demo-title">Set completion</h2>
+    <p class="demo-desc">Enter weight + reps, then tap ✓ to lock the set. Tap ✓ again to undo. "Save workout" unlocks when all 3 sets are done.</p>
+
+    <div class="workout-card">
+      <div class="workout-card-head">
+        <div class="ex-name">Incline DB Press</div>
+        <div class="ex-meta">Incline Press · 3 sets · 6–10 reps</div>
+      </div>
+
+      <div class="set-list" id="setList">
+        <div class="set-row" data-set="0">
+          <div class="set-num">Set 1</div>
+          <input class="set-input" type="number" placeholder="kg" min="0" aria-label="Weight kg" />
+          <input class="set-input" type="number" placeholder="reps" min="0" aria-label="Reps" />
+          <button class="set-check-btn" aria-label="Mark set 1 done">✓</button>
+        </div>
+        <div class="set-row" data-set="1">
+          <div class="set-num">Set 2</div>
+          <input class="set-input" type="number" placeholder="kg" min="0" aria-label="Weight kg" />
+          <input class="set-input" type="number" placeholder="reps" min="0" aria-label="Reps" />
+          <button class="set-check-btn" aria-label="Mark set 2 done">✓</button>
+        </div>
+        <div class="set-row" data-set="2">
+          <div class="set-num">Set 3</div>
+          <input class="set-input" type="number" placeholder="kg" min="0" aria-label="Weight kg" />
+          <input class="set-input" type="number" placeholder="reps" min="0" aria-label="Reps" />
+          <button class="set-check-btn" aria-label="Mark set 3 done">✓</button>
+        </div>
+      </div>
+
+      <div class="save-row">
+        <button class="btn btn-primary btn-full" id="saveWorkoutBtn" disabled>Save workout</button>
+        <p class="save-message" id="saveMessage">Workout saved ✓</p>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /demo-wrapper -->
+
+<script>
+// ── Proto nav ──────────────────────────────────────────────────────────────
+document.querySelectorAll('.proto-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.proto-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.demo-section').forEach(s => s.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('demo-' + tab.dataset.demo).classList.add('active');
+  });
+});
+
+// ── DEMO A: Bottom sheet ───────────────────────────────────────────────────
+const sheet      = document.getElementById('bottomSheet');
+const backdrop   = document.getElementById('sheetBackdrop');
+const openBtn    = document.getElementById('openSheetBtn');
+const closeBtn   = document.getElementById('closeSheetBtn');
+
+function openSheet() {
+  sheet.classList.add('open');
+  backdrop.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => closeBtn.focus(), 310);
+}
+
+function closeSheet() {
+  sheet.classList.remove('open');
+  backdrop.classList.remove('open');
+  document.body.style.overflow = '';
+  sheet.style.transform = '';
+  sheet.style.transition = '';
+}
+
+openBtn.addEventListener('click', openSheet);
+closeBtn.addEventListener('click', closeSheet);
+backdrop.addEventListener('click', closeSheet);
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && sheet.classList.contains('open')) closeSheet();
+});
+
+// Meal chip selection
+document.getElementById('mealChips').addEventListener('click', e => {
+  if (!e.target.classList.contains('meal-chip')) return;
+  document.querySelectorAll('.meal-chip').forEach(c => c.classList.remove('selected'));
+  e.target.classList.add('selected');
+});
+
+// Swipe-to-dismiss (touch)
+let startY = 0, lastY = 0, tracking = false;
+
+sheet.addEventListener('touchstart', e => {
+  startY = e.touches[0].clientY;
+  lastY  = startY;
+  tracking = true;
+}, { passive: true });
+
+sheet.addEventListener('touchmove', e => {
+  if (!tracking) return;
+  lastY = e.touches[0].clientY;
+  const delta = lastY - startY;
+  if (delta > 0) {
+    sheet.style.transition = 'none';
+    sheet.style.transform = `translateY(${delta}px)`;
+  }
+}, { passive: true });
+
+sheet.addEventListener('touchend', () => {
+  tracking = false;
+  const delta = lastY - startY;
+  sheet.style.transition = '';
+  if (delta > 90) {
+    closeSheet();
+  } else {
+    sheet.style.transform = '';
+  }
+});
+
+// ── DEMO B: Task card completion ──────────────────────────────────────────
+document.getElementById('taskList').addEventListener('click', e => {
+  const card = e.target.closest('.task-card');
+  if (!card || card.classList.contains('done')) return;
+
+  card.classList.add('completing');
+  card.addEventListener('animationend', () => card.classList.remove('completing'), { once: true });
+  card.classList.add('done');
+  card.querySelector('.task-check').textContent = '✓';
+});
+
+document.getElementById('resetTasksBtn').addEventListener('click', () => {
+  document.querySelectorAll('.task-card').forEach(card => {
+    card.classList.remove('done', 'completing');
+    card.querySelector('.task-check').textContent = '';
+  });
+});
+
+// ── DEMO C: Tab transition ────────────────────────────────────────────────
+const screenOrder = ['dashboard', 'workouts', 'nutrition', 'checkin', 'settings'];
+let currentScreen = 'dashboard';
+
+document.getElementById('appTabBar').addEventListener('click', e => {
+  const btn = e.target.closest('.app-tab-btn');
+  if (!btn) return;
+  const target = btn.dataset.screen;
+  if (target === currentScreen) return;
+
+  const goingForward = screenOrder.indexOf(target) > screenOrder.indexOf(currentScreen);
+  const outClass = goingForward ? 'slide-out-left'  : 'slide-out-right';
+  const inClass  = goingForward ? 'slide-in-right'  : 'slide-in-left';
+
+  const outEl = document.getElementById('screen-' + currentScreen);
+  const inEl  = document.getElementById('screen-' + target);
+
+  outEl.classList.remove('current');
+  outEl.classList.add(outClass);
+  outEl.addEventListener('animationend', () => outEl.classList.remove(outClass), { once: true });
+
+  inEl.classList.add(inClass);
+  inEl.addEventListener('animationend', () => {
+    inEl.classList.remove(inClass);
+    inEl.classList.add('current');
+  }, { once: true });
+
+  document.querySelectorAll('.app-tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentScreen = target;
+});
+
+// ── DEMO D: Streak celebration ────────────────────────────────────────────
+const streakSlider   = document.getElementById('streakSlider');
+const streakCount    = document.getElementById('streakCount');
+const streakHeadline = document.getElementById('streakHeadline');
+const streakOverlay  = document.getElementById('streakOverlay');
+
+function syncStreak() {
+  const v = streakSlider.value;
+  streakCount.textContent = v;
+  streakHeadline.textContent = `${v} day streak!`;
+}
+
+streakSlider.addEventListener('input', syncStreak);
+
+document.getElementById('triggerStreakBtn').addEventListener('click', () => {
+  syncStreak();
+  streakOverlay.classList.remove('fire');
+  void streakOverlay.offsetWidth; // force reflow to restart animation
+  streakOverlay.classList.add('fire');
+  setTimeout(() => streakOverlay.classList.remove('fire'), 1200);
+});
+
+// ── DEMO E: Set completion ────────────────────────────────────────────────
+const saveBtn     = document.getElementById('saveWorkoutBtn');
+const saveMessage = document.getElementById('saveMessage');
+const setRows     = document.querySelectorAll('.set-row');
+
+function refreshSaveBtn() {
+  const allDone = [...setRows].every(r => r.classList.contains('done-row'));
+  saveBtn.disabled = !allDone;
+}
+
+setRows.forEach(row => {
+  const checkBtn = row.querySelector('.set-check-btn');
+  const inputs   = row.querySelectorAll('.set-input');
+
+  checkBtn.addEventListener('click', () => {
+    if (row.classList.contains('done-row')) {
+      // undo
+      row.classList.remove('done-row');
+      checkBtn.classList.remove('done');
+      inputs.forEach(inp => inp.classList.remove('locked'));
+    } else {
+      // complete
+      row.classList.add('completing-row');
+      row.addEventListener('animationend', () => row.classList.remove('completing-row'), { once: true });
+      row.classList.add('done-row');
+      checkBtn.classList.add('done');
+      inputs.forEach(inp => inp.classList.add('locked'));
+    }
+    refreshSaveBtn();
+  });
+});
+
+saveBtn.addEventListener('click', () => {
+  if (saveBtn.disabled) return;
+  saveMessage.classList.add('visible');
+  setTimeout(() => saveMessage.classList.remove('visible'), 2200);
+});
+</script>
+
+</body>
+</html>

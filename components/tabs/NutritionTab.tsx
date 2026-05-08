@@ -4,6 +4,7 @@ import { getLocalDateISO, formatDisplayDate } from "../../lib/utils";
 import { NumericInput } from "../numeric-input";
 import { SwipeToDelete } from "../swipe-to-delete";
 import { Field } from "../field";
+import { BottomSheet } from "../bottom-sheet";
 
 interface NutritionTabProps {
   foodTotals: { calories: number; protein: number; carbs: number; fats: number };
@@ -215,110 +216,128 @@ export function NutritionTab({
       />
 
       <section className="compact-section">
-        <button className={`collapse-pill section-pill ${expandedNutritionSections.logMeal ? "open" : ""}`} onClick={() => toggleNutritionSection("logMeal")}>
+        <button className="collapse-pill section-pill" onClick={() => toggleNutritionSection("logMeal")}>
           <div>
             <strong>Log meal</strong>
             <span className="pill-subtext">Add food, grams, calories and macros</span>
           </div>
-          <span className="pill-icon">{expandedNutritionSections.logMeal ? "−" : "+"}</span>
+          <span className="pill-icon">+</span>
         </button>
 
-        {expandedNutritionSections.logMeal ? (
-          <div className="card nutrition-input-card compact-expanded">
-            <div className="meal-log-grid">
-              <Field label="Meal">
-                <select className="input" value={mealDraft.meal} onChange={(e) => updateMealDraft("meal", e.target.value)}>
-                  <option value="Breakfast">Breakfast</option>
-                  <option value="Lunch">Lunch</option>
-                  <option value="Snack">Snack</option>
-                  <option value="Dinner">Dinner</option>
-                  <option value="Coffee">Coffee</option>
-                  <option value="Pre-workout">Pre-workout</option>
-                  <option value="Post-workout">Post-workout</option>
-                  <option value="Custom">Custom</option>
-                </select>
-              </Field>
+        <BottomSheet
+          isOpen={expandedNutritionSections.logMeal}
+          onClose={() => {
+            if (expandedNutritionSections.logMeal) toggleNutritionSection("logMeal");
+          }}
+          title="Log meal"
+        >
+          <div style={{ display: "grid", gap: 14 }}>
+            <Field label="Meal">
+              <select className="input" value={mealDraft.meal} onChange={(e) => updateMealDraft("meal", e.target.value)}>
+                <option value="Breakfast">Breakfast</option>
+                <option value="Lunch">Lunch</option>
+                <option value="Snack">Snack</option>
+                <option value="Dinner">Dinner</option>
+                <option value="Coffee">Coffee</option>
+                <option value="Pre-workout">Pre-workout</option>
+                <option value="Post-workout">Post-workout</option>
+                <option value="Custom">Custom</option>
+              </select>
+            </Field>
 
-              <Field label="Food / meal">
-                <div className="food-autofill">
-                  <input
-                    className="input"
-                    value={mealDraft.food}
-                    placeholder="Type food, e.g. boiled basmati rice"
-                    onChange={(e) => searchMealDraftSuggestions(e.target.value, mealDraft.grams)}
-                    onFocus={() => {
-                      if (mealDraftSuggestions.length === 0 && mealDraft.food.trim().length >= 3) {
-                        searchMealDraftSuggestions(mealDraft.food, mealDraft.grams);
-                      }
-                    }}
-                  />
-                  {isSearchingMealDraft ? (
-                    <div className="food-autofill-status">Searching macros...</div>
-                  ) : null}
-                  {mealDraftSuggestions.length > 0 ? (
-                    <div className="food-suggestion-list">
-                      {mealDraftSuggestions.map((suggestion, suggestionIndex) => (
-                        <button
-                          type="button"
-                          className="food-suggestion"
-                          key={`${suggestion.food}-${suggestionIndex}`}
-                          onClick={() => applyFoodResultToMealDraft(suggestion)}
-                        >
-                          <span>
-                            <strong>{suggestion.food}</strong>
-                            <small>{suggestion.source === "usda" ? "Verified data" : suggestion.source === "local" ? "Verified app data" : suggestion.source === "claude" ? "Estimated (AI)" : suggestion.source === "cache" ? "Cached result" : "Manual fallback"}</small>
-                          </span>
-                          <span className="food-suggestion-macros">
-                            {suggestion.calories} cal | P {suggestion.protein} | C {suggestion.carbs} | F {suggestion.fats}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              </Field>
-
-              <Field label="Amount">
-                <div className="unit-row">
-                  <NumericInput value={mealDraft.grams} onChange={(v) => {
-                    const newGrams = v === "" ? 0 : v;
-                    if (mealDraftBasePer100g && newGrams > 0) {
-                      const f = newGrams / 100;
-                      setMealDraft((prev) => ({
-                        ...prev,
-                        grams: newGrams,
-                        calories: Math.round(mealDraftBasePer100g.calories * f),
-                        protein: Math.round(mealDraftBasePer100g.protein * f * 10) / 10,
-                        carbs: Math.round(mealDraftBasePer100g.carbs * f * 10) / 10,
-                        fats: Math.round(mealDraftBasePer100g.fats * f * 10) / 10
-                      }));
-                    } else {
-                      updateMealDraft("grams", newGrams);
+            <Field label="Food / meal">
+              <div className="food-autofill">
+                <input
+                  className="input"
+                  value={mealDraft.food}
+                  placeholder="Type food, e.g. boiled basmati rice"
+                  onChange={(e) => searchMealDraftSuggestions(e.target.value, mealDraft.grams)}
+                  onFocus={() => {
+                    if (mealDraftSuggestions.length === 0 && mealDraft.food.trim().length >= 3) {
+                      searchMealDraftSuggestions(mealDraft.food, mealDraft.grams);
                     }
-                  }} />
-                  <select className="input unit-select" value={mealDraftUnit} onChange={(e) => setMealDraftUnit(e.target.value as "g" | "ml" | "oz")}>
-                    <option value="g">g</option>
-                    <option value="ml">ml</option>
-                    <option value="oz">oz</option>
-                  </select>
-                </div>
-              </Field>
+                  }}
+                />
+                {isSearchingMealDraft ? (
+                  <div className="food-autofill-status">Searching macros...</div>
+                ) : null}
+                {mealDraftSuggestions.length > 0 ? (
+                  <div className="food-suggestion-list">
+                    {mealDraftSuggestions.map((suggestion, suggestionIndex) => (
+                      <button
+                        type="button"
+                        className="food-suggestion"
+                        key={`${suggestion.food}-${suggestionIndex}`}
+                        onClick={() => applyFoodResultToMealDraft(suggestion)}
+                      >
+                        <span>
+                          <strong>{suggestion.food}</strong>
+                          <small>{suggestion.source === "usda" ? "Verified data" : suggestion.source === "local" ? "Verified app data" : suggestion.source === "claude" ? "Estimated (AI)" : suggestion.source === "cache" ? "Cached result" : "Manual fallback"}</small>
+                        </span>
+                        <span className="food-suggestion-macros">
+                          {suggestion.calories} cal | P {suggestion.protein} | C {suggestion.carbs} | F {suggestion.fats}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            </Field>
 
+            <Field label="Amount">
+              <div className="unit-row">
+                <NumericInput value={mealDraft.grams} onChange={(v) => {
+                  const newGrams = v === "" ? 0 : v;
+                  if (mealDraftBasePer100g && newGrams > 0) {
+                    const f = newGrams / 100;
+                    setMealDraft((prev) => ({
+                      ...prev,
+                      grams: newGrams,
+                      calories: Math.round(mealDraftBasePer100g.calories * f),
+                      protein: Math.round(mealDraftBasePer100g.protein * f * 10) / 10,
+                      carbs: Math.round(mealDraftBasePer100g.carbs * f * 10) / 10,
+                      fats: Math.round(mealDraftBasePer100g.fats * f * 10) / 10
+                    }));
+                  } else {
+                    updateMealDraft("grams", newGrams);
+                  }
+                }} />
+                <select className="input unit-select" value={mealDraftUnit} onChange={(e) => setMealDraftUnit(e.target.value as "g" | "ml" | "oz")}>
+                  <option value="g">g</option>
+                  <option value="ml">ml</option>
+                  <option value="oz">oz</option>
+                </select>
+              </div>
+            </Field>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <Field label="Calories"><NumericInput value={mealDraft.calories} onChange={(v) => updateMealDraft("calories", v === "" ? 0 : v)} /></Field>
               <Field label="Protein"><NumericInput value={mealDraft.protein} onChange={(v) => updateMealDraft("protein", v === "" ? 0 : v)} /></Field>
               <Field label="Carbs"><NumericInput value={mealDraft.carbs} onChange={(v) => updateMealDraft("carbs", v === "" ? 0 : v)} /></Field>
               <Field label="Fat"><NumericInput value={mealDraft.fats} onChange={(v) => updateMealDraft("fats", v === "" ? 0 : v)} /></Field>
+            </div>
 
-              <div className="meal-action-cell">
-                <button className="btn" onClick={addMealDraft}>Add</button>
-                <button className="btn secondary" onClick={() => {
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <button
+                className="btn"
+                style={{ background: "#059669", color: "#FFFFFF", fontWeight: 700, borderRadius: 14, padding: 14 }}
+                onClick={() => { addMealDraft(); if (expandedNutritionSections.logMeal) toggleNutritionSection("logMeal"); }}
+              >
+                Add to log
+              </button>
+              <button
+                className="btn secondary"
+                style={{ borderRadius: 14, padding: 14 }}
+                onClick={() => {
                   setMealDraft({ id: "draft", date: getLocalDateISO(), meal: mealDraft.meal, food: "", grams: 100, calories: 0, protein: 0, carbs: 0, fats: 0 });
                   setMealDraftBasePer100g(null);
-                }}>Clear</button>
-              </div>
+                }}
+              >
+                Clear
+              </button>
             </div>
           </div>
-        ) : null}
+        </BottomSheet>
       </section>
 
       <section className="compact-section">

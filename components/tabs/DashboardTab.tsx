@@ -1,4 +1,6 @@
+import { useState, useEffect, useRef } from "react";
 import type { Tab } from "../../lib/app-types";
+import { NumericInput } from "../numeric-input";
 
 interface DashboardTabProps {
   greeting: string;
@@ -18,6 +20,9 @@ interface DashboardTabProps {
   proteinTarget: number;
   stepTarget: number;
   targetCalories: number;
+  todayWeight: string | number | "";
+  todaySteps: string | number | "";
+  updateTodayMetric: (key: "weight" | "steps", value: string | number | "") => void;
   setTab: (tab: Tab) => void;
 }
 
@@ -39,8 +44,35 @@ export function DashboardTab({
   proteinTarget,
   stepTarget,
   targetCalories,
+  todayWeight,
+  todaySteps,
+  updateTodayMetric,
   setTab
 }: DashboardTabProps) {
+  const [completingIds, setCompletingIds] = useState<Set<string>>(new Set());
+  const prevDoneRef = useRef<Record<string, boolean>>({});
+
+  useEffect(() => {
+    const newlyDone: string[] = [];
+    dailyTasks.forEach((task) => {
+      if (task.done && !prevDoneRef.current[task.id]) {
+        newlyDone.push(task.id);
+      }
+    });
+    prevDoneRef.current = Object.fromEntries(dailyTasks.map((t) => [t.id, t.done]));
+
+    if (newlyDone.length > 0) {
+      setCompletingIds((prev) => new Set([...prev, ...newlyDone]));
+      setTimeout(() => {
+        setCompletingIds((prev) => {
+          const next = new Set(prev);
+          newlyDone.forEach((id) => next.delete(id));
+          return next;
+        });
+      }, 450);
+    }
+  }, [dailyTasks]);
+
   return (
     <div className="today-dashboard">
       <section className="today-header">
@@ -87,7 +119,7 @@ export function DashboardTab({
         {dailyTasks.map((task) => (
           <button
             key={task.id}
-            className={`today-task-card ${task.done ? "done" : ""}`}
+            className={`today-task-card ${task.done ? "done" : ""} ${completingIds.has(task.id) ? "task-completing" : ""}`}
             onClick={() => setTab(task.tab)}
           >
             <span className="today-task-check">{task.done ? "✓" : ""}</span>
@@ -95,6 +127,20 @@ export function DashboardTab({
             <span className="today-task-arrow">›</span>
           </button>
         ))}
+      </section>
+
+      <section className="quick-log-card">
+        <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", color: "#9CA3AF" }}>Today&apos;s log</p>
+        <div className="quick-log-grid">
+          <div>
+            <label className="label">Weight (kg)</label>
+            <NumericInput value={todayWeight} onChange={(v) => updateTodayMetric("weight", v)} />
+          </div>
+          <div>
+            <label className="label">Steps</label>
+            <NumericInput value={todaySteps} onChange={(v) => updateTodayMetric("steps", v)} />
+          </div>
+        </div>
       </section>
 
       <section className="consistency-card" style={{ borderLeftColor: consistencyMsg.color }}>

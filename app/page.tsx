@@ -764,6 +764,18 @@ setIsCalculatingTargets(false);
     });
   }
 
+  function updateTodayMetric(key: "weight" | "steps", value: string | number | "") {
+    const todayIndex = state.dailyLogs.findIndex(d => d.date === todayStr);
+    if (todayIndex >= 0) {
+      updateDaily(todayIndex, key, value);
+    } else {
+      setState((prev) => ({
+        ...prev,
+        dailyLogs: [...prev.dailyLogs, { date: todayStr, [key]: cleanNumber(value) } as DailyLog],
+      }));
+    }
+  }
+
   function updateWorkout(id: string, key: keyof ExerciseLog, value: string | number | "") {
     setState((prev) => ({
       ...prev,
@@ -1793,6 +1805,7 @@ async function addMealDraft() {
   </button>
 </div>
 
+      <div key={tab} className="tab-anim">
       {tab === "dashboard" && (
         <DashboardTab
           greeting={greeting}
@@ -1812,6 +1825,9 @@ async function addMealDraft() {
           proteinTarget={state.settings.proteinTarget}
           stepTarget={state.settings.stepTarget}
           targetCalories={state.settings.targetCalories}
+          todayWeight={todayDailyLog?.weight ?? ""}
+          todaySteps={todayDailyLog?.steps ?? ""}
+          updateTodayMetric={updateTodayMetric}
           setTab={setTab}
         />
       )}
@@ -1924,6 +1940,7 @@ async function addMealDraft() {
           resetAllLogs={resetAllLogs}
         />
       )}
+      </div>
     </main>
   );
 }
