@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { generateFitnessPlan } from "../lib/fitness-engine";
 import { getWeeklyNutritionAdjustment } from "../lib/fitness-engine/intelligence";
 import type { GeneratedExercise } from "../lib/fitness-engine";
-import type { Settings, Sex, Lifestyle, Goal, DayType, SplitPlan, TodayWorkout, MealSuggestion } from "../lib/fitness-engine/types";
+import type { Settings, DayType, SplitPlan, TodayWorkout, MealSuggestion } from "../lib/fitness-engine/types";
 import type { Tab, DailyLog, WorkoutSet, ExerciseLog, FoodItem, MealPreset, FoodSearchResult, WorkoutSession, AppState } from "../lib/app-types";
 import { INDIAN_FOODS } from "../lib/indianFoods";
 import {
@@ -33,8 +33,11 @@ import {
   getNutritionHistoryGroups,
   getRecommendation
 } from "../lib/page-helpers";
-import { NumericInput } from "../components/numeric-input";
-import { SwipeToDelete } from "../components/swipe-to-delete";
+import { DashboardTab } from "../components/tabs/DashboardTab";
+import { WorkoutsTab } from "../components/tabs/WorkoutsTab";
+import { NutritionTab } from "../components/tabs/NutritionTab";
+import { CheckInTab } from "../components/tabs/CheckInTab";
+import { SettingsTab } from "../components/tabs/SettingsTab";
 
 
 const STORAGE_KEY = "recomp-tracker-v2";
@@ -155,7 +158,7 @@ const initialState: AppState = {
   dailyLogs: seedWeekLogs(),
   workoutLogs: seedWorkoutLogs(),
   workoutHistory: [],
-  foods: mealTemplate,
+  foods: [],
   mealPresets: []
 };
 
@@ -1732,6 +1735,16 @@ async function addMealDraft() {
 
   const consistencyMsg = getConsistencyMessage(currentStreak, completedTasks, dailyTasks.length);
 
+  function resetAllLogs() {
+    setState((prev) => ({
+      ...prev,
+      dailyLogs: seedWeekLogs(),
+      workoutLogs: seedWorkoutLogs(),
+      workoutHistory: [],
+      foods: []
+    }));
+  }
+
   return (
     <main className="container game-shell">
       <div className="game-header">
@@ -1781,1641 +1794,139 @@ async function addMealDraft() {
 </div>
 
       {tab === "dashboard" && (
-        <div className="today-dashboard">
-          <section className="today-header">
-            <div>
-              <h1>{greeting}</h1>
-              <p>{todayDisplayDate}</p>
-            </div>
-
-            {currentStreak > 0 ? (
-              <div className="today-streak-pill">{currentStreak} day streak</div>
-            ) : null}
-          </section>
-
-          <section className="day-score-card">
-            <div className="day-score-ring">
-              <svg width="140" height="140" viewBox="0 0 140 140">
-                <circle
-                  cx="70"
-                  cy="70"
-                  r="54"
-                  fill="none"
-                  stroke="#E5E7EB"
-                  strokeWidth="10"
-                />
-                <circle
-                  cx="70"
-                  cy="70"
-                  r="54"
-                  fill="none"
-                  stroke={dayScoreColor}
-                  strokeWidth="10"
-                  strokeLinecap="round"
-                  strokeDasharray={dayScoreCircumference}
-                  strokeDashoffset={dayScoreOffset}
-                  transform="rotate(-90 70 70)"
-                />
-              </svg>
-
-              <div className="day-score-center">
-                <strong>{dayScore}%</strong>
-                <span>today</span>
-              </div>
-            </div>
-
-            <p className="day-score-subtext">
-              {completedTasks} of {dailyTasks.length} tasks done
-            </p>
-          </section>
-
-          <section className="today-task-list">
-            {dailyTasks.map((task) => (
-              <button
-                key={task.id}
-                className={`today-task-card ${task.done ? "done" : ""}`}
-                onClick={() => setTab(task.tab)}
-              >
-                <span className="today-task-check">{task.done ? "✓" : ""}</span>
-                <span className="today-task-label">{task.label}</span>
-                <span className="today-task-arrow">›</span>
-              </button>
-            ))}
-          </section>
-
-          <section className="consistency-card" style={{ borderLeftColor: consistencyMsg.color }}>
-            <p className="consistency-text" style={{ color: consistencyMsg.color }}>{consistencyMsg.text}</p>
-          </section>
-
-          <section
-            className="priority-card"
-            style={{
-              borderLeftColor:
-                (effectiveProtein ?? 0) < state.settings.proteinTarget - 20 ||
-                (displaySteps ?? 0) < state.settings.stepTarget - 2000 ||
-                workoutCompletion < 50 ||
-                (effectiveCalories !== null && effectiveCalories > state.settings.targetCalories + 150)
-                  ? "#D97706"
-                  : "#059669"
-            }}
-          >
-            {(() => {
-              const proteinGap = Math.round(state.settings.proteinTarget - (effectiveProtein ?? 0));
-              const stepGap = Math.round(state.settings.stepTarget - (displaySteps ?? 0)).toLocaleString();
-
-              if (proteinGap > 20) {
-                return (
-                  <>
-                    <div className="priority-top">
-                      <span className="priority-icon">🥩</span>
-                      <span className="priority-label">PROTEIN GAP</span>
-                    </div>
-                    <p className="priority-action">
-                      Add {proteinGap}g of protein today. Try chicken breast, eggs, paneer or whey.
-                    </p>
-                  </>
-                );
-              }
-
-              if (state.settings.stepTarget - (displaySteps ?? 0) > 2000) {
-                return (
-                  <>
-                    <div className="priority-top">
-                      <span className="priority-icon">👟</span>
-                      <span className="priority-label">STEP GAP</span>
-                    </div>
-                    <p className="priority-action">
-                      Take a 15-minute walk after your next meal to close {stepGap} steps.
-                    </p>
-                  </>
-                );
-              }
-
-              if (workoutCompletion < 50) {
-                return (
-                  <>
-                    <div className="priority-top">
-                      <span className="priority-icon">🏋️</span>
-                      <span className="priority-label">WORKOUT</span>
-                    </div>
-                    <p className="priority-action">
-                      Open your workout tab and log today&apos;s session.
-                    </p>
-                  </>
-                );
-              }
-
-              if (effectiveCalories !== null && effectiveCalories > state.settings.targetCalories + 150) {
-                return (
-                  <>
-                    <div className="priority-top">
-                      <span className="priority-icon">🍽️</span>
-                      <span className="priority-label">CALORIES HIGH</span>
-                    </div>
-                    <p className="priority-action">
-                      Trim one meal — reduce oil, rice or sugar to get closer to your target.
-                    </p>
-                  </>
-                );
-              }
-
-              return (
-                <>
-                  <div className="priority-top">
-                    <span className="priority-icon">✅</span>
-                    <span className="priority-label">ON TRACK</span>
-                  </div>
-                  <p className="priority-action">
-                    You&apos;re doing everything right today. Stay consistent and let the process work.
-                  </p>
-                </>
-              );
-            })()}
-
-            <div className="priority-footer">Tap check-in to log today&apos;s data</div>
-          </section>
-        </div>
+        <DashboardTab
+          greeting={greeting}
+          todayDisplayDate={todayDisplayDate}
+          currentStreak={currentStreak}
+          dayScore={dayScore}
+          dayScoreColor={dayScoreColor}
+          dayScoreCircumference={dayScoreCircumference}
+          dayScoreOffset={dayScoreOffset}
+          completedTasks={completedTasks}
+          dailyTasks={dailyTasks}
+          consistencyMsg={consistencyMsg}
+          effectiveProtein={effectiveProtein}
+          effectiveCalories={effectiveCalories}
+          displaySteps={displaySteps}
+          workoutCompletion={workoutCompletion}
+          proteinTarget={state.settings.proteinTarget}
+          stepTarget={state.settings.stepTarget}
+          targetCalories={state.settings.targetCalories}
+          setTab={setTab}
+        />
       )}
 
+
       {tab === "workouts" && (
-        <div className="grid compact-page">
-         {(missedWorkoutState === "asking" || missedWorkoutState === "log_missed") && missedWorkoutInfo ? (
-  <MissedWorkoutCard
-    missedWorkoutState={missedWorkoutState}
-    missedWorkoutInfo={missedWorkoutInfo}
-    setMissedWorkoutState={setMissedWorkoutState}
-    setState={setState}
-  />
-) : null}
-          {todayWorkout.isRestDay ? (
-            <section
-              className="card"
-              style={{
-                background: "#FFFFFF",
-                borderRadius: 20,
-                padding: 24,
-                textAlign: "center"
-              }}
-            >
-              <div style={{ fontSize: 42 }}>😴</div>
-              <h2 style={{ marginBottom: 8 }}>Rest Day</h2>
-              <p className="small" style={{ lineHeight: 1.7 }}>
-                Recovery is where the gains happen. Sleep well, stay hydrated, hit your steps.
-              </p>
-              <p style={{ marginTop: 16, color: "#059669", fontWeight: 700 }}>
-                Tomorrow: {splitPlan.weeklySchedule[todayWorkout.weekIndex === 6 ? 0 : todayWorkout.weekIndex + 1]} day
-              </p>
-            </section>
-          ) : (
-            <>
-              <section className="card" style={{ background: "#FFFFFF", borderRadius: 20 }}>
-                <div className="small">
-                  {new Date(getLocalDateISO() + "T00:00:00")
-                    .toLocaleDateString("en-IN", {
-                      weekday: "long",
-                      day: "2-digit",
-                      month: "short"
-                    })
-                    .toUpperCase()}
-                </div>
-
-                <h2 style={{ marginTop: 8, marginBottom: 6 }}>
-                  {getDayLabel(todayWorkout.dayType)} Day
-                </h2>
-
-                <p className="small" style={{ margin: 0 }}>
-                  {({
-                    push: "Chest, shoulders, triceps",
-                    pull: "Back, rear delts, biceps",
-                    lower: "Quads, hamstrings, glutes, calves",
-                    full: "Full body — push, pull, squat, carry",
-                    upper: "Upper body strength and hypertrophy",
-                    legs: "Dedicated lower body",
-                    rest: "Recovery day"
-                  } as Record<string, string>)[todayWorkout.dayType] || todayWorkout.splitName}
-                </p>
-
-                <div style={{ marginTop: 14, color: "#059669", fontWeight: 700 }}>
-                  {loggedExerciseCount} / {todaysExercises.length} exercises logged
-                </div>
-              </section>
-
-              {todaysExercises.length === 0 ? (
-                <section className="card" style={{ background: "#FFFFFF", borderRadius: 20 }}>
-                  <h2 style={{ marginTop: 0 }}>No exercises found</h2>
-                  <p className="small" style={{ lineHeight: 1.7 }}>
-                    Apply a workout plan from Settings or adjust your split so today has exercises assigned.
-                  </p>
-                </section>
-              ) : null}
-
-              {todaysExercises.map((exercise) => {
-                const currentName = exerciseNameOverrides[exercise.exercise] || exercise.exercise;
-                const sets = exerciseLogs[currentName] || [];
-                const allSetsDone = sets.length > 0 && sets.every((set) => set.done);
-                const alternatesOpen = !!expandedAlternates[exercise.exercise];
-
-                return (
-                  <section
-                    key={exercise.exercise}
-                    className="card"
-                    style={{
-                      background: "#FFFFFF",
-                      borderRadius: 16,
-                      padding: 16,
-                      marginBottom: 12,
-                      borderLeft: allSetsDone ? "4px solid #059669" : "4px solid transparent"
-                    }}
-                  >
-                    <div className="small" style={{ fontSize: 11, textTransform: "uppercase" }}>
-                      {exercise.pattern}
-                    </div>
-
-                    <h3
-                      style={{
-                        marginTop: 6,
-                        marginBottom: 8,
-                        color: "#111827",
-                        fontSize: 16,
-                        fontWeight: 600
-                      }}
-                    >
-                      {currentName}
-                    </h3>
-
-                    <div style={{ color: "#059669", fontWeight: 700, fontSize: 13 }}>
-                      Target: {exercise.sets} sets × {exercise.targetReps} reps
-                    </div>
-
-                    <button
-                      type="button"
-                      className="btn secondary"
-                      style={{ marginTop: 8, padding: '4px 10px', fontSize: 12, minHeight: 'auto', width: 'auto' }}
-                      onClick={() =>
-                        setExpandedAlternates((prev) => ({
-                          ...prev,
-                          [exercise.exercise]: !prev[exercise.exercise]
-                        }))
-                      }
-                    >
-                      Alternates {alternatesOpen ? "−" : "+"}
-                    </button>
-
-                    {alternatesOpen ? (
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
-                        {[exercise.exercise, ...exercise.alternates]
-                          .filter((name) => name !== currentName)
-                          .map((alternate) => (
-                          <button
-                            key={alternate}
-                            type="button"
-                            onClick={() => {
-                              setExerciseNameOverrides(prev => ({ ...prev, [exercise.exercise]: alternate }));
-                              setExerciseLogs(prev => {
-                                const old = prev[currentName] || [];
-                                const next = { ...prev };
-                                delete next[currentName];
-                                next[alternate] = old;
-                                return next;
-                              });
-                              setExpandedAlternates(prev => ({ ...prev, [exercise.exercise]: false }));
-                            }}
-                            style={{
-                              background: "#F3F4F6",
-                              color: "#374151",
-                              borderRadius: 999,
-                              padding: "6px 10px",
-                              fontSize: 12,
-                              border: "none",
-                              cursor: "pointer"
-                            }}
-                          >
-                            {alternate}
-                          </button>
-                        ))}
-                      </div>
-                    ) : null}
-
-                    <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
-                      {sets.map((set, setIndex) => (
-                        <div
-                          key={`${currentName}-${setIndex}`}
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "70px 1fr 1fr 44px",
-                            gap: 8,
-                            alignItems: "center"
-                          }}
-                        >
-                          <span className="small">Set {setIndex + 1}</span>
-
-                          <input
-                            className="input"
-                            inputMode="decimal"
-                            placeholder="kg"
-                            value={set.weight}
-                            onChange={(e) => {
-                              const value = e.target.value.replace(/[^0-9.]/g, "");
-                              setExerciseLogs((prev) => ({
-                                ...prev,
-                                [currentName]: (prev[currentName] || []).map((row, index) =>
-                                  index === setIndex ? { ...row, weight: value } : row
-                                )
-                              }));
-                            }}
-                          />
-
-                          <input
-                            className="input"
-                            inputMode="numeric"
-                            placeholder="reps"
-                            value={set.reps}
-                            onChange={(e) => {
-                              const value = e.target.value.replace(/[^0-9]/g, "");
-                              setExerciseLogs((prev) => ({
-                                ...prev,
-                                [currentName]: (prev[currentName] || []).map((row, index) =>
-                                  index === setIndex ? { ...row, reps: value } : row
-                                )
-                              }));
-                            }}
-                          />
-
-                          <button
-                            type="button"
-                            className="btn"
-                            aria-label={set.done ? `Unmark set ${setIndex + 1} as done` : `Mark set ${setIndex + 1} as done`}
-                            style={{
-                              minHeight: 44,
-                              padding: 0,
-                              background: set.done ? "#059669" : "#F3F4F6",
-                              color: set.done ? "#FFFFFF" : "#111827"
-                            }}
-                            onClick={() => {
-                              setExerciseLogs((prev) => ({
-                                ...prev,
-                                [currentName]: (prev[currentName] || []).map((row, index) =>
-                                  index === setIndex ? { ...row, done: !row.done } : row
-                                )
-                              }));
-                            }}
-                          >
-                            ✓
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                );
-              })}
-
-              {hasAnyLoggedSet ? (
-                <button
-                  className="btn"
-                  style={{
-                    width: "100%",
-                    background: "#059669",
-                    color: "#FFFFFF",
-                    fontWeight: 700,
-                    borderRadius: 14,
-                    padding: 16
-                  }}
-                  onClick={saveWorkout}
-                >
-                  Complete Workout
-                </button>
-              ) : null}
-
-              {workoutSaveMessage ? (
-                <div className="card" style={{ background: "#F0FDF4", color: "#059669" }}>
-                  {workoutSaveMessage}
-                </div>
-              ) : null}
-            </>
-          )}
-
-          <div className="card">
-            <h2 style={{ marginTop: 0 }}>Workout history</h2>
-            {state.workoutHistory.length === 0 ? (
-              <p className="small">No workouts logged yet. Complete today&apos;s workout to save your first session.</p>
-            ) : (
-              <div className="history-card-list">
-                {state.workoutHistory.map((session) => {
-                  const isExpanded = expandedHistoryId === session.id;
-                  return (
-                    <SwipeToDelete
-                      key={session.id}
-                      className="history-swipe"
-                      onDelete={() => deleteWorkoutSession(session.id)}
-                    >
-                      <div className="history-card" style={{ flexDirection: "column", alignItems: "stretch", gap: 0 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                          <div>
-                            <strong>{formatDisplayDate(session.date)}</strong>
-                            <div className="small">
-                              {session.dayType ? `${getDayLabel(session.dayType)} day • ` : ""}
-                              {session.completion ? `${session.completion} • ` : ""}
-                              {session.totalVolume} total volume
-                            </div>
-                          </div>
-                          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-                            <button
-                              className="btn secondary"
-                              style={{ width: 52, padding: 0, fontSize: 12, minHeight: 32, height: 32 }}
-                              onClick={() => setExpandedHistoryId(isExpanded ? null : session.id)}
-                            >
-                              {isExpanded ? "Hide" : "View"}
-                            </button>
-                            {!todayWorkout.isRestDay && session.exercises.length > 0 ? (
-                              <button
-                                className="btn secondary"
-                                style={{ width: 52, padding: 0, fontSize: 12, minHeight: 32, height: 32 }}
-                                onClick={() => loadWorkoutSession(session)}
-                              >
-                                Load
-                              </button>
-                            ) : null}
-                          </div>
-                        </div>
-                        {isExpanded ? (
-                          <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
-                            {session.exercises.map((ex) => {
-                              const loggedSets = (ex.workoutSets || []).filter((s) => s.weight !== "" || s.reps !== "");
-                              if (loggedSets.length === 0) return null;
-                              return (
-                                <div key={ex.exercise} style={{ background: "#F9FAFB", borderRadius: 10, padding: "10px 12px" }}>
-                                  <div style={{ fontWeight: 600, fontSize: 14, color: "#111827", marginBottom: 6 }}>{ex.exercise}</div>
-                                  <div style={{ display: "grid", gap: 4 }}>
-                                    {loggedSets.map((s, i) => (
-                                      <div key={i} className="small" style={{ color: "#6B7280" }}>
-                                        Set {i + 1}: {s.weight !== "" ? `${s.weight} kg` : "—"} × {s.reps !== "" ? `${s.reps} reps` : "—"}
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ) : null}
-                      </div>
-                    </SwipeToDelete>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
+        <WorkoutsTab
+          missedWorkoutState={missedWorkoutState}
+          missedWorkoutInfo={missedWorkoutInfo}
+          setMissedWorkoutState={setMissedWorkoutState}
+          setState={setState}
+          todayWorkout={todayWorkout}
+          splitPlan={splitPlan}
+          todaysExercises={todaysExercises}
+          exerciseNameOverrides={exerciseNameOverrides}
+          setExerciseNameOverrides={setExerciseNameOverrides}
+          exerciseLogs={exerciseLogs}
+          setExerciseLogs={setExerciseLogs}
+          expandedAlternates={expandedAlternates}
+          setExpandedAlternates={setExpandedAlternates}
+          loggedExerciseCount={loggedExerciseCount}
+          hasAnyLoggedSet={hasAnyLoggedSet}
+          workoutCompletion={workoutCompletion}
+          saveWorkout={saveWorkout}
+          workoutSaveMessage={workoutSaveMessage}
+          workoutHistory={state.workoutHistory}
+          expandedHistoryId={expandedHistoryId}
+          setExpandedHistoryId={setExpandedHistoryId}
+          deleteWorkoutSession={deleteWorkoutSession}
+          loadWorkoutSession={loadWorkoutSession}
+        />
       )}
 
       {tab === "nutrition" && (
-        <div className="nutrition-page compact-page">
-          {/* Macro summary pills */}
-          <section style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 4 }}>
-            {([
-              { label: "Calories", value: Math.round(foodTotals.calories), target: state.settings.targetCalories, unit: "kcal" },
-              { label: "Protein", value: Math.round(foodTotals.protein), target: state.settings.proteinTarget, unit: "g" },
-              { label: "Carbs", value: Math.round(foodTotals.carbs), target: state.settings.carbTarget, unit: "g" },
-              { label: "Fat", value: Math.round(foodTotals.fats), target: state.settings.fatTarget, unit: "g" }
-            ] as const).map(({ label, value, target, unit }) => {
-              const pct = Math.min(100, target > 0 ? Math.round((value / target) * 100) : 0);
-              const over = value > target && target > 0;
-              return (
-                <div key={label} style={{ background: "#FFFFFF", borderRadius: 12, padding: "10px 10px 8px", border: `1px solid ${over ? "#FDE68A" : "#E5E7EB"}`, textAlign: "center" }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</div>
-                  <div style={{ fontSize: 18, fontWeight: 800, color: over ? "#D97706" : "#111827", margin: "3px 0 1px" }}>{value}</div>
-                  <div style={{ fontSize: 10, color: "#9CA3AF" }}>/ {target} {unit}</div>
-                  <div style={{ height: 3, background: "#E5E7EB", borderRadius: 999, marginTop: 6 }}>
-                    <div style={{ height: "100%", width: `${pct}%`, background: over ? "#D97706" : "#059669", borderRadius: 999, transition: "width 300ms ease" }} />
-                  </div>
-                </div>
-              );
-            })}
-          </section>
-
-          {/* Submit Food Log */}
-          {todayFoodCalories > 0 && selectedNutritionDate === getLocalDateISO() ? (
-            <button
-              className="btn"
-              style={{ width: "100%", background: "#059669", color: "#FFFFFF", fontWeight: 700, borderRadius: 12, padding: "12px 16px", marginBottom: 4 }}
-              onClick={submitTodayNutrition}
-            >
-              Submit Food Log
-            </button>
-          ) : null}
-
-          <MealSuggestionsSection
-            mealSuggestions={mealSuggestions}
-            addedMealSuggestions={addedMealSuggestions}
-            onAddSuggestion={addMealSuggestionToLog}
-          />
-
-          <section className="compact-section">
-            <button className={`collapse-pill section-pill ${expandedNutritionSections.logMeal ? "open" : ""}`} onClick={() => toggleNutritionSection("logMeal")}>
-              <div>
-                <strong>Log meal</strong>
-                <span className="pill-subtext">Add food, grams, calories and macros</span>
-              </div>
-              <span className="pill-icon">{expandedNutritionSections.logMeal ? "−" : "+"}</span>
-            </button>
-
-            {expandedNutritionSections.logMeal ? (
-              <div className="card nutrition-input-card compact-expanded">
-                <div className="meal-log-grid">
-                  <Field label="Meal">
-                    <select className="input" value={mealDraft.meal} onChange={(e) => updateMealDraft("meal", e.target.value)}>
-                      <option value="Breakfast">Breakfast</option>
-                      <option value="Lunch">Lunch</option>
-                      <option value="Snack">Snack</option>
-                      <option value="Dinner">Dinner</option>
-                      <option value="Coffee">Coffee</option>
-                      <option value="Pre-workout">Pre-workout</option>
-                      <option value="Post-workout">Post-workout</option>
-                      <option value="Custom">Custom</option>
-                    </select>
-                  </Field>
-
-                  <Field label="Food / meal">
-                    <div className="food-autofill">
-                      <input
-                        className="input"
-                        value={mealDraft.food}
-                        placeholder="Type food, e.g. boiled basmati rice"
-                        onChange={(e) => searchMealDraftSuggestions(e.target.value, mealDraft.grams)}
-                        onFocus={() => {
-                          if (mealDraftSuggestions.length === 0 && mealDraft.food.trim().length >= 3) {
-                            searchMealDraftSuggestions(mealDraft.food, mealDraft.grams);
-                          }
-                        }}
-                      />
-                      {isSearchingMealDraft ? (
-                        <div className="food-autofill-status">Searching macros...</div>
-                      ) : null}
-                      {mealDraftSuggestions.length > 0 ? (
-                        <div className="food-suggestion-list">
-                          {mealDraftSuggestions.map((suggestion, suggestionIndex) => (
-                            <button
-                              type="button"
-                              className="food-suggestion"
-                              key={`${suggestion.food}-${suggestionIndex}`}
-                              onClick={() => applyFoodResultToMealDraft(suggestion)}
-                            >
-                              <span>
-                                <strong>{suggestion.food}</strong>
-                                <small>{suggestion.source === "usda" ? "Verified data" : suggestion.source === "local" ? "Verified app data" : suggestion.source === "claude" ? "Estimated (AI)" : suggestion.source === "cache" ? "Cached result" : "Manual fallback"}</small>
-                              </span>
-                              <span className="food-suggestion-macros">
-                                {suggestion.calories} cal | P {suggestion.protein} | C {suggestion.carbs} | F {suggestion.fats}
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      ) : null}
-                    </div>
-                  </Field>
-
-                  <Field label="Amount">
-                    <div className="unit-row">
-                      <NumericInput value={mealDraft.grams} onChange={(v) => {
-                        const newGrams = v === "" ? 0 : v;
-                        if (mealDraftBasePer100g && newGrams > 0) {
-                          const f = newGrams / 100;
-                          setMealDraft(prev => ({
-                            ...prev,
-                            grams: newGrams,
-                            calories: Math.round(mealDraftBasePer100g.calories * f),
-                            protein: Math.round(mealDraftBasePer100g.protein * f * 10) / 10,
-                            carbs: Math.round(mealDraftBasePer100g.carbs * f * 10) / 10,
-                            fats: Math.round(mealDraftBasePer100g.fats * f * 10) / 10
-                          }));
-                        } else {
-                          updateMealDraft("grams", newGrams);
-                        }
-                      }} />
-                      <select className="input unit-select" value={mealDraftUnit} onChange={(e) => setMealDraftUnit(e.target.value as "g" | "ml" | "oz")}>
-                        <option value="g">g</option>
-                        <option value="ml">ml</option>
-                        <option value="oz">oz</option>
-                      </select>
-                    </div>
-                  </Field>
-
-                  <Field label="Calories"><NumericInput value={mealDraft.calories} onChange={(v) => updateMealDraft("calories", v === "" ? 0 : v)} /></Field>
-                  <Field label="Protein"><NumericInput value={mealDraft.protein} onChange={(v) => updateMealDraft("protein", v === "" ? 0 : v)} /></Field>
-                  <Field label="Carbs"><NumericInput value={mealDraft.carbs} onChange={(v) => updateMealDraft("carbs", v === "" ? 0 : v)} /></Field>
-                  <Field label="Fat"><NumericInput value={mealDraft.fats} onChange={(v) => updateMealDraft("fats", v === "" ? 0 : v)} /></Field>
-
-                  <div className="meal-action-cell">
-                    <button className="btn" onClick={addMealDraft}>Add</button>
-                    <button className="btn secondary" onClick={() => { setMealDraft({ id: "draft", date: getLocalDateISO(), meal: mealDraft.meal, food: "", grams: 100, calories: 0, protein: 0, carbs: 0, fats: 0 }); setMealDraftBasePer100g(null); }}>Clear</button>
-                  </div>
-                </div>
-              </div>
-            ) : null}
-          </section>
-
-          <section className="compact-section">
-            <button className={`collapse-pill section-pill ${expandedNutritionSections.loggedMeals ? "open" : ""}`} onClick={() => toggleNutritionSection("loggedMeals")}>
-              <div>
-                <strong>Logged meals</strong>
-                <span className="pill-subtext">{foodsForSelectedDate.length} items logged for {formatDisplayDate(selectedNutritionDate)}</span>
-              </div>
-              <span className="pill-icon">{expandedNutritionSections.loggedMeals ? "-" : "+"}</span>
-            </button>
-
-            {expandedNutritionSections.loggedMeals ? (
-              <div className="card logged-meals-card compact-expanded">
-                <div className="row space-between">
-                  <p className="small" style={{ margin: 0 }}>Meals are grouped so you can scan quickly and expand only what you need.</p>
-                  <button className="btn secondary" onClick={addFood}>Add blank row</button>
-                </div>
-
-{foodsForSelectedDate.length === 0 ? (
-  <p className="small">No meals logged yet.</p>
-                ) : (
-                  <div className="meal-group-list">
-                    {["Breakfast", "Lunch", "Snack", "Dinner", "Coffee", "Other"].map((mealType) => {
-                      const meals = foodsForSelectedDate.filter((food) => {
-                        const mealName = food.meal.trim().toLowerCase();
-
-                        const mealAliases: Record<string, string[]> = {
-                          Breakfast: ["breakfast"],
-                          Lunch: ["lunch"],
-                          Snack: ["snack", "snacks"],
-                          Dinner: ["dinner"],
-                          Coffee: ["coffee"]
-                        };
-
-                        if (mealType === "Other") {
-                          return !Object.values(mealAliases)
-                            .flat()
-                            .some((alias) => mealName.includes(alias));
-                        }
-
-                        return (mealAliases[mealType] || [mealType.toLowerCase()]).some((alias) =>
-                          mealName.includes(alias)
-                        );
-                      });
-
-                      const mealTotals = meals.reduce(
-                        (acc, food) => {
-                          acc.calories += food.calories;
-                          acc.protein += food.protein;
-                          acc.carbs += food.carbs;
-                          acc.fats += food.fats;
-                          return acc;
-                        },
-                        { calories: 0, protein: 0, carbs: 0, fats: 0 }
-                      );
-
-                      const isMealOpen = !!expandedNutritionSections[`meal-${mealType}`];
-
-                      return (
-                        <div className="meal-group" key={mealType}>
-                          <button
-                            className={`collapse-pill meal-group-pill ${isMealOpen ? "open" : ""}`}
-                            onClick={() => toggleNutritionSection(`meal-${mealType}`)}
-                          >
-                            <div>
-                              <strong>{mealType}</strong>
-                              <span className="pill-subtext">
-                                {meals.length} items - {Math.round(mealTotals.calories)} cal - P {mealTotals.protein.toFixed(1)}g
-                              </span>
-                            </div>
-                            <span className="pill-icon">{isMealOpen ? "-" : "+"}</span>
-                          </button>
-
-                          {isMealOpen ? (
-                            <div className="meal-table">
-                              <div className="meal-table-header">
-                                <span>Food</span>
-                                <span>Grams</span>
-                                <span>Calories</span>
-                                <span>P/C/F</span>
-                              </div>
-
-                              {meals.length === 0 ? (
-                                <div className="empty-meal-row">No items logged here yet.</div>
-                              ) : (
-                                meals.map((item) => (
-                                  <SwipeToDelete
-                                    key={item.id}
-                                    className="meal-swipe"
-                                    onDelete={() => deleteFood(item.id)}
-                                  >
-                                    <details className="meal-row">
-                                      <summary>
-                                      <span>{item.food}</span>
-                                      <span>{item.grams}</span>
-                                      <span>{item.calories}</span>
-                                      <span>{item.protein}/{item.carbs}/{item.fats}</span>
-                                    </summary>
-
-                                    <div className="meal-edit-grid">
-                                      <Field label="Meal">
-                                        <input className="input" value={item.meal} onChange={(e) => updateFood(item.id, "meal", e.target.value)} />
-                                      </Field>
-                                      <Field label="Food">
-                                        <input className="input" value={item.food} onChange={(e) => updateFood(item.id, "food", e.target.value)} />
-                                      </Field>
-                                      <Field label="Grams">
-                                        <NumericInput value={item.grams} onChange={(v) => updateFood(item.id, "grams", v)} />
-                                      </Field>
-                                      <Field label="Calories">
-                                        <NumericInput value={item.calories} onChange={(v) => updateFood(item.id, "calories", v)} />
-                                      </Field>
-                                      <Field label="Protein">
-                                        <NumericInput value={item.protein} onChange={(v) => updateFood(item.id, "protein", v)} />
-                                      </Field>
-                                      <Field label="Carbs">
-                                        <NumericInput value={item.carbs} onChange={(v) => updateFood(item.id, "carbs", v)} />
-                                      </Field>
-                                      <Field label="Fat">
-                                        <NumericInput value={item.fats} onChange={(v) => updateFood(item.id, "fats", v)} />
-                                      </Field>
-                                    </div>
-                                    </details>
-                                  </SwipeToDelete>
-                                ))
-                              )}
-                            </div>
-                          ) : null}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            ) : null}
-          </section>
-
-          <section className="compact-section">
-            <button
-              className={`collapse-pill section-pill ${expandedNutritionSections.nutritionHistory ? "open" : ""}`}
-              onClick={() => toggleNutritionSection("nutritionHistory")}
-            >
-              <div>
-                <strong>Nutrition history</strong>
-                <span className="pill-subtext">{nutritionHistory.length} days logged</span>
-              </div>
-              <span className="pill-icon">{expandedNutritionSections.nutritionHistory ? "−" : "+"}</span>
-            </button>
-
-            {expandedNutritionSections.nutritionHistory ? (
-              <div className="card compact-expanded">
-                {nutritionHistory.length === 0 ? (
-                  <p className="small">No nutrition history yet.</p>
-                ) : (
-                  <div className="history-card-list">
-                    {nutritionHistory.map((group) => (
-                      <SwipeToDelete
-                        key={group.date}
-                        className="nutrition-history-swipe"
-                        onDelete={() => deleteFoodsByDate(group.date)}
-                      >
-                        <div className="history-card">
-                          <div>
-                            <strong>{formatDisplayDate(group.date)}</strong>
-                            <div className="small">
-                              {group.items.length} items • {Math.round(group.totals.calories)} cal | P {group.totals.protein.toFixed(1)}g | C {group.totals.carbs.toFixed(1)}g | F {group.totals.fats.toFixed(1)}g
-                            </div>
-                            <div className="small" style={{ marginTop: 6, lineHeight: 1.6 }}>
-                              {group.items.map((item) => `${item.meal}: ${item.food}`).join(", ")}
-                            </div>
-                          </div>
-                        </div>
-                      </SwipeToDelete>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : null}
-          </section>
-
-          <section className="compact-section">
-            <button className={`collapse-pill section-pill ${expandedNutritionSections.presets ? "open" : ""}`} onClick={() => toggleNutritionSection("presets")}>
-              <div>
-                <strong>Meal presets</strong>
-                <span className="pill-subtext">{state.mealPresets.length} saved presets</span>
-              </div>
-              <span className="pill-icon">{expandedNutritionSections.presets ? "−" : "+"}</span>
-            </button>
-
-            {expandedNutritionSections.presets ? (
-              <div className="grid grid-2 compact-expanded">
-                <div className="card">
-                  <h3 style={{ marginTop: 0 }}>Full-day meal preset</h3>
-                  <p className="small">Save the current logged meals as a reusable full-day preset.</p>
-                  <div className="row">
-                    <input className="input" value={mealPresetName} placeholder="Preset name, e.g. Normal training day" onChange={(e) => setMealPresetName(e.target.value)} />
-                    <button className="btn" onClick={saveCurrentMealsAsPreset}>Save preset</button>
-                  </div>
-                </div>
-                <div className="card">
-                  <h2 style={{ marginTop: 0 }}>Suggested base setup</h2>
-                  <div className="signal-stack">
-                    {baseSetup.map((item) => <div className="mini-signal" key={item}>{item}</div>)}
-                  </div>
-                </div>
-                <div className="card" style={{ gridColumn: "1 / -1" }}>
-                  <h2 style={{ marginTop: 0 }}>Saved full-day presets</h2>
-                  {state.mealPresets.length === 0 ? (
-                    <p className="small">No presets yet. Build your nutrition log, name it, then save it.</p>
-                  ) : (
-                    <div className="grid">
-                      {state.mealPresets.map((preset) => {
-                        const totals = preset.foods.reduce((acc, food) => {
-                          acc.calories += food.calories;
-                          acc.protein += food.protein;
-                          acc.carbs += food.carbs;
-                          acc.fats += food.fats;
-                          return acc;
-                        }, { calories: 0, protein: 0, carbs: 0, fats: 0 });
-
-                        return (
-                          <SwipeToDelete
-                            key={preset.id}
-                            className="preset-swipe"
-                            onDelete={() => deleteMealPreset(preset.id)}
-                          >
-                            <div className="card" style={{ background: "#F9FAFB" }}>
-                              <div className="row space-between">
-                              <div>
-                                <strong>{preset.name}</strong>
-                                <div className="small">{Math.round(totals.calories)} cal | P {totals.protein.toFixed(1)}g | C {totals.carbs.toFixed(1)}g | F {totals.fats.toFixed(1)}g</div>
-                              </div>
-                              <div className="row">
-                                <button className="btn" onClick={() => applyMealPreset(preset)}>Apply</button>
-                              </div>
-                            </div>
-                            </div>
-                          </SwipeToDelete>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : null}
-          </section>
-        </div>
+        <NutritionTab
+          foodTotals={foodTotals}
+          targetCalories={state.settings.targetCalories}
+          proteinTarget={state.settings.proteinTarget}
+          carbTarget={state.settings.carbTarget}
+          fatTarget={state.settings.fatTarget}
+          todayFoodCalories={todayFoodCalories}
+          selectedNutritionDate={selectedNutritionDate}
+          submitTodayNutrition={submitTodayNutrition}
+          mealSuggestions={mealSuggestions}
+          addedMealSuggestions={addedMealSuggestions}
+          addMealSuggestionToLog={addMealSuggestionToLog}
+          expandedNutritionSections={expandedNutritionSections}
+          toggleNutritionSection={toggleNutritionSection}
+          mealDraft={mealDraft}
+          updateMealDraft={updateMealDraft}
+          searchMealDraftSuggestions={searchMealDraftSuggestions}
+          isSearchingMealDraft={isSearchingMealDraft}
+          mealDraftSuggestions={mealDraftSuggestions}
+          applyFoodResultToMealDraft={applyFoodResultToMealDraft}
+          mealDraftBasePer100g={mealDraftBasePer100g}
+          setMealDraft={setMealDraft}
+          setMealDraftBasePer100g={setMealDraftBasePer100g}
+          mealDraftUnit={mealDraftUnit}
+          setMealDraftUnit={setMealDraftUnit}
+          addMealDraft={addMealDraft}
+          foodsForSelectedDate={foodsForSelectedDate}
+          addFood={addFood}
+          deleteFood={deleteFood}
+          updateFood={updateFood}
+          nutritionHistory={nutritionHistory}
+          deleteFoodsByDate={deleteFoodsByDate}
+          mealPresets={state.mealPresets}
+          mealPresetName={mealPresetName}
+          setMealPresetName={setMealPresetName}
+          saveCurrentMealsAsPreset={saveCurrentMealsAsPreset}
+          applyMealPreset={applyMealPreset}
+          deleteMealPreset={deleteMealPreset}
+          baseSetup={baseSetup}
+        />
       )}
 
       {tab === "checkin" && (
-        <div className="grid compact-page">
-
-          {/* Weekly metrics summary */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-            <div className="checkin-metric-pill">
-              <span className="checkin-metric-label">Avg Weight</span>
-              <span className="checkin-metric-value">{formatNumber(avgWeight, "kg")}</span>
-            </div>
-            <div className="checkin-metric-pill">
-              <span className="checkin-metric-label">Avg Waist</span>
-              <span className="checkin-metric-value">{formatNumber(avgWaist, "cm")}</span>
-            </div>
-            <div className="checkin-metric-pill">
-              <span className="checkin-metric-label">Avg Steps</span>
-              <span className="checkin-metric-value">{formatNumber(displaySteps)}</span>
-            </div>
-          </div>
-
-          {/* 7-day log */}
-          <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", borderBottom: "1px solid #F3F4F6" }}>
-              <h2 style={{ margin: 0, fontSize: 16 }}>Daily Log</h2>
-              <button className="btn secondary" style={{ padding: "4px 12px", fontSize: 12, minHeight: "auto" }} onClick={resetWeek}>
-                Reset
-              </button>
-            </div>
-
-            <div className="checkin-list" style={{ padding: "8px 0" }}>
-              {state.dailyLogs.map((row, index) => {
-                const isOpen = !!expandedDays[`checkin-${row.date}-${index}`];
-                const hasWeight = numberOrNull(row.weight) !== null;
-                const hasSteps = numberOrNull(row.steps) !== null;
-                const hasCalories = numberOrNull(row.calories) !== null;
-                const hasProtein = numberOrNull(row.protein) !== null;
-                const hasAnyMetric = hasWeight || hasSteps || hasCalories || hasProtein;
-                const isComplete = hasWeight && (hasSteps || hasCalories || hasProtein);
-                const statusColor = isComplete ? "#059669" : hasAnyMetric ? "#D97706" : "#D1D5DB";
-                const isToday = row.date === todayStr;
-
-                return (
-                  <div key={row.date + index} style={{ borderBottom: "1px solid #F9FAFB" }}>
-                    <button
-                      style={{
-                        width: "100%",
-                        background: "none",
-                        border: "none",
-                        padding: "14px 20px",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 14,
-                        cursor: "pointer",
-                        textAlign: "left"
-                      }}
-                      onClick={() =>
-                        setExpandedDays((prev) => ({
-                          ...prev,
-                          [`checkin-${row.date}-${index}`]: !prev[`checkin-${row.date}-${index}`]
-                        }))
-                      }
-                    >
-                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: statusColor, flexShrink: 0 }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <strong style={{ fontSize: 14, color: "#111827" }}>{formatDisplayDate(row.date || todayISO())}</strong>
-                          {isToday && <span style={{ fontSize: 11, fontWeight: 700, color: "#059669", background: "#F0FDF4", padding: "1px 7px", borderRadius: 999 }}>Today</span>}
-                        </div>
-                        <div className="small" style={{ marginTop: 2, color: "#9CA3AF" }}>
-                          {hasAnyMetric
-                            ? [
-                                hasWeight ? `${row.weight} kg` : null,
-                                hasSteps ? `${row.steps} steps` : null,
-                                hasProtein ? `${row.protein}g protein` : null
-                              ].filter(Boolean).join(" · ")
-                            : "No data logged"}
-                        </div>
-                      </div>
-                      <span style={{ color: "#9CA3AF", fontSize: 16 }}>{isOpen ? "−" : "+"}</span>
-                    </button>
-
-                    {isOpen ? (
-                      <div style={{ padding: "0 20px 20px" }}>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                          <Field label="Weight (kg)">
-                            <NumericInput value={row.weight} onChange={(v) => updateDaily(index, "weight", v)} />
-                          </Field>
-                          <Field label="Waist (cm)">
-                            <NumericInput value={row.waist} onChange={(v) => updateDaily(index, "waist", v)} />
-                          </Field>
-                          <Field label="Steps">
-                            <NumericInput value={row.steps} onChange={(v) => updateDaily(index, "steps", v)} />
-                          </Field>
-                          <Field label="Cardio (min)">
-                            <NumericInput value={row.cardioMinutes} onChange={(v) => updateDaily(index, "cardioMinutes", v)} />
-                          </Field>
-                          <Field label="Calories">
-                            <NumericInput value={row.calories} onChange={(v) => updateDaily(index, "calories", v)} />
-                          </Field>
-                          <Field label="Protein (g)">
-                            <NumericInput value={row.protein} onChange={(v) => updateDaily(index, "protein", v)} />
-                          </Field>
-                        </div>
-                        <div style={{ marginTop: 10 }}>
-                          <Field label="Date">
-                            <input
-                              className="input"
-                              type="date"
-                              value={row.date || todayISO()}
-                              onChange={(e) => updateDaily(index, "date", e.target.value)}
-                            />
-                          </Field>
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Nutrition intelligence */}
-          <div className="card">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
-              <h2 style={{ margin: 0, fontSize: 16 }}>Weekly insight</h2>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "#6B7280", background: "#F3F4F6", padding: "2px 8px", borderRadius: 999, textTransform: "uppercase" }}>
-                {weeklyNutritionAdjustment.confidence}
-              </span>
-            </div>
-            <p style={{ margin: "0 0 12px", lineHeight: 1.7, color: "#374151" }}>
-              <strong>{weeklyNutritionAdjustment.title}</strong>: {weeklyNutritionAdjustment.summary}
-            </p>
-            {weeklyNutritionAdjustment.calorieDelta !== 0 ? (
-              <button className="btn" onClick={applyWeeklyNutritionAdjustment}>
-                Apply {weeklyNutritionAdjustment.calorieDelta > 0 ? "+" : ""}{weeklyNutritionAdjustment.calorieDelta} kcal adjustment
-              </button>
-            ) : null}
-          </div>
-
-          {/* Decision rule */}
-          <div className="card" style={{ borderLeft: "3px solid #059669" }}>
-            <p className="small" style={{ margin: 0, fontWeight: 600, color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>This week&apos;s call</p>
-            <p style={{ margin: 0, lineHeight: 1.7, color: "#111827" }}>{recommendation}</p>
-          </div>
-        </div>
+        <CheckInTab
+          avgWeight={avgWeight}
+          avgWaist={avgWaist}
+          displaySteps={displaySteps}
+          dailyLogs={state.dailyLogs}
+          expandedDays={expandedDays}
+          setExpandedDays={setExpandedDays}
+          todayStr={todayStr}
+          updateDaily={updateDaily}
+          resetWeek={resetWeek}
+          weeklyNutritionAdjustment={weeklyNutritionAdjustment}
+          applyWeeklyNutritionAdjustment={applyWeeklyNutritionAdjustment}
+          recommendation={recommendation}
+        />
       )}
 
       {tab === "settings" && (
-        <div className="grid compact-page">
-
-          {/* Step indicator */}
-          <div style={{ display: "flex", gap: 0, borderRadius: 12, overflow: "hidden", background: "#F3F4F6" }}>
-            <button
-              style={{
-                flex: 1,
-                padding: "12px 0",
-                border: "none",
-                background: settingsStep === "profile" ? "#111827" : "transparent",
-                color: settingsStep === "profile" ? "#FFFFFF" : "#6B7280",
-                fontWeight: 700,
-                fontSize: 13,
-                cursor: "pointer",
-                transition: "all 0.15s"
-              }}
-              onClick={() => setSettingsStep("profile")}
-            >
-              1 · About you
-            </button>
-            <button
-              style={{
-                flex: 1,
-                padding: "12px 0",
-                border: "none",
-                background: settingsStep === "plan" ? "#111827" : "transparent",
-                color: settingsStep === "plan" ? "#FFFFFF" : "#6B7280",
-                fontWeight: 700,
-                fontSize: 13,
-                cursor: "pointer",
-                transition: "all 0.15s"
-              }}
-              onClick={() => setSettingsStep("plan")}
-            >
-              2 · Your plan
-            </button>
-          </div>
-
-          {settingsStep === "profile" ? (
-            <>
-              {/* Profile & goal */}
-              <div className="card">
-                <p className="settings-section-label">Who you are</p>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  <Field label="Weight (kg)">
-                    <NumericInput value={state.settings.weightKg} onChange={(v) => updateSettings("weightKg", v === "" ? 0 : v)} />
-                  </Field>
-                  <Field label="Height (cm)">
-                    <NumericInput value={state.settings.heightCm} onChange={(v) => updateSettings("heightCm", v === "" ? 0 : v)} />
-                  </Field>
-                  <Field label="Age">
-                    <NumericInput value={state.settings.age} onChange={(v) => updateSettings("age", v === "" ? 0 : v)} />
-                  </Field>
-                  <Field label="Sex">
-                    <select className="input" value={state.settings.sex} onChange={(e) => updateSettings("sex", e.target.value as Sex)}>
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                    </select>
-                  </Field>
-                </div>
-                <div style={{ marginTop: 12 }}>
-                  <Field label="Daily activity level">
-                    <select className="input" value={state.settings.lifestyle} onChange={(e) => updateSettings("lifestyle", e.target.value as Lifestyle)}>
-                      <option value="sedentary">Sedentary — mostly sitting</option>
-                      <option value="light">Light — occasional walks</option>
-                      <option value="moderate">Moderate — on feet most of the day</option>
-                      <option value="active">Active — physical job or sport</option>
-                    </select>
-                  </Field>
-                </div>
-              </div>
-
-              {/* Goal */}
-              <div className="card">
-                <p className="settings-section-label">What you&apos;re working toward</p>
-                <Field label="Primary goal">
-                  <select className="input" value={state.settings.goal} onChange={(e) => updateSettings("goal", e.target.value as Goal)}>
-                    <option value="recomp">Build muscle + lose fat (recomp)</option>
-                    <option value="maintain">Maintain my current physique</option>
-                    <option value="lose_weight">Lose weight</option>
-                    <option value="be_more_active">Just be more active</option>
-                  </select>
-                </Field>
-              </div>
-
-              {/* Training */}
-              <div className="card">
-                <p className="settings-section-label">Training preferences</p>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  <Field label="Days / week">
-                    <select className="input" value={state.settings.workoutsPerWeek} onChange={(e) => updateSettings("workoutsPerWeek", Number(e.target.value))}>
-                      <option value={2}>2 days</option>
-                      <option value={3}>3 days</option>
-                      <option value={4}>4 days</option>
-                      <option value={5}>5 days</option>
-                    </select>
-                  </Field>
-                  <Field label="Experience">
-                    <select className="input" value={state.settings.experienceLevel} onChange={(e) => updateSettings("experienceLevel", e.target.value as Settings["experienceLevel"])}>
-                      <option value="beginner">Beginner</option>
-                      <option value="intermediate">Intermediate</option>
-                      <option value="advanced">Advanced</option>
-                    </select>
-                  </Field>
-                  <Field label="Session length">
-                    <select className="input" value={state.settings.sessionLength} onChange={(e) => updateSettings("sessionLength", Number(e.target.value))}>
-                      <option value={45}>45 min</option>
-                      <option value={60}>60 min</option>
-                      <option value={75}>75 min</option>
-                    </select>
-                  </Field>
-                  <Field label="Equipment">
-                    <select className="input" value={state.settings.equipmentAccess} onChange={(e) => updateSettings("equipmentAccess", e.target.value as Settings["equipmentAccess"])}>
-                      <option value="full_gym">Full gym</option>
-                      <option value="machines">Machines only</option>
-                      <option value="dumbbells">Dumbbells</option>
-                      <option value="home">Home setup</option>
-                    </select>
-                  </Field>
-                </div>
-                <div style={{ marginTop: 12 }}>
-                  <Field label="Training focus">
-                    <select className="input" value={state.settings.trainingEmphasis} onChange={(e) => updateSettings("trainingEmphasis", e.target.value as Settings["trainingEmphasis"])}>
-                      <option value="aesthetic">Aesthetic — look better</option>
-                      <option value="strength">Strength — lift more</option>
-                      <option value="mobility">Mobility — move better</option>
-                      <option value="fat_loss_support">Fat-loss support</option>
-                    </select>
-                  </Field>
-                  <Field label="Injuries / limitations">
-                    <input className="input" value={state.settings.limitations} onChange={(e) => updateSettings("limitations", e.target.value)} placeholder="e.g. knee pain, none" />
-                  </Field>
-                </div>
-              </div>
-
-              <button
-                className="btn"
-                style={{ background: "#111827", color: "#FFFFFF", borderRadius: 14, padding: 16, fontWeight: 700, fontSize: 15 }}
-                onClick={() => setSettingsStep("plan")}
-              >
-                See what&apos;s best for me →
-              </button>
-            </>
-          ) : (
-            <>
-              {/* Plan preview */}
-              <div className="card">
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                  <h2 style={{ margin: 0, fontSize: 18 }}>Your personalised plan</h2>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "#059669", background: "#F0FDF4", padding: "3px 10px", borderRadius: 999, textTransform: "uppercase" }}>
-                    {generatedPlan.nutrition.confidence} confidence
-                  </span>
-                </div>
-
-                <div style={{ display: "grid", gap: 10 }}>
-                  <div style={{ background: "#F9FAFB", borderRadius: 12, padding: "14px 16px" }}>
-                    <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.06em" }}>Nutrition</p>
-                    <p style={{ margin: 0, fontWeight: 600, color: "#111827" }}>{generatedPlan.nutrition.calories} kcal · P {generatedPlan.nutrition.protein}g · C {generatedPlan.nutrition.carbs}g · F {generatedPlan.nutrition.fats}g</p>
-                  </div>
-                  <div style={{ background: "#F9FAFB", borderRadius: 12, padding: "14px 16px" }}>
-                    <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.06em" }}>Workout</p>
-                    <p style={{ margin: 0, fontWeight: 600, color: "#111827" }}>{generatedPlan.workout.split} · {generatedPlan.workout.exercises.length} exercises</p>
-                  </div>
-                  <div style={{ background: "#F9FAFB", borderRadius: 12, padding: "14px 16px" }}>
-                    <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.06em" }}>Cardio</p>
-                    <p style={{ margin: 0, fontWeight: 600, color: "#111827" }}>{generatedPlan.cardio.weeklyMinutes} min / week</p>
-                  </div>
-                </div>
-
-                <div style={{ margin: "16px 0", borderTop: "1px solid #F3F4F6", paddingTop: 16 }}>
-                  {[...generatedPlan.nutrition.reasoning, ...generatedPlan.workout.reasoning].slice(0, 4).map((reason) => (
-                    <div key={reason} style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 8 }}>
-                      <span style={{ color: "#059669", fontSize: 14, marginTop: 1 }}>✓</span>
-                      <p style={{ margin: 0, fontSize: 13, color: "#374151", lineHeight: 1.5 }}>{reason}</p>
-                    </div>
-                  ))}
-                </div>
-
-                <button
-                  className="btn"
-                  style={{ width: "100%", background: "#059669", color: "#FFFFFF", borderRadius: 14, padding: 16, fontWeight: 700, fontSize: 15, marginBottom: 10 }}
-                  onClick={() => { applyGeneratedFullPlan(); setSettingsStep("profile"); }}
-                >
-                  Apply full plan — let&apos;s go
-                </button>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  <button className="btn secondary" onClick={applyGeneratedNutritionPlan}>Nutrition only</button>
-                  <button className="btn secondary" onClick={applyGeneratedWorkoutPlan}>Workout only</button>
-                </div>
-              </div>
-
-              {/* Manual override for targets */}
-              <div className="card">
-                <p className="settings-section-label">Override targets manually</p>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  <Field label="Calories">
-                    <NumericInput value={state.settings.targetCalories} onChange={(v) => updateSettings("targetCalories", v === "" ? 0 : v)} />
-                  </Field>
-                  <Field label="Protein (g)">
-                    <NumericInput value={state.settings.proteinTarget} onChange={(v) => updateSettings("proteinTarget", v === "" ? 0 : v)} />
-                  </Field>
-                  <Field label="Carbs (g)">
-                    <NumericInput value={state.settings.carbTarget} onChange={(v) => updateSettings("carbTarget", v === "" ? 0 : v)} />
-                  </Field>
-                  <Field label="Fat (g)">
-                    <NumericInput value={state.settings.fatTarget} onChange={(v) => updateSettings("fatTarget", v === "" ? 0 : v)} />
-                  </Field>
-                  <Field label="Step target">
-                    <NumericInput value={state.settings.stepTarget} onChange={(v) => updateSettings("stepTarget", v === "" ? 0 : v)} />
-                  </Field>
-                  <Field label="Step baseline">
-                    <NumericInput value={state.settings.currentStepBaseline} onChange={(v) => updateSettings("currentStepBaseline", v === "" ? 0 : v)} />
-                  </Field>
-                </div>
-              </div>
-
-              {targetReason ? (
-                <div className="card" style={{ background: "#F9FAFB" }}>
-                  <p className="settings-section-label">AI reason</p>
-                  <p className="small" style={{ lineHeight: 1.6, margin: 0 }}>{targetReason}</p>
-                </div>
-              ) : null}
-
-              <button className="btn secondary" onClick={calculateTargetsWithAI} disabled={isCalculatingTargets}>
-                {isCalculatingTargets ? "Calculating..." : "Recalculate with AI"}
-              </button>
-
-              <button
-                style={{ background: "none", border: "none", color: "#9CA3AF", fontSize: 13, padding: "8px 0", cursor: "pointer", textAlign: "left" }}
-                onClick={() => setSettingsStep("profile")}
-              >
-                ← Back to profile
-              </button>
-            </>
-          )}
-
-          {/* Always-visible bottom section */}
-          <div className="card">
-            <p className="settings-section-label">Data</p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
-              <button className="btn secondary" onClick={exportBackup}>Export backup</button>
-              <button className="btn secondary" onClick={() => fileInputRef.current?.click()}>Import backup</button>
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="application/json"
-              hidden
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) importBackup(file);
-              }}
-            />
-            <SwipeToDelete
-              className="settings-reset-swipe"
-              onDelete={() => {
-                setState((prev) => ({
-                  ...prev,
-                  dailyLogs: seedWeekLogs(),
-                  workoutLogs: seedWorkoutLogs(),
-                  workoutHistory: [],
-                  foods: []
-                }));
-              }}
-            >
-              <div className="card settings-reset-card">
-                <strong>Reset all logs</strong>
-                <p className="small">Swipe left to clear check-ins, workouts and nutrition logs.</p>
-              </div>
-            </SwipeToDelete>
-          </div>
-        </div>
+        <SettingsTab
+          settingsStep={settingsStep}
+          setSettingsStep={setSettingsStep}
+          settings={state.settings}
+          updateSettings={updateSettings}
+          generatedPlan={generatedPlan}
+          applyGeneratedFullPlan={applyGeneratedFullPlan}
+          applyGeneratedNutritionPlan={applyGeneratedNutritionPlan}
+          applyGeneratedWorkoutPlan={applyGeneratedWorkoutPlan}
+          targetReason={targetReason}
+          isCalculatingTargets={isCalculatingTargets}
+          calculateTargetsWithAI={calculateTargetsWithAI}
+          exportBackup={exportBackup}
+          fileInputRef={fileInputRef}
+          importBackup={importBackup}
+          resetAllLogs={resetAllLogs}
+        />
       )}
     </main>
   );
 }
-
-function Field({
-  label,
-  children
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div style={{ marginBottom: 14 }}>
-      <label className="label">{label}</label>
-      {children}
-    </div>
-  );
-}
-
-function MissedWorkoutCard({
-  missedWorkoutState,
-  missedWorkoutInfo,
-  setMissedWorkoutState,
-  setState
-}: {
-  missedWorkoutState: "idle" | "asking" | "log_missed" | "skip_missed" | "show_today";
-  missedWorkoutInfo: { missedDate: string; missedDayType: DayType } | null;
-  setMissedWorkoutState: React.Dispatch<
-    React.SetStateAction<"idle" | "asking" | "log_missed" | "skip_missed" | "show_today">
-  >;
-  setState: React.Dispatch<React.SetStateAction<AppState>>;
-}) {
-  if (!missedWorkoutInfo) return null;
-
-  function addMissedWorkoutEntry(completion: "skipped" | "completed" | "partial") {
-    if (!missedWorkoutInfo) return;
-
-    setState((prev) => ({
-      ...prev,
-      workoutHistory: [
-        {
-          id: cryptoSafeId(),
-          date: missedWorkoutInfo.missedDate,
-          dayType: missedWorkoutInfo.missedDayType,
-          completion,
-          totalVolume: completion === "completed" ? 1 : 0,
-          exercises: []
-        },
-        ...prev.workoutHistory
-      ]
-    }));
-
-    setMissedWorkoutState("show_today");
-  }
-
-  const cardStyle: React.CSSProperties = {
-    width: "100%",
-    background: "#FFFFFF",
-    borderRadius: 20,
-    padding: 24,
-    marginBottom: 16,
-    border: "1px solid #E5E7EB"
-  };
-
-  const actionGridStyle: React.CSSProperties = {
-    display: "grid",
-    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-    gap: 12,
-    marginTop: 18
-  };
-
-  const darkButtonStyle: React.CSSProperties = {
-    background: "#F3F4F6",
-    color: "#111827",
-    border: 0,
-    borderRadius: 14,
-    minHeight: 52,
-    fontWeight: 700,
-    cursor: "pointer"
-  };
-
-  const greenButtonStyle: React.CSSProperties = {
-    background: "#059669",
-    color: "#FFFFFF",
-    border: 0,
-    borderRadius: 14,
-    minHeight: 52,
-    fontWeight: 700,
-    cursor: "pointer"
-  };
-
-  if (missedWorkoutState === "asking") {
-    return (
-      <section className="missed-workout-card" style={cardStyle}>
-        <h2 style={{ margin: 0 }}>We noticed you didn&apos;t log yesterday</h2>
-        <p style={{ marginTop: 10, color: "#6B7280", lineHeight: 1.6 }}>
-          Did you skip {missedWorkoutInfo.missedDayType} day or forget to log it?
-        </p>
-
-        <div style={actionGridStyle}>
-          <button style={darkButtonStyle} onClick={() => addMissedWorkoutEntry("skipped")}>
-            I skipped it
-          </button>
-          <button style={greenButtonStyle} onClick={() => setMissedWorkoutState("log_missed")}>
-            I forgot to log
-          </button>
-        </div>
-      </section>
-    );
-  }
-
-  if (missedWorkoutState === "log_missed") {
-    return (
-      <section className="missed-workout-card" style={cardStyle}>
-        <h2 style={{ margin: 0 }}>Log yesterday&apos;s {missedWorkoutInfo.missedDayType} session</h2>
-        <p style={{ marginTop: 10, color: "#6B7280", lineHeight: 1.6 }}>Did you complete it?</p>
-
-        <div style={{ ...actionGridStyle, gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
-          <button style={greenButtonStyle} onClick={() => addMissedWorkoutEntry("completed")}>
-            Yes
-          </button>
-          <button style={darkButtonStyle} onClick={() => addMissedWorkoutEntry("partial")}>
-            Partial
-          </button>
-          <button style={darkButtonStyle} onClick={() => addMissedWorkoutEntry("skipped")}>
-            No
-          </button>
-        </div>
-
-        <button
-          style={{
-            marginTop: 14,
-            background: "transparent",
-            border: 0,
-            color: "#6b7280",
-            fontSize: 13,
-            textDecoration: "underline",
-            cursor: "pointer"
-          }}
-          onClick={() => setMissedWorkoutState("show_today")}
-        >
-          Skip logging, show today&apos;s workout
-        </button>
-      </section>
-    );
-  }
-
-  return null;
-}
-
-function MealSuggestionsSection({
-  mealSuggestions,
-  addedMealSuggestions,
-  onAddSuggestion
-}: {
-  mealSuggestions: MealSuggestion[];
-  addedMealSuggestions: Record<string, boolean>;
-  onAddSuggestion: (suggestion: MealSuggestion) => void;
-}) {
-  if (mealSuggestions.length === 0) return null;
-
-  return (
-    <section className="compact-section">
-      <div style={{ marginBottom: 12 }}>
-        <h2 style={{ margin: 0, color: "#111827", fontSize: 16, fontWeight: 600 }}>
-          Today&apos;s Meal Ideas
-        </h2>
-        <p className="small" style={{ marginTop: 4 }}>
-          Based on your remaining macros
-        </p>
-      </div>
-
-      <div
-        style={{
-          display: "flex",
-          gap: 12,
-          overflowX: "auto",
-          paddingBottom: 8
-        }}
-      >
-        {mealSuggestions.map((suggestion) => {
-          const key = `${suggestion.meal}-${suggestion.food}`;
-          const added = !!addedMealSuggestions[key];
-
-          return (
-            <div
-              key={key}
-              style={{
-                width: 200,
-                flexShrink: 0,
-                display: "flex",
-                flexDirection: "column",
-                background: "#FFFFFF",
-                borderRadius: 16,
-                padding: 16,
-                border: added ? "1px solid #059669" : "1px solid #E5E7EB"
-              }}
-            >
-              <div
-                style={{
-                  color: "#9CA3AF",
-                  fontSize: 10,
-                  textTransform: "uppercase",
-                  letterSpacing: 1,
-                  fontWeight: 700
-                }}
-              >
-                {suggestion.meal}
-              </div>
-
-              <div
-                style={{
-                  color: "#111827",
-                  fontSize: 14,
-                  fontWeight: 600,
-                  margin: "4px 0",
-                  lineHeight: 1.4
-                }}
-              >
-                {suggestion.food}
-              </div>
-
-              <div style={{ color: "#6B7280", fontSize: 12 }}>
-                {suggestion.grams}g
-              </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  gap: 6,
-                  flexWrap: "wrap",
-                  marginTop: 10,
-                  marginBottom: 12
-                }}
-              >
-                <span
-                  style={{
-                    background: "#F3F4F6",
-                    color: "#111827",
-                    borderRadius: 999,
-                    padding: "5px 8px",
-                    fontSize: 11
-                  }}
-                >
-                  {suggestion.calories} kcal
-                </span>
-
-                <span
-                  style={{
-                    background: "#F3F4F6",
-                    color: "#111827",
-                    borderRadius: 999,
-                    padding: "5px 8px",
-                    fontSize: 11
-                  }}
-                >
-                  {suggestion.protein}g protein
-                </span>
-              </div>
-
-              <button
-                className="btn"
-                disabled={added}
-                onClick={() => onAddSuggestion(suggestion)}
-                style={{
-                  background: added ? "#F3F4F6" : "#059669",
-                  color: added ? "#9CA3AF" : "#FFFFFF",
-                  borderRadius: 8,
-                  padding: 8,
-                  width: "100%",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  minHeight: 38,
-                  marginTop: "auto"
-                }}
-              >
-                {added ? "✓ Added" : "Add to log"}
-              </button>
-            </div>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-function MetricCard({
-  title,
-  value,
-  hint
-}: {
-  title: string;
-  value: string;
-  hint: string;
-}) {
-  return (
-    <div className="card">
-      <div className="small">{title}</div>
-      <div className="metric-value">{value}</div>
-      <div className="small">{hint}</div>
-    </div>
-  );
-}
-
-function GameMetricCard({
-  title,
-  value,
-  hint,
-  tone,
-  progressPercent
-}: {
-  title: string;
-  value: string;
-  hint: string;
-  tone: "green" | "amber";
-  progressPercent: number;
-}) {
-  return (
-    <div className="metric-card">
-      <div className="metric-title">{title}</div>
-
-      <div className="metric-value">{value}</div>
-
-      <div className="metric-bar">
-        <div
-          className={`metric-bar-fill ${tone}`}
-          style={{ width: `${progressPercent}%` }}
-        />
-      </div>
-
-      <div className="metric-hint">{hint}</div>
-    </div>
-  );
-}
-
-
 
 function normalizeWorkoutLog(raw: Partial<ExerciseLog>): ExerciseLog {
   const templateMatch =
